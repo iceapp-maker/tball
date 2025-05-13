@@ -951,17 +951,27 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
     `;
   };
 
-  // 約戰按鈕點擊事件（修正版：查詢 teamName 再跳轉）
+  // 約戰按鈕點擊事件（修正版：傳遞正確的選手ID）
   const handleChallengeClick = async () => {
     const teamId = currentLoggedInUser?.team_id || '';
     // 查詢 teamName
     const { data, error } = await supabase.from('courts').select('name').eq('team_id', teamId).maybeSingle();
     const teamName = data?.name || teamId;
+    
+    // 根據名稱查找對應的成員ID
+    const redMemberId = members.find(m => m.name === redMemberName)?.id || '';
+    const greenMemberId = members.find(m => m.name === greenMemberName)?.id || '';
+    
+    console.log('約戰選手:', {
+      紅色選手: { 名稱: redMemberName, ID: redMemberId },
+      綠色選手: { 名稱: greenMemberName, ID: greenMemberId }
+    });
+    
     navigate('/create-challenge', {
       state: {
         teamId,
         teamName,
-        playerIds: [redMemberName, greenMemberName].filter(Boolean),
+        playerIds: [redMemberId, greenMemberId].filter(Boolean),
       }
     });
   };
