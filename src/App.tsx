@@ -25,7 +25,7 @@ import LineupEditorPage from './contest/LineupEditorPage';  // 請確保路徑�
 import ContestResultsPage from './contest/ContestResultsPage'; // 新增比賽結果分析頁面
 
 // 版本信息
-const CURRENT_VERSION = "a.18";
+const CURRENT_VERSION = "B.01";
 
 // 創建會員資料表的函數
 async function createMembersTable() {
