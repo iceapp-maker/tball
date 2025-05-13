@@ -37,6 +37,7 @@ const BattleRoomPage: React.FC = () => {
   const [currentUserName, setCurrentUserName] = useState<string>(''); // 目前使用者的名稱
   const [isContestCompleted, setIsContestCompleted] = useState(false); // 比賽是否已結束
   const [localStorageUser, setLocalStorageUser] = useState<any>(null); // localStorage 中的用戶資訊
+  const [teamCaptains, setTeamCaptains] = useState<{[teamId: string]: string}>({}) // 存儲隊伍ID到隊長名稱的映射
   
   // 獲取顯示的隊員名稱文本
   const getTeamMembersDisplay = (match: MatchDetail, teamNumber: 1 | 2): React.ReactNode => {
@@ -217,6 +218,48 @@ const BattleRoomPage: React.FC = () => {
     }
   };
 
+  // 獲取所有隊伍的隊長資訊
+  const fetchTeamCaptains = async (teamIds: (number | undefined)[]) => {
+    try {
+      console.log('獲取所有隊伍隊長資訊，隊伍IDs:', teamIds);
+      const filteredTeamIds = teamIds.filter(id => id !== undefined) as number[];
+      
+      if (filteredTeamIds.length === 0) {
+        console.log('沒有有效的隊伍ID，跳過獲取隊長資訊');
+        return {};
+      }
+      
+      // 查詢所有隊伍的隊長資訊
+      const { data, error } = await supabase
+        .from('contest_team_member')
+        .select('contest_team_id, member_name')
+        .in('contest_team_id', filteredTeamIds)
+        .eq('status', 'captain');
+      
+      if (error) {
+        console.error('獲取隊長資訊錯誤:', error);
+        return {};
+      }
+      
+      if (!data || data.length === 0) {
+        console.log('未找到任何隊長資訊');
+        return {};
+      }
+      
+      // 建立隊伍ID到隊長名稱的映射
+      const captainsMap: {[teamId: string]: string} = {};
+      data.forEach((item: {contest_team_id: number; member_name: string}) => {
+        captainsMap[item.contest_team_id.toString()] = item.member_name;
+      });
+      
+      console.log('獲取到的隊長資訊:', captainsMap);
+      return captainsMap;
+    } catch (err) {
+      console.error('獲取隊長資訊時發生錯誤:', err);
+      return {};
+    }
+  };
+
   const fetchContestDetails = async () => {
     try {
       console.log('查詢 contest 資料表，比賽 ID:', contestId);
@@ -393,11 +436,23 @@ const BattleRoomPage: React.FC = () => {
         // 執行桌次分配邏輯
         await assignTableNumbers(sortedMatches, availableTables);
         
-        // 設置更新後的比賽數據到 matches 狀態變量
-        setMatches(sortedMatches);
-        
-        // 檢查比賽是否已結束
-        checkContestCompleted(sortedMatches);
+        // 獲取所有團隊ID並去重
+      const allTeamIds = Array.from(new Set(
+        sortedMatches.flatMap(match => [
+          match.team1_id,
+          match.team2_id
+        ]).filter((id): id is number => id !== undefined)
+      ));
+      
+      // 獲取所有隊伍的隊長資訊
+      const captainsMap = await fetchTeamCaptains(allTeamIds);
+      setTeamCaptains(captainsMap);
+      
+      // 設置更新後的比賽數據到 matches 狀態變量
+      setMatches(sortedMatches);
+      
+      // 檢查比賽是否已結束
+      checkContestCompleted(sortedMatches);
       }
     } catch (err: any) {
       console.error('獲取比賽數據錯誤:', err);
@@ -732,7 +787,11 @@ const BattleRoomPage: React.FC = () => {
                       <td className="py-3 px-4 border">
                         <div className="font-bold mb-1">
                           {match.team1_name} 
-                          <span className="text-xs text-gray-500 ml-1">(ID: {match.team1_id || 'N/A'})</span>
+                          <span className="text-xs text-gray-500 ml-1">
+                            {match.team1_id && teamCaptains[match.team1_id] 
+                              ? `(隊長: ${teamCaptains[match.team1_id]})` 
+                              : ''}
+                          </span>
                         </div>
                         <div className="text-sm text-gray-600">
                           {getTeamMembersDisplay(match, 1)}
@@ -754,7 +813,11 @@ const BattleRoomPage: React.FC = () => {
                         )}
                         <div className="font-bold mb-1">
                           {match.team2_name}
-                          <span className="text-xs text-gray-500 ml-1">(ID: {match.team2_id || 'N/A'})</span>
+                          <span className="text-xs text-gray-500 ml-1">
+                            {match.team2_id && teamCaptains[match.team2_id] 
+                              ? `(隊長: ${teamCaptains[match.team2_id]})` 
+                              : ''}
+                          </span>
                         </div>
                         <div className="text-sm text-gray-600">
                           {getTeamMembersDisplay(match, 2)}
