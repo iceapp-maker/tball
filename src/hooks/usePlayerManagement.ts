@@ -31,6 +31,8 @@ interface MemberPointsMap {
 export const usePlayerManagement = () => {
   // 會員選單狀態
   const [members, setMembers] = useState<Member[]>([]);
+  // 新增：成員資料載入狀態
+  const [membersLoading, setMembersLoading] = useState<boolean>(true);
   const [memberPointsMap, setMemberPointsMap] = useState<MemberPointsMap>({});
   const [redMember, setRedMember] = useState(''); // id
   const [greenMember, setGreenMember] = useState(''); // id
@@ -55,7 +57,20 @@ export const usePlayerManagement = () => {
   useEffect(() => {
     const savedUser = localStorage.getItem('loginUser');
     if (savedUser) {
-      setCurrentLoggedInUser(JSON.parse(savedUser));
+      try {
+        const parsedUser = JSON.parse(savedUser);
+        setCurrentLoggedInUser(parsedUser);
+        console.log('當前登入用戶:', parsedUser.name, '團隊 ID:', parsedUser.team_id);
+      } catch (e) {
+        console.error('解析用戶數據錯誤:', e);
+        setCurrentLoggedInUser(null);
+      }
+    }
+    // 即使沒有登入用戶，也要嘗試載入 T 隊成員
+    else {
+      console.log('無登入用戶，預設使用 T 隊');
+      setCurrentLoggedInUser(null);
+      setMembersLoading(true);
     }
   }, []);
   
@@ -197,6 +212,18 @@ export const usePlayerManagement = () => {
   
   // 根據使用者登入狀態查詢會員和積分
   useEffect(() => {
+    // 啟動載入狀態
+    setMembersLoading(true);
+    
+    // 當用戶登入狀態變更時，進行日誌記錄
+    if (currentLoggedInUser) {
+      console.log('執行會員查詢 - 用戶登入狀態:', 
+        '用戶名:', currentLoggedInUser.name, 
+        '團隊 ID:', currentLoggedInUser.team_id);
+    } else {
+      console.log('執行會員查詢 - 無登入用戶，使用預設 T 隊');
+    }
+    
     // 根據來源不同區分查詢會員的方式
     const fetchMembersAndPoints = async () => {
       const isFromBattleRoom = location.search.includes('from_battleroom=true');
@@ -222,85 +249,96 @@ export const usePlayerManagement = () => {
       
       let allMembers: Member[] = [];
       
-      // 無論來源為何，都先取得所有會員
-      let teamId = currentLoggedInUser?.team_id;
-      // 未登入者預設可選T團隊
-      if (!teamId) teamId = 'T';
+      // 先從 URL 參數獲取指定的 team_id
+      // 使用已經存在的 params 變數
+      const urlTeamId = params.get('team_id');
       
-      const { data: membersData, error: membersError } = await supabase
-        .from('members')
-        .select('*')
-        .eq('team_id', teamId);
+      // 再次確認用戶的 team_id，以保證獲取最新值
+      const savedUser = localStorage.getItem('loginUser');
+      let userTeamId: string | undefined;
       
-      if (membersError) {
-        console.error('查詢會員錯誤:', membersError);
-      } else {
-        allMembers = membersData || [];
+      if (savedUser) {
+        try {
+          const freshUser = JSON.parse(savedUser);
+          userTeamId = freshUser.team_id;
+          console.log('從 localStorage 重新獲取用戶 team_id:', userTeamId);
+        } catch (e) {
+          console.error('解析 localStorage 用戶資訊失敗:', e);
+        }
       }
       
-      // 如果是從戰況室進入，確保URL參數中的選手都在列表中（若不存在則加入）
-      if (isFromBattleRoom) {
-        console.log('從戰況室進入，確保 URL 選手在列表中');
+      // 如果仍然未找到，嘗試使用 currentLoggedInUser 中的 team_id
+      if (!userTeamId) {
+        userTeamId = currentLoggedInUser?.team_id;
+        console.log('使用 currentLoggedInUser 中的 team_id:', userTeamId);
+      }
+      
+      // 未登入者預設可選T團隊
+      if (!userTeamId) {
+        userTeamId = 'T';
+        console.log('未找到用戶 team_id，使用預設 T 隊');
+      }
+      
+      // 決定要查詢的 team_id: 優先使用URL參數中的 team_id，如果沒有則使用用戶的 team_id
+      const teamId = urlTeamId || userTeamId;
+      
+      console.log('查詢會員使用的 team_id:', teamId, 
+        '(來源:', urlTeamId ? 'URL參數' : '登入用戶', ')');
+      
+      try {
+        // 查詢指定 team_id 的會員
+        const { data: membersData, error: membersError } = await supabase
+          .from('members')
+          .select('*')
+          .eq('team_id', teamId);
         
-        // 紅色選手
-        if (player1Name && player1MemberId) {
-          const exists = allMembers.some(m => m.id === player1MemberId || m.member_id === player1MemberId);
-          if (!exists) {
-            const newMember = {
-              id: player1MemberId,
-              member_id: player1MemberId,
-              name: player1Name,
-              team_id: 'CONTEST'
-            };
-            allMembers.push(newMember);
-            console.log('添加紅色選手到列表:', newMember);
+        if (membersError) {
+          console.error('查詢會員錯誤:', membersError);
+          // 如果查詢失敗但使用的是 URL 參數指定的 team_id，嘗試使用用戶的 team_id
+          if (urlTeamId && urlTeamId !== userTeamId) {
+            console.log('嘗試使用用戶的 team_id 重新查詢:', userTeamId);
+            const { data: fallbackData } = await supabase
+              .from('members')
+              .select('*')
+              .eq('team_id', userTeamId);
+            
+            allMembers = fallbackData || [];
           }
+        } else {
+          allMembers = membersData || [];
+          console.log('成功獲取會員數據:', allMembers.length, '筆', 
+            '(team_id:', teamId, ')');
         }
         
-        // 綠色選手
-        if (player2Name && player2MemberId) {
-          const exists = allMembers.some(m => m.id === player2MemberId || m.member_id === player2MemberId);
-          if (!exists) {
-            const newMember = {
-              id: player2MemberId,
-              member_id: player2MemberId,
-              name: player2Name,
-              team_id: 'CONTEST'
-            };
-            allMembers.push(newMember);
-            console.log('添加綠色選手到列表:', newMember);
+        // 如果未找到會員且使用的不是 T 團隊，嘗試掛應查詢 T 團隊會員
+        if (allMembers.length === 0 && teamId !== 'T') {
+          console.log('未找到 ' + teamId + ' 團隊的會員，是否要嘗試查詢 T 團隊會員？');
+          
+          // 創建確認對話框顯示結果（使用結果晚間還是預設會員）
+          const confirmSwitch = window.confirm(
+            '未找到 ' + teamId + ' 團隊的會員。\n\n' + 
+            '是否要使用 T 團隊的會員作為備選？\n' + 
+            '「確定」：使用 T 團隊會員\n' + 
+            '「取消」：不顯示候選會員'
+          );
+          
+          if (confirmSwitch) {
+            console.log('用戶確認使用 T 團隊會員');
+            const { data: tTeamData } = await supabase
+              .from('members')
+              .select('*')
+              .eq('team_id', 'T');
+              
+            if (tTeamData && tTeamData.length > 0) {
+              allMembers = tTeamData;
+              console.log('成功獲取 T 團隊會員:', tTeamData.length, '筆');
+            }
+          } else {
+            console.log('用戶取消使用 T 團隊會員');
           }
         }
-        
-        // 藍色選手
-        if (player3Name && player3MemberId) {
-          const exists = allMembers.some(m => m.id === player3MemberId || m.member_id === player3MemberId);
-          if (!exists) {
-            const newMember = {
-              id: player3MemberId,
-              member_id: player3MemberId,
-              name: player3Name,
-              team_id: 'CONTEST'
-            };
-            allMembers.push(newMember);
-            console.log('添加藍色選手到列表:', newMember);
-          }
-        }
-        
-        // 黃色選手
-        if (player4Name && player4MemberId) {
-          const exists = allMembers.some(m => m.id === player4MemberId || m.member_id === player4MemberId);
-          if (!exists) {
-            const newMember = {
-              id: player4MemberId,
-              member_id: player4MemberId,
-              name: player4Name,
-              team_id: 'CONTEST'
-            };
-            allMembers.push(newMember);
-            console.log('添加黃色選手到列表:', newMember);
-          }
-        }
+      } catch (e) {
+        console.error('查詢會員時發生例外:', e);
       }
       
       setMembers(allMembers);
@@ -354,9 +392,12 @@ export const usePlayerManagement = () => {
       } else {
         setMemberPointsMap({});
       }
+      
+      // 完成載入，設置狀態為false
+      setMembersLoading(false);
     };
     fetchMembersAndPoints();
-  }, [currentLoggedInUser?.team_id, location.search]);
+  }, [currentLoggedInUser, location.search]); // 加入 currentLoggedInUser 作為完整依賴項，確保登入狀態變化時重新查詢
   
   // 取得團隊字母
   const getTeamLetter = (team_id?: string) => {
@@ -417,6 +458,7 @@ export const usePlayerManagement = () => {
   return {
     // 玩家狀態
     members,
+    membersLoading,
     memberPointsMap,
     redMember,
     setRedMember,
