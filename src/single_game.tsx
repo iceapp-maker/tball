@@ -88,36 +88,45 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
   const navigate = useNavigate();
   const location = useLocation();
 
-  useEffect(() => {
-    // 檢查是否從戰況室進入
+  // 處理URL參數的統一函數
+  const processUrlParameters = () => {
     const params = new URLSearchParams(location.search);
+    
+    // 檢查來源 - 戰況室 vs 一般挑戰
     const fromBattleroom = params.get('from_battleroom');
     setIsFromBattleroom(fromBattleroom === 'true');
     setSourceType(fromBattleroom === 'true' ? 'contest' : 'challenge');
     
+    // 統一處理所有可能的參數格式
+    // 1. 戰況室參數: player1_name, player2_name, player1_member_id, player2_member_id
+    // 2. 約戰頁面參數: player1, player2 (ID)
+    
+    // 獲取名稱參數
+    const p1Name = params.get('player1_name');
+    const p2Name = params.get('player2_name');
+    
+    // 獲取會員ID參數 - 不同格式
+    const p1MemberId = params.get('player1_member_id') || params.get('player1');
+    const p2MemberId = params.get('player2_member_id') || params.get('player2');
+    
+    console.log('頁面參數解析結果:', { 
+      來源: fromBattleroom === 'true' ? '戰況室' : '一般頁面',
+      p1Name, 
+      p2Name, 
+      p1MemberId, 
+      p2MemberId 
+    });
+    
+    // 暫時設置名稱，稍後會在 members 載入後再次檢查
+    if (p1Name) setRedMemberName(p1Name);
+    if (p2Name) setGreenMemberName(p2Name);
+    
+    // 保存所有ID參數到 sessionStorage 以便在 members 載入後使用
+    if (p1MemberId) sessionStorage.setItem('player1_member_id', p1MemberId);
+    if (p2MemberId) sessionStorage.setItem('player2_member_id', p2MemberId);
+    
+    // 戰況室特有參數
     if (fromBattleroom === 'true') {
-      const p1Name = params.get('player1_name');
-      const p2Name = params.get('player2_name');
-      
-      // 獲取 member_id 參數
-      const p1MemberId = params.get('player1_member_id');
-      const p2MemberId = params.get('player2_member_id');
-      
-      console.log('從戰況室進入，選手資訊:', { 
-        p1Name, 
-        p2Name, 
-        p1MemberId, 
-        p2MemberId 
-      });
-      
-      // 暫時設置名稱，稍後會在 members 載入後再次檢查
-      if (p1Name) setRedMemberName(p1Name);
-      if (p2Name) setGreenMemberName(p2Name);
-      
-      // 保存 member_id 以便在 members 載入後使用
-      if (p1MemberId) sessionStorage.setItem('player1_member_id', p1MemberId);
-      if (p2MemberId) sessionStorage.setItem('player2_member_id', p2MemberId);
-      
       const matchDetailIdParam = params.get('match_detail_id');
       if (matchDetailIdParam) {
         setMatchDetailId(parseInt(matchDetailIdParam, 10));
@@ -129,7 +138,12 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
       if (team1NameParam) setTeam1Name(team1NameParam);
       if (team2NameParam) setTeam2Name(team2NameParam);
     }
-  }, [location.search, isFromBattleroom]);
+  };
+
+  // 在組件掛載和URL變更時處理參數
+  useEffect(() => {
+    processUrlParameters();
+  }, [location.search]);
 
   useEffect(() => {
     const fetchMembersAndPoints = async () => {
@@ -140,7 +154,7 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
       const p1Name = params.get('player1_name');
       const p2Name = params.get('player2_name');
       
-      // 從 sessionStorage 獲取 member_id
+      // 從 sessionStorage 獲取 member_id (可能來自戰況室或約戰頁面)
       const p1MemberId = sessionStorage.getItem('player1_member_id');
       const p2MemberId = sessionStorage.getItem('player2_member_id');
       
@@ -148,7 +162,7 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
       
       let allMembers: any[] = [];
       
-      // 如果不是從戰況室進入，則顯示所有會員
+      // 查詢符合條件的會員
       console.log('查詢符合條件的會員');
       
       let dynamicTeamId = currentLoggedInUser?.team_id ?? 'T';
@@ -168,23 +182,46 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
         allMembers = membersData || [];
         console.log('獲取到的會員:', allMembers.length, '筆');
         
-        // 如果是從戰況室進入，使用 member_id 選擇正確的選手
-        if (isFromBattleroom && allMembers.length > 0) {
+        // 處理會員 ID 參數 - 適用於戰況室和約戰頁面
+        if (allMembers.length > 0) {
+          // 嘗試不同方式匹配選手 ID
+          const findPlayer = (memberId: string | null) => {
+            if (!memberId) return null;
+            
+            // 首先嘗試匹配 member_id（戰況室格式）
+            let player = allMembers.find(m => m.member_id === memberId);
+            
+            // 如果沒找到，嘗試匹配 id（約戰頁面格式）
+            if (!player) {
+              player = allMembers.find(m => m.id === memberId);
+            }
+            
+            return player;
+          };
+          
+          // 處理紅色選手
           if (p1MemberId) {
-            console.log('嘗試使用 member_id 選擇紅色選手:', p1MemberId);
-            const player1 = allMembers.find(m => m.member_id === p1MemberId);
+            console.log('嘗試使用 ID 選擇紅色選手:', p1MemberId);
+            const player1 = findPlayer(p1MemberId);
             if (player1) {
               console.log('找到符合的紅色選手:', player1.name);
+              setRedMember(player1.id);
               setRedMemberName(player1.name);
+            } else {
+              console.log('未找到符合ID的紅色選手');
             }
           }
           
+          // 處理綠色選手
           if (p2MemberId) {
-            console.log('嘗試使用 member_id 選擇綠色選手:', p2MemberId);
-            const player2 = allMembers.find(m => m.member_id === p2MemberId);
+            console.log('嘗試使用 ID 選擇綠色選手:', p2MemberId);
+            const player2 = findPlayer(p2MemberId);
             if (player2) {
               console.log('找到符合的綠色選手:', player2.name);
+              setGreenMember(player2.id);
               setGreenMemberName(player2.name);
+            } else {
+              console.log('未找到符合ID的綠色選手');
             }
           }
         }
@@ -228,11 +265,11 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
       });
       setMemberPointsMap(pointsMap);
       
-      // 如果是從戰況室進入，根據名字匹配選手ID
-      if (isFromBattleroom) {
-        console.log('從戰況室進入，根據名字匹配選手');
+      // 如果還沒有通過 ID 設置選手，嘗試通過名稱匹配
+      if (!redMember || !greenMember) {
+        console.log('嘗試通過名稱匹配選手');
         
-        if (p1Name) {
+        if (p1Name && !redMember) {
           // 在現有清單中尋找名字匹配的選手
           const redMatch = allMembers.find(m => m.name === p1Name);
           if (redMatch) {
@@ -244,7 +281,7 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
           }
         }
         
-        if (p2Name) {
+        if (p2Name && !greenMember) {
           // 在現有清單中尋找名字匹配的選手
           const greenMatch = allMembers.find(m => m.name === p2Name);
           if (greenMatch) {
@@ -258,7 +295,7 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
       }
     };
     fetchMembersAndPoints();
-  }, [currentLoggedInUser?.team_id, isFromBattleroom, location.search]);
+  }, [currentLoggedInUser?.team_id, isFromBattleroom, location.search, redMember, greenMember]);
 
   // Initialize AudioContext when first needed
   const getAudioContext = () => {
