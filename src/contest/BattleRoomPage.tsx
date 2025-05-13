@@ -30,7 +30,8 @@ const BattleRoomPage: React.FC = () => {
   const [error, setError] = useState('');
   const [contestName, setContestName] = useState('');
   const [matches, setMatches] = useState<MatchDetail[]>([]);
-  const [tableCount, setTableCount] = useState(0);
+  const [tableCount, setTableCount] = useState<number>(1);
+  const [totalPoints, setTotalPoints] = useState<number>(1);
   const [isAdmin, setIsAdmin] = useState(false); // 是否為管理員
   const [currentUserTeamId, setCurrentUserTeamId] = useState<number | null>(null); // 目前使用者的隊伍ID
   const [currentContestTeamId, setCurrentContestTeamId] = useState<number | null>(null); // 目前使用者在本比賽中的contest_team_id
@@ -283,6 +284,13 @@ const BattleRoomPage: React.FC = () => {
         setContestName(data.contest_name);
         setTableCount(tableCountValue);
         console.log('設置後的 tableCount 狀態變量:', tableCountValue);
+
+        // 設置 total_points
+        const totalPointsValue = data.total_points !== undefined && data.total_points !== null
+          ? Math.max(1, data.total_points)
+          : 1;
+        setTotalPoints(totalPointsValue);
+        console.log('設置後的 totalPoints 狀態變量:', totalPointsValue);
         
         return tableCountValue; // 返回桌次數量，供後續使用
       }
@@ -768,111 +776,98 @@ const BattleRoomPage: React.FC = () => {
               目前沒有對戰資料
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse border border-gray-300 mb-8">
-                <thead className="bg-gray-100">
-                  <tr>
-                    <th className="py-3 px-4 border text-left">序號</th>
-                    <th className="py-3 px-4 border text-left">隊伍1</th>
-                    <th className="py-3 px-4 border text-left">隊伍2</th>
-                    <th className="py-3 px-4 border text-left">比分</th>
-                    <th className="py-3 px-4 border text-left">桌次</th>
-                    <th className="py-3 px-4 border text-left">前往</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {matches.map((match: MatchDetail, index: number) => (
-                    <tr key={match.match_detail_id} className="hover:bg-gray-50">
-                      <td className="py-3 px-4 border">{index + 1}</td>
-                      <td className="py-3 px-4 border">
-                        <div className="font-bold mb-1">
-                          {match.team1_name} 
-                          <span className="text-xs text-gray-500 ml-1">
-                            {match.team1_id && teamCaptains[match.team1_id] 
-                              ? `(隊長: ${teamCaptains[match.team1_id]})` 
-                              : ''}
-                          </span>
-                        </div>
-                        <div className="text-sm text-gray-600">
+            <div className="space-y-4">
+              {matches.map((match: MatchDetail, index: number) => {
+                // 出賽點循環顯示邏輯
+                let point = 1;
+                if (totalPoints && totalPoints > 0) {
+                  for (let i = 0, group = 0; i < matches.length; i++) {
+                    const m = matches[i];
+                    if (i === 0 || m.team1_id !== matches[i - 1].team1_id || m.team2_id !== matches[i - 1].team2_id) {
+                      group = 0;
+                    }
+                    if (i === index) {
+                      point = (group % totalPoints) + 1;
+                      break;
+                    }
+                    group++;
+                  }
+                }
+                return (
+                  <div key={match.match_detail_id} className="border rounded-lg p-4 bg-white shadow-sm">
+                    {/* 頂部區域：出賽點和桌次 */}
+                    <div className="flex justify-between items-center mb-2 border-b pb-2">
+                      <div className="font-bold text-blue-800">出賽點 <span className="text-xl ml-1">{point}</span></div>
+                      <div>
+                        <span className="text-gray-500 text-sm">桌次：</span>
+                        <span className="font-medium">{match.score ? '--' : (match.table_no ? match.table_no : '')}</span>
+                      </div>
+                    </div>
+
+                    {/* 中間區域：隊伍資訊和比分 */}
+                    <div className="flex justify-between items-center mb-4">
+                      {/* 隊伍1 */}
+                      <div className="text-center w-2/5">
+                        <div className="font-bold text-lg">{match.team1_name}</div>
+                        <div className="text-xs text-gray-500">({teamCaptains[match.team1_id] || '無隊長'})</div>
+                        <div className="text-sm mt-1 text-gray-600">
                           {getTeamMembersDisplay(match, 1)}
                         </div>
-                      </td>
-                      <td className="py-3 px-4 border" style={{ position: 'relative' }}>
-                        {/* 只有在雙方名單都備齊時才顯示箭頭符號 */}
-                        {shouldShowArrow(match) && (
-                          <div style={{ 
-                            position: 'absolute', 
-                            left: '-15px', 
-                            top: '50%', 
-                            transform: 'translateY(-50%)',
-                            fontSize: '20px',
-                            color: '#666'
-                          }}>
-                            ➔
-                          </div>
-                        )}
-                        <div className="font-bold mb-1">
-                          {match.team2_name}
-                          <span className="text-xs text-gray-500 ml-1">
-                            {match.team2_id && teamCaptains[match.team2_id] 
-                              ? `(隊長: ${teamCaptains[match.team2_id]})` 
-                              : ''}
-                          </span>
+                      </div>
+
+                      {/* VS和比分區域 */}
+                      <div className="text-center flex flex-col items-center">
+                        <div className="font-bold text-gray-500 mb-1">vs</div>
+                        {/* 比分顯示 */}
+                        <div className="font-bold text-2xl flex items-center justify-center space-x-2">
+                          {(() => {
+                            if (!match.score) return '- : -';
+                            const [raw1, raw2] = match.score.split(':');
+                            const s1 = parseInt(raw1, 10);
+                            const s2 = parseInt(raw2, 10);
+                            if (isNaN(s1) || isNaN(s2)) return match.score;
+                            if (match.winner_team_id) {
+                              if (match.team1_id === match.winner_team_id) {
+                                return `${Math.max(s1, s2)} : ${Math.min(s1, s2)}`;
+                              } else if (match.team2_id === match.winner_team_id) {
+                                return `${Math.min(s1, s2)} : ${Math.max(s1, s2)}`;
+                              }
+                            }
+                            return `${s1} : ${s2}`;
+                          })()}
                         </div>
-                        <div className="text-sm text-gray-600">
+                      </div>
+
+                      {/* 隊伍2 */}
+                      <div className="text-center w-2/5">
+                        <div className="font-bold text-lg">{match.team2_name}</div>
+                        <div className="text-xs text-gray-500">({teamCaptains[match.team2_id] || '無隊長'})</div>
+                        <div className="text-sm mt-1 text-gray-600">
                           {getTeamMembersDisplay(match, 2)}
                         </div>
-                      </td>
-                      <td className="py-3 px-4 border">{
-  (() => {
-    if (!match.score) return '-';
-    if (!match.winner_team_id) return match.score;
-    // 解析比分
-    const [raw1, raw2] = match.score.split(':');
-    const s1 = parseInt(raw1, 10);
-    const s2 = parseInt(raw2, 10);
-    if (isNaN(s1) || isNaN(s2)) return match.score;
-    // 根據勝方隊伍ID決定比分順序
-    if (match.team1_id === match.winner_team_id) {
-      // 隊伍1獲勝，比分較高顯示在左
-      return `${Math.max(s1, s2)}:${Math.min(s1, s2)}`;
-    } else if (match.team2_id === match.winner_team_id) {
-      // 隊伍2獲勝，比分較高顯示在右
-      return `${Math.min(s1, s2)}:${Math.max(s1, s2)}`;
-    } else {
-      return match.score;
-    }
-  })()
-}</td>
-                    <td className="py-3 px-4 border">
-  {match.score ? 
-    '--' : 
-    (match.table_no ? match.table_no : '')}
-</td>
-                      <td className="py-3 px-4 border">
-                        {match.score && match.winner_team_id ? (
-                          // 如果有比分且有獲勝隊伍ID，顯示獲勝隊伍名稱
-                          <div className="text-green-600 font-bold">
-                            {match.winner_team_name ? `${match.winner_team_name}獲勝` : '等待結果...'}
-                          </div>
+                      </div>
+                    </div>
+
+                    {/* 底部區域：操作按鈕 */}
+                    <div className="border-t pt-2 text-center">
+                      {match.score && match.winner_team_id ? (
+                        <span className="text-green-600 font-bold">{match.winner_team_name ? `${match.winner_team_name}獲勝` : '等待結果...'}</span>
+                      ) : (
+                        shouldShowArrow(match) ? (
+                          <button
+                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded"
+                            onClick={() => navigateToGame(match)}
+                          >
+                            前往比賽
+                          </button>
                         ) : (
-                          // 條件4: 只有雙方都提交名單時，才顯示前往按鈕
-                          shouldShowArrow(match) ? (
-                            <button
-                              className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-sm"
-                              onClick={() => navigateToGame(match)}
-                            >
-                              →
-                            </button>
-                          ) : (
-                            <span className="text-gray-400 italic text-xs">等待雙方提交名單</span>
-                          )
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                          <span className="text-gray-400 italic text-sm">等待雙方提交名單</span>
+                        )
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
           <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
