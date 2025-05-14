@@ -25,29 +25,72 @@ const ContestResultsPage: React.FC = () => {
   const [error, setError] = useState('');
   const [contestName, setContestName] = useState('');
   const [resultsData, setResultsData] = useState<ResultsTableData>({ teams: [], teamIdToIndex: {} });
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [allScoresFilled, setAllScoresFilled] = useState(false);
+  const [updating, setUpdating] = useState(false);
+  const [isContestFinished, setIsContestFinished] = useState(false);
 
   useEffect(() => {
     if (contestId) {
+      checkUserRole();
       fetchContestDetails();
       fetchContestResults();
     }
   }, [contestId]);
 
+  const checkUserRole = async () => {
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('loginUser') || '{}');
+      const isUserAdmin = storedUser.role === 'admin' || storedUser.is_admin === true;
+      setIsAdmin(isUserAdmin);
+    } catch (err) {
+      console.error('檢查用戶角色時出錯:', err);
+    }
+  };
+
   const fetchContestDetails = async () => {
     try {
       const { data, error } = await supabase
         .from('contest')
-        .select('contest_name')
+        .select('contest_name, contest_status')
         .eq('contest_id', contestId)
         .single();
 
       if (error) throw error;
       if (data) {
         setContestName(data.contest_name);
+        setIsContestFinished(data.contest_status === 'finished');
       }
     } catch (err: any) {
       console.error('獲取比賽詳情錯誤:', err);
       setError(err.message);
+    }
+  };
+
+  const checkAllScoresFilled = (matchData: any[]) => {
+    return matchData && matchData.length > 0 && matchData.every(
+      match => match.score !== null && match.score !== undefined && match.score !== ''
+    );
+  };
+
+  const handleFinishContest = async () => {
+    if (!isAdmin || !allScoresFilled) return;
+    
+    try {
+      setUpdating(true);
+      const { error } = await supabase
+        .from('contest')
+        .update({ contest_status: 'finished' })
+        .eq('contest_id', contestId);
+
+      if (error) throw error;
+      setIsContestFinished(true);
+      alert('比賽已成功結束！');
+    } catch (err: any) {
+      console.error('更新比賽狀態時出錯:', err);
+      alert('更新比賽狀態失敗，請稍後再試！');
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -93,6 +136,7 @@ const ContestResultsPage: React.FC = () => {
       // 4. 處理數據並生成結果表
       const resultsTableData = processMatchResults(matchData, teamData, detailData);
       setResultsData(resultsTableData);
+      setAllScoresFilled(checkAllScoresFilled(matchData));
     } catch (err: any) {
       console.error('獲取比賽結果錯誤:', err);
       setError(err.message);
@@ -285,6 +329,19 @@ const ContestResultsPage: React.FC = () => {
             </div>
           )}
           
+          {isAdmin && (allScoresFilled || isContestFinished) && (
+            <div className="mt-4 mb-6">
+              <button
+                onClick={handleFinishContest}
+                disabled={updating || isContestFinished}
+                className={`px-6 py-2 rounded ${isContestFinished 
+                  ? 'bg-gray-500 cursor-not-allowed' 
+                  : 'bg-green-600 hover:bg-green-700'} text-white`}
+              >
+                {updating ? '處理中...' : isContestFinished ? '比賽已結束' : '結束比賽'}
+              </button>
+            </div>
+          )}
           <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
             <h3 className="font-bold text-yellow-800 mb-2">說明</h3>
             <ul className="list-disc pl-5 text-sm text-yellow-700">
