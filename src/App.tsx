@@ -22,10 +22,11 @@ import ContestControlPage from './contest/ContestControlPage';
 import BattleRoomPage from './contest/BattleRoomPage';
 import NewPersonalInfo from './personal/NewPersonalInfo';
 import LineupEditorPage from './contest/LineupEditorPage';  // 請確保路徑正確
-import ContestResultsPage from './contest/ContestResultsPage'; // 新增比賽結果分析頁面
+import ContestResultsPage from './contest/ContestResultsPage';
+import LineupStatusPage from './contest/LineupStatusPage'; // 新增比賽結果分析頁面
 
 // 版本信息
-const CURRENT_VERSION = "B.01";
+const CURRENT_VERSION = "a.18";
 
 // 創建會員資料表的函數
 async function createMembersTable() {
@@ -391,10 +392,10 @@ function App() {
             <Route path="/contest/edit/:contest_id" element={<EditContestPage />} />
             <Route path="/contest-invitations" element={<ContestInvitationsPage />} />
             <Route path="/contest-control" element={<ContestControlPage />} />
-<Route path="/contest/lineup-editor" element={<LineupEditorPage />} />
-<Route path="/contest/:contestId/battleroom" element={<BattleRoomPage />} />
+            <Route path="/contest/lineup-editor" element={<LineupEditorPage />} />
+            <Route path="/contest/:contestId/battleroom" element={<BattleRoomPage />} />
             <Route path="/contest/:contestId/results" element={<ContestResultsPage />} />
-            
+            <Route path="/contest/:contestId/lineup-status" element={<LineupStatusPage />} />
             <Route path="/new-personal-info" element={<NewPersonalInfo />} />
           </Routes>
         </Router>
