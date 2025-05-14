@@ -38,7 +38,12 @@ const BattleRoomPage: React.FC = () => {
   const [currentUserName, setCurrentUserName] = useState<string>(''); // 目前使用者的名稱
   const [isContestCompleted, setIsContestCompleted] = useState(false); // 比賽是否已結束
   const [localStorageUser, setLocalStorageUser] = useState<any>(null); // localStorage 中的用戶資訊
-  const [teamCaptains, setTeamCaptains] = useState<{[teamId: string]: string}>({}) // 存儲隊伍ID到隊長名稱的映射
+  const [teamCaptains, setTeamCaptains] = useState<{[teamId: string]: string}>({})
+  
+  // 搜尋和過濾相關狀態
+  const [searchKeyword, setSearchKeyword] = useState<string>(''); // 搜尋關鍵字
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null); // 選中的隊伍ID
+  const [allTeams, setAllTeams] = useState<{id: number, name: string}[]>([]); // 所有隊伍列表 // 存儲隊伍ID到隊長名稱的映射
   
   // 獲取顯示的隊員名稱文本
   const getTeamMembersDisplay = (match: MatchDetail, teamNumber: 1 | 2): React.ReactNode => {
@@ -83,6 +88,7 @@ const BattleRoomPage: React.FC = () => {
       
       const fetchedTableCount = await fetchContestDetails();
       await fetchMatches(fetchedTableCount);
+      await fetchAllTeams(); // 獲取所有參賽隊伍
     };
     
     // 從 localStorage 獲取用戶資訊
@@ -725,6 +731,65 @@ const BattleRoomPage: React.FC = () => {
     }
   };
 
+  // 獲取所有參賽隊伍
+  const fetchAllTeams = async () => {
+    try {
+      if (!contestId) return;
+      
+      // 獲取所有參與此比賽的隊伍
+      const { data: teamsData, error: teamsError } = await supabase
+        .from('contest_team')
+        .select('contest_team_id, team_name')
+        .eq('contest_id', contestId);
+        
+      console.log('查詢參賽隊伍返回:', teamsData, teamsError);
+        
+      if (teamsError) {
+        console.error('獲取參賽隊伍錯誤:', teamsError);
+        return;
+      }
+      
+      if (teamsData && teamsData.length > 0) {
+        const formattedTeams = teamsData.map((team: any) => ({
+          id: team.contest_team_id,
+          name: team.team_name
+        }));
+        
+        setAllTeams(formattedTeams);
+        console.log('獲取到所有參賽隊伍:', formattedTeams);
+      }
+    } catch (err) {
+      console.error('獲取參賽隊伍時出錯:', err);
+    }
+  };
+  
+  // 過濾比賽資料
+  const filteredMatches = matches.filter((match: MatchDetail) => {
+    console.log('過濾比賽:', { match, searchKeyword, selectedTeamId });
+    // 依照搜尋關鍵字過濾
+    const keywordMatches = searchKeyword === '' || (
+      (match.team1_name?.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+       match.team2_name?.toLowerCase().includes(searchKeyword.toLowerCase()) ||
+       match.team1_members?.some((member: string) => member.toLowerCase().includes(searchKeyword.toLowerCase())) ||
+       match.team2_members?.some((member: string) => member.toLowerCase().includes(searchKeyword.toLowerCase())))
+    );
+    
+    // 依照選擇的隊伍過濾
+    const teamMatches = selectedTeamId === null || 
+      match.team1_id === selectedTeamId || 
+      match.team2_id === selectedTeamId;
+      
+    console.log(`比賽 ${match.match_detail_id} 過濾結果:`, { keywordMatches, teamMatches });
+    
+    return keywordMatches && teamMatches;
+  });
+
+  // 重置搜尋和過濾條件
+  const resetFilters = () => {
+    setSearchKeyword('');
+    setSelectedTeamId(null);
+  };
+  
   return (
     <div className="container mx-auto px-4 py-8">
       {loading ? (
@@ -743,41 +808,83 @@ const BattleRoomPage: React.FC = () => {
               </button>
               <h1 className="text-2xl font-bold">{contestName} - 戰況室</h1>
             </div>
-            {/* 顯示登入者的所有資訊（用於調試） */}
-            <div className="text-sm bg-gray-100 px-3 py-2 rounded shadow-md">
-              <div className="font-semibold mb-1 text-blue-800">登入者資訊（調試用）</div>
-              <div><b>用戶名:</b> {currentUserName || localStorageUser?.userName || '未知'}</div>
-              <div><b>Contest Team ID:</b> {currentContestTeamId !== null ? currentContestTeamId : '未找到'}</div>
-              <div><b>Team ID:</b> {currentUserTeamId !== null ? currentUserTeamId : (localStorageUser?.team_id || 'N/A')}</div>
-              <div><b>角色:</b> {isAdmin ? '管理員' : '一般用戶'}</div>
-              <div><b>URL參數:</b> contestId={contestId}</div>
-              {localStorageUser && (
-                <div className="mt-1 text-xs">
-                  <details>
-                    <summary className="cursor-pointer text-blue-600 hover:text-blue-800">從 localStorage 獲取的完整資訊</summary>
-                    <div className="bg-gray-200 p-2 mt-1 rounded">
-                      <pre className="whitespace-pre-wrap overflow-auto max-h-40">{JSON.stringify(localStorageUser, null, 2)}</pre>
-                    </div>
-                  </details>
-                </div>
-              )}
-            </div>
-            {isContestCompleted && (
+            {/* 比分表按鈕 - 始終顯示 */}
+            <div className="flex gap-2">
               <button
                 onClick={navigateToResults}
                 className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md"
               >
-                名次分析
+                比分表
               </button>
-            )}
+              <button
+                onClick={() => navigate(`/contest/${contestId}/lineup-status`)}
+                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
+              >
+                名單狀況
+              </button>
+            </div>
           </div>
+          
+          {/* 搜尋和過濾區域 */}
+          <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border">
+            <h2 className="text-lg font-semibold mb-3 text-blue-800">搜尋和過濾</h2>
+            <div className="flex flex-wrap gap-4">
+              {/* 關鍵字搜尋 */}
+              <div className="flex-1 min-w-[200px]">
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <span className="text-gray-400">🔍</span>
+                  </div>
+                  <input
+                    type="text"
+                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="搜尋隊伍名稱或成員"
+                    value={searchKeyword}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchKeyword(e.target.value)}
+                  />
+                </div>
+              </div>
+              
+              {/* 隊伍選擇下拉選單 */}
+              <div className="flex-1 min-w-[200px]">
+                <select
+                  className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  value={selectedTeamId === null ? '' : selectedTeamId}
+                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedTeamId(e.target.value ? parseInt(e.target.value) : null)}
+                >
+                  <option value="">所有隊伍</option>
+                  {allTeams.map((team: {id: number, name: string}) => (
+                    <option key={team.id} value={team.id}>{team.name}</option>
+                  ))}
+                </select>
+              </div>
+              
+              {/* 重置按鈕 */}
+              <button
+                onClick={resetFilters}
+                className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md transition duration-200"
+              >
+                重置過濾
+              </button>
+            </div>
+            
+            {/* 搜尋結果計數 */}
+            <div className="mt-2 text-sm text-gray-600">
+              顯示 {filteredMatches.length} / {matches.length} 場比賽
+            </div>
+          </div>
+          
           {matches.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               目前沒有對戰資料
             </div>
+          ) : filteredMatches.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              找不到符合條件的比賽
+            </div>
           ) : (
             <div className="space-y-4">
-              {matches.map((match: MatchDetail, index: number) => {
+              {filteredMatches.map((match: MatchDetail, index: number) => {
                 // 出賽點循環顯示邏輯
                 let point = 1;
                 if (totalPoints && totalPoints > 0) {
