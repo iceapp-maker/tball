@@ -5,6 +5,8 @@ import { supabase } from '../supabaseClient';
 const ContestControlPage: React.FC = () => {
   const navigate = useNavigate();
   const [contests, setContests] = useState<any[]>([]);
+  const [teamCounts, setTeamCounts] = useState<{[key: string]: number}>({});
+  const [contestsWithScores, setContestsWithScores] = useState<{[key: string]: boolean}>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [generatingSchedule, setGeneratingSchedule] = useState(false);
@@ -17,16 +19,82 @@ const ContestControlPage: React.FC = () => {
     fetchContests();
   }, []);
 
+  interface ContestMatch {
+    score: string | null;
+  }
+
+  const checkAllScoresFilled = async (contestId: string) => {
+    try {
+      const { data: matches, error } = await supabase
+        .from('contest_match')
+        .select('score')
+        .eq('contest_id', contestId);
+
+      if (error) throw error;
+      
+      return matches && matches.length > 0 && matches.every(
+        (match: ContestMatch) => match.score !== null && match.score !== undefined && match.score !== ''
+      );
+    } catch (err) {
+      console.error('檢查比分時出錯:', err);
+      return false;
+    }
+  };
+
+  const handleFinishContest = async (contestId: string) => {
+    try {
+      const { error } = await supabase
+        .from('contest')
+        .update({ contest_status: 'finished' })
+        .eq('contest_id', contestId);
+
+      if (error) throw error;
+
+      setContests(contests.map((contest: { contest_id: string, contest_status: string }) => 
+        contest.contest_id === contestId 
+          ? { ...contest, contest_status: 'finished' } 
+          : contest
+      ));
+      alert('比賽已成功結束！');
+    } catch (err) {
+      console.error('更新比賽狀態時出錯:', err);
+      alert('更新比賽狀態失敗，請稍後再試！');
+    }
+  };
+
   const fetchContests = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      // 獲取比賽資料
+      const { data: contestsData, error: contestsError } = await supabase
         .from('contest')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('contest_id', { ascending: false });
 
-      if (error) throw error;
-      setContests(data || []);
+      if (contestsError) throw contestsError;
+      setContests(contestsData || []);
+
+      // 獲取每個比賽的隊伍數量
+      const counts: {[key: string]: number} = {};
+      for (const contest of contestsData || []) {
+        const { count, error: countError } = await supabase
+          .from('contest_team')
+          .select('*', { count: true })
+          .eq('contest_id', contest.contest_id);
+
+        if (countError) throw countError;
+        counts[contest.contest_id] = count || 0;
+      }
+      setTeamCounts(counts);
+
+      // 檢查每個進行中比賽的比分填寫狀態
+      const scoresStatus: {[key: string]: boolean} = {};
+      for (const contest of contestsData || []) {
+        if (contest.contest_status === 'ongoing') {
+          scoresStatus[contest.contest_id] = await checkAllScoresFilled(contest.contest_id);
+        }
+      }
+      setContestsWithScores(scoresStatus);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -167,7 +235,16 @@ await supabase
     switch (status) {
       case 'recruiting':
         color = 'bg-blue-500';
-        text = '招募中';
+        // 檢查是否達到預期隊伍數
+        const contest = contests.find((c: { contest_status: string, contest_id: string, expected_teams: number }) => c.contest_status === status);
+        const teamCount = contest ? teamCounts[contest.contest_id] || 0 : 0;
+        const expectedTeams = contest ? contest.expected_teams : 0;
+        
+        if (teamCount === expectedTeams) {
+          text = '出賽名單安排中';
+        } else {
+          text = '人員招募中';
+        }
         break;
       case 'lineup_arrangement':
         color = 'bg-yellow-500';
@@ -244,7 +321,8 @@ await supabase
                         編輯
                       </button>
                       
-                      {contest.contest_status === 'lineup_arrangement' && (
+                      {contest.contest_status === 'recruiting' && 
+                        teamCounts[contest.contest_id] === contest.expected_teams && (
                         <button
                           className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm"
                           onClick={() => handleGenerateSchedule(contest.contest_id)}
@@ -255,13 +333,38 @@ await supabase
                             : '產生對戰表'}
                         </button>
                       )}
-                      
+
                       <button
-                        className="bg-green-500 hover:bg-green-600 text-white px-2 py-1 rounded text-sm"
-                        onClick={() => navigate(`/contest/${contest.contest_id}/join`)}
+                        onClick={() => {
+                          if (contest.contest_status === 'finished') {
+                            navigate(`/contest/${contest.contest_id}/results`);
+                          } else if (contest.contest_status === 'ongoing') {
+                            navigate(`/contest/${contest.contest_id}/battleroom`);
+                          } else if (contest.contest_status === 'recruiting') {
+                            navigate(`/contest/${contest.contest_id}/join`);
+                          } else if (contest.contest_status === 'lineup_arrangement') {
+                            navigate(`/contest/${contest.contest_id}/lineup-status`);
+                          }
+                        }}
+                        className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-sm"
                       >
-                        查看
+                        {contest.contest_status === 'finished' 
+                          ? '查看結果' 
+                          : contest.contest_status === 'ongoing'
+                            ? '查看賽程'
+                            : contest.contest_status === 'recruiting'
+                              ? '查看報名'
+                              : '查看名單'}
                       </button>
+
+                      {contest.contest_status === 'ongoing' && contestsWithScores[contest.contest_id] && (
+                        <button
+                          onClick={() => handleFinishContest(contest.contest_id)}
+                          className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-sm"
+                        >
+                          確認比賽結束
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -277,7 +380,7 @@ await supabase
           <li>當比賽狀態為「名單安排中」時，可以產生對戰表。</li>
           <li>循環賽：每隊都會與其他所有隊伍對戰一次。</li>
           <li>產生對戰表後，比賽狀態將更新為「比賽進行中」。</li>
-          <li>產生對戰表後，將無法更改隊伍名單。</li>
+          <li>產生對戰表後，將由隊長編排出賽名單。</li>
         </ul>
       </div>
     </div>
