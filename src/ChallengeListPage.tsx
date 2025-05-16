@@ -17,6 +17,7 @@ interface ChallengeDetail {
   status_code?: string;
   status_log?: any;
   challenge_date?: string; // 新增 challenge_date 欄位
+  match_detail_id?: number; // 新增 match_detail_id 欄位，用於標識來自 contest 的挑戰
 }
 
 export default function ChallengeListPage() {
@@ -28,6 +29,9 @@ export default function ChallengeListPage() {
   const navigate = useNavigate(); // 初始化 navigate
   // 新增：取得會員列表（含id與name）
   const [members, setMembers] = React.useState<{ id: string; name: string; team_id: string }[]>([]);
+  // 新增：儲存比賽名稱映射 (match_detail_id -> contest_name)
+  const [contestNames, setContestNames] = React.useState<Record<number, string>>({});
+  const [matchDetailToContestMap, setMatchDetailToContestMap] = React.useState<Record<number, number>>({});
 
   React.useEffect(() => {
     async function fetchMembers() {
@@ -37,6 +41,114 @@ export default function ChallengeListPage() {
     }
     fetchMembers();
   }, [user?.team_id]);
+
+  // 新增：獲取比賽名稱
+  React.useEffect(() => {
+    async function fetchContestNames() {
+      if (!user) return;
+      console.log('開始查詢比賽資料...');
+      
+      // 1. 直接從 challenge_status_logs 表查詢所有非空的 match_detail_id
+      const { data: statusLogs, error: logsError } = await supabase
+        .from('challenge_status_logs')
+        .select('match_detail_id')
+        .not('match_detail_id', 'is', null);
+      
+      console.log('從 challenge_status_logs 表查詢到的資料:', statusLogs);
+      console.log('查詢錯誤:', logsError);
+      
+      if (!statusLogs || statusLogs.length === 0) {
+        console.log('沒有找到任何帶有 match_detail_id 的記錄');
+        return;
+      }
+      
+      // 2. 提取所有不為空的 match_detail_id
+      // 確保將字符串類型的 ID 轉換為數字
+      const matchDetailIds = statusLogs
+        .map((log: any) => {
+          const mdId = log.match_detail_id;
+          return mdId ? Number(mdId) : null;
+        })
+        .filter(Boolean) as number[];
+      
+      console.log('提取的 match_detail_id 列表:', matchDetailIds);
+      
+      if (matchDetailIds.length === 0) {
+        console.log('所有 match_detail_id 都是無效的');
+        return;
+      }
+      
+      // 3. 使用 match_detail_id 查詢 contest_match_detail 表獲取 contest_id
+      console.log('開始查詢 contest_match_detail 表...');
+      const { data: matchDetails, error: matchDetailError } = await supabase
+        .from('contest_match_detail')
+        .select('match_detail_id, contest_id')
+        .in('match_detail_id', matchDetailIds);
+      
+      console.log('從 contest_match_detail 表查詢到的資料:', matchDetails);
+      console.log('查詢錯誤:', matchDetailError);
+      
+      if (!matchDetails || matchDetails.length === 0) {
+        console.log('沒有在 contest_match_detail 表中找到記錄');
+        return;
+      }
+      
+      // 4. 建立 match_detail_id 到 contest_id 的映射
+      const mdToContestIdMap: Record<number, number> = {};
+      matchDetails.forEach((detail: any) => {
+        if (detail.match_detail_id && detail.contest_id) {
+          mdToContestIdMap[Number(detail.match_detail_id)] = Number(detail.contest_id);
+        }
+      });
+      
+      console.log('match_detail_id 到 contest_id 的映射:', mdToContestIdMap);
+      
+      // 5. 查詢 contest 表獲取比賽名稱
+      const contestIds = Object.values(mdToContestIdMap);
+      if (contestIds.length === 0) {
+        console.log('沒有有效的 contest_id');
+        return;
+      }
+      
+      const { data: contests, error: contestError } = await supabase
+        .from('contest')
+        .select('contest_id, contest_name')
+        .in('contest_id', contestIds);
+      
+      console.log('從 contest 表查詢到的資料:', contests);
+      console.log('查詢錯誤:', contestError);
+      
+      if (!contests || contests.length === 0) {
+        console.log('沒有在 contest 表中找到記錄');
+        return;
+      }
+      
+      // 6. 建立最終的映射: match_detail_id -> contest_name
+      const nameMap: Record<number, string> = {};
+      const idMap: Record<number, number> = {};
+      
+      // 為每個 match_detail_id 尋找對應的 contest_name
+      for (const mdId of matchDetailIds) {
+        const contestId = mdToContestIdMap[mdId];
+        if (contestId) {
+          const contest = contests.find((c: any) => c.contest_id === contestId);
+          if (contest) {
+            nameMap[mdId] = contest.contest_name;
+            idMap[mdId] = contestId;
+            console.log(`建立映射: match_detail_id ${mdId} -> contest_id ${contestId} -> name ${contest.contest_name}`);
+          }
+        }
+      }
+      
+      console.log('最終的名稱映射:', nameMap);
+      console.log('最終的 ID 映射:', idMap);
+      
+      setContestNames(nameMap);
+      setMatchDetailToContestMap(idMap);
+    }
+    
+    fetchContestNames();
+  }, [user]);
 
   // 1. 將 fetchAll 提升到組件頂層，並用 useCallback 包裹
   const fetchAll = React.useCallback(async () => {
@@ -274,6 +386,7 @@ export default function ChallengeListPage() {
         <div style={{ fontSize: 18, padding: 32, textAlign: 'center', color: '#888' }}>載入中...</div>
       ) : (
         <>
+          {/* 挑戰列表的主要內容部分 */}
           {/* 收到的挑戰表格 - 未過期 */}
           {activeChallenges.length > 0 && (
             <div style={{ marginBottom: 24 }}>
@@ -399,45 +512,82 @@ export default function ChallengeListPage() {
                             })()}
                           </td>
                           <td style={{ width: 60, textAlign: 'center' }}>
-                            <button
-                              style={{ background: '#f5f5f5', border: '1px solid #ccc', borderRadius: 16, padding: '4px 10px', cursor: 'pointer' }}
-                              title={ch.game_type === 'single' ? '前往單打頁面' : '前往雙打頁面'}
-                              onClick={() => {
-                                const getIdByName = (name: string) => members.find((m) => m.name === name)?.id || '';
-                                const params = new URLSearchParams();
-                                if (ch.game_type === 'single') {
-                                  if (ch.player1) {
-                                    const id = getIdByName(ch.player1);
-                                    if (id) params.append('player1', id);
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                              <button
+                                style={{ background: '#f5f5f5', border: '1px solid #ccc', borderRadius: 16, padding: '4px 10px', cursor: 'pointer' }}
+                                title={ch.game_type === 'single' ? '前往單打頁面' : '前往雙打頁面'}
+                                onClick={() => {
+                                  const getIdByName = (name: string) => members.find((m) => m.name === name)?.id || '';
+                                  const params = new URLSearchParams();
+                                  if (ch.game_type === 'single') {
+                                    if (ch.player1) {
+                                      const id = getIdByName(ch.player1);
+                                      if (id) params.append('player1', id);
+                                    }
+                                    if (ch.player2) {
+                                      const id = getIdByName(ch.player2);
+                                      if (id) params.append('player2', id);
+                                    }
+                                    navigate(`/single?${params.toString()}`);
+                                  } else {
+                                    if (ch.player1) {
+                                      const id = getIdByName(ch.player1);
+                                      if (id) params.append('player1', id);
+                                    }
+                                    if (ch.player2) {
+                                      const id = getIdByName(ch.player2);
+                                      if (id) params.append('player2', id);
+                                    }
+                                    if (ch.player3) {
+                                      const id = getIdByName(ch.player3);
+                                      if (id) params.append('player3', id);
+                                    }
+                                    if (ch.player4) {
+                                      const id = getIdByName(ch.player4);
+                                      if (id) params.append('player4', id);
+                                    }
+                                    
+                                    // 添加比賽相關參數（如果有）
+                                    if (ch.match_detail_id) {
+                                      // 加入 match_detail_id
+                                      params.append('match_detail_id', ch.match_detail_id.toString());
+                                      
+                                      // 加入 contest_id（如果有映射）
+                                      if (matchDetailToContestMap && matchDetailToContestMap[ch.match_detail_id]) {
+                                        params.append('contest_id', matchDetailToContestMap[ch.match_detail_id].toString());
+                                      }
+                                      
+                                      // 加入比賽名稱（如果有）
+                                      if (contestNames && contestNames[ch.match_detail_id]) {
+                                        params.append('contest_name', contestNames[ch.match_detail_id]);
+                                      }
+                                      
+                                      // 標記為從比賽來的
+                                      params.append('from_contest', 'true');
+                                    }
+                                    
+                                    navigate(`/double_game?${params.toString()}`);
                                   }
-                                  if (ch.player2) {
-                                    const id = getIdByName(ch.player2);
-                                    if (id) params.append('player2', id);
-                                  }
-                                  navigate(`/single?${params.toString()}`);
-                                } else {
-                                  if (ch.player1) {
-                                    const id = getIdByName(ch.player1);
-                                    if (id) params.append('player1', id);
-                                  }
-                                  if (ch.player2) {
-                                    const id = getIdByName(ch.player2);
-                                    if (id) params.append('player2', id);
-                                  }
-                                  if (ch.player3) {
-                                    const id = getIdByName(ch.player3);
-                                    if (id) params.append('player3', id);
-                                  }
-                                  if (ch.player4) {
-                                    const id = getIdByName(ch.player4);
-                                    if (id) params.append('player4', id);
-                                  }
-                                  navigate(`/double_game?${params.toString()}`);
-                                }
-                              }}
-                            >
-                              <span style={{ fontWeight: 700, fontSize: 16 }}>→</span>
-                            </button>
+                                }}
+                              >
+                                <span style={{ fontWeight: 700, fontSize: 16 }}>→</span>
+                              </button>
+                              {/* 如果有 match_detail_id，顯示比賽名稱 */}
+                              {ch.match_detail_id && contestNames && contestNames[ch.match_detail_id] && (
+                                <span style={{ 
+                                  color: 'red', 
+                                  fontWeight: 'bold', 
+                                  fontSize: 12,
+                                  maxWidth: '80px',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  marginTop: 2
+                                }} title={contestNames[ch.match_detail_id]}>
+                                  {contestNames[ch.match_detail_id]}
+                                </span>
+                              )}
+                            </div>
                           </td> {/* 加入前往按鈕 */}
                         </tr>
                       ))
@@ -538,6 +688,10 @@ export default function ChallengeListPage() {
                             >
                               <span style={{ fontWeight: 700, fontSize: 16 }}>→</span>
                             </button>
+                            {/* 如果有 match_detail_id，顯示 R 符號 */}
+                            {ch.match_detail_id && (
+                              <span style={{ color: 'red', fontWeight: 'bold', marginLeft: 4, fontSize: 16 }}>R</span>
+                            )}
                           </td> {/* 加入前往按鈕 */}
                         </tr>
                       ))
