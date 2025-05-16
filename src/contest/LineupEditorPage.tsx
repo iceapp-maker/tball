@@ -175,6 +175,30 @@ const LineupEditorPage: React.FC = () => {
       return;
     }
 
+    // 檢查是否所有比賽項目都有選擇足夠的選手
+    const insufficientItems = matchDetails.filter(detail => {
+      const detailKey = `${detail.match_detail_id}`;
+      const selectedMemberIds = selectedMembers[detailKey] || [];
+      const requiredMembers = detail.match_type === '雙打' ? 2 : 1;
+      return selectedMemberIds.length < requiredMembers; // 雙打需要2人，單打需要1人
+    });
+
+    if (insufficientItems.length > 0) {
+      // 有項目選手不足
+      const warningMessages = insufficientItems.map(item => {
+        const detailKey = `${item.match_detail_id}`;
+        const currentCount = selectedMembers[detailKey]?.length || 0;
+        const requiredCount = item.match_type === '雙打' ? 2 : 1;
+        return `項目 ${item.sequence}: ${item.match_type} (已選${currentCount}/${requiredCount}人)`;
+      }).join('\n');
+      
+      const confirmMessage = `警告：以下項目選手不足：\n${warningMessages}\n\n是否仍要儲存？`;
+      
+      if (!window.confirm(confirmMessage)) {
+        return; // 用戶取消儲存
+      }
+    }
+
     try {
       // 準備更新的資料
       const updates = Object.entries(selectedMembers).map(([matchDetailId, memberIds]) => {
@@ -290,11 +314,23 @@ const LineupEditorPage: React.FC = () => {
                     className="w-full p-2 border rounded"
                     size={5} // 顯示5行選項
                   >
-                    {teamMembers.map((member) => (
-                      <option key={member.member_id} value={member.member_id}>
-                        {member.name} {member.status === 'captain' ? '(隊長)' : ''}
-                      </option>
-                    ))}
+                    {teamMembers.map((member) => {
+                      // 檢查該選手是否已在其他項目中被選中
+                      const isSelectedInOtherItem = Object.entries(selectedMembers).some(
+                        ([key, members]) => key !== matchDetailKey && members.includes(member.member_id)
+                      );
+                      
+                      return (
+                        <option 
+                          key={member.member_id} 
+                          value={member.member_id}
+                          style={isSelectedInOtherItem ? {backgroundColor: "#FEF3C7", fontWeight: "500"} : {}}
+                        >
+                          {member.name} {member.status === 'captain' ? '(隊長)' : ''}
+                          {isSelectedInOtherItem ? ' (已選)' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                   <p className="text-sm text-gray-500 mt-1">
                     已選 {selectedMembers[matchDetailKey]?.length || 0}/{maxMembers}
