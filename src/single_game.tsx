@@ -94,8 +94,21 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
     
     // 檢查來源 - 戰況室 vs 一般挑戰
     const fromBattleroom = params.get('from_battleroom');
+    const fromChallenge = params.get('player1') || params.get('player2');
     setIsFromBattleroom(fromBattleroom === 'true');
     setSourceType(fromBattleroom === 'true' ? 'contest' : 'challenge');
+    
+    // 如果不是從戰況室或約戰頁面進入，清除 sessionStorage 中的相關數據
+    if (fromBattleroom !== 'true' && !fromChallenge) {
+      console.log('直接進入單打頁面，清除 sessionStorage 中的選手數據');
+      sessionStorage.removeItem('player1_member_id');
+      sessionStorage.removeItem('player2_member_id');
+      // 清除選手選擇
+      setRedMember('');
+      setGreenMember('');
+      setRedMemberName('');
+      setGreenMemberName('');
+    }
     
     // 統一處理所有可能的參數格式
     // 1. 戰況室參數: player1_name, player2_name, player1_member_id, player2_member_id
@@ -110,7 +123,7 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
     const p2MemberId = params.get('player2_member_id') || params.get('player2');
     
     console.log('頁面參數解析結果:', { 
-      來源: fromBattleroom === 'true' ? '戰況室' : '一般頁面',
+      來源: fromBattleroom === 'true' ? '戰況室' : (fromChallenge ? '約戰頁面' : '直接進入'),
       p1Name, 
       p2Name, 
       p1MemberId, 
@@ -121,9 +134,13 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
     if (p1Name) setRedMemberName(p1Name);
     if (p2Name) setGreenMemberName(p2Name);
     
-    // 保存所有ID參數到 sessionStorage 以便在 members 載入後使用
-    if (p1MemberId) sessionStorage.setItem('player1_member_id', p1MemberId);
-    if (p2MemberId) sessionStorage.setItem('player2_member_id', p2MemberId);
+    // 只有從戰況室或約戰頁面進入時才保存 ID 到 sessionStorage
+    if ((fromBattleroom === 'true' || fromChallenge) && p1MemberId) {
+      sessionStorage.setItem('player1_member_id', p1MemberId);
+    }
+    if ((fromBattleroom === 'true' || fromChallenge) && p2MemberId) {
+      sessionStorage.setItem('player2_member_id', p2MemberId);
+    }
     
     // 戰況室特有參數
     if (fromBattleroom === 'true') {
@@ -988,27 +1005,75 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
     `;
   };
 
-  // 約戰按鈕點擊事件（修正版：傳遞正確的選手ID）
+  // 約戰按鈕點擊事件（修正版：傳遞正確的選手ID，並添加防呆檢查）
   const handleChallengeClick = async () => {
+    // 1. 首先檢查是否有 matchDetailId 且是否已存在約戰記錄
+    if (matchDetailId) {
+      console.log('[約戰] 檢查比賽ID是否已有約戰記錄:', matchDetailId);
+      // 查詢主挑戰表（challenges），與 double_game 一致
+      const { data: challengeData, error: challengeError } = await supabase
+        .from('challenges')
+        .select('challenge_id')
+        .eq('match_detail_id', matchDetailId)
+        .maybeSingle();
+      console.log('[約戰] 查詢結果:', { challengeData, challengeError });
+
+      if (challengeData) {
+        // contest模式：已有約戰記錄，彈窗詢問用戶是否要覆蓋
+        const confirmUpdate = window.confirm('此比賽已經有約戰記錄。\n要刪除現有約戰記錄並建立新的嗎？');
+        console.log('[約戰] 用戶選擇:', confirmUpdate ? '確定' : '取消');
+        if (!confirmUpdate) {
+          // 用戶取消，不覆蓋
+          return;
+        }
+        // 用戶選擇覆蓋，刪除現有主挑戰記錄
+        console.log('[約戰] 開始刪除約戰記錄...');
+        const { error: deleteError } = await supabase
+          .from('challenges')
+          .delete()
+          .eq('match_detail_id', matchDetailId);
+        console.log('[約戰] 刪除結果:', { deleteError });
+        if (deleteError) {
+          console.error('[約戰] 刪除記錄時發生錯誤:', deleteError);
+          setSubmitStatus('error');
+          setSubmitMessage('刪除舊約戰記錄時發生錯誤');
+          setShowSubmitMessage(true);
+          setTimeout(() => setShowSubmitMessage(false), 3000);
+          return;
+        } else {
+          console.log('[約戰] 已刪除現有約戰記錄，準備創建新約戰');
+        }
+      }
+
+      if (challengeError) {
+        console.error('[約戰] 查詢挑戰記錄錯誤:', challengeError);
+      }
+    }
+    
+    // 2. 若無已存在約戰，繼續原本的流程
+    console.log('[約戰] 準備創建新約戰...');
     const teamId = currentLoggedInUser?.team_id || '';
     // 查詢 teamName
     const { data, error } = await supabase.from('courts').select('name').eq('team_id', teamId).maybeSingle();
     const teamName = data?.name || teamId;
+    console.log('[約戰] 約戰場地資訊:', { teamId, teamName, error });
     
     // 根據名稱查找對應的成員ID
     const redMemberId = members.find(m => m.name === redMemberName)?.id || '';
     const greenMemberId = members.find(m => m.name === greenMemberName)?.id || '';
     
-    console.log('約戰選手:', {
+    console.log('[約戰] 選手資訊:', {
       紅色選手: { 名稱: redMemberName, ID: redMemberId },
       綠色選手: { 名稱: greenMemberName, ID: greenMemberId }
     });
     
+    console.log('[約戰] 將導航至創建約戰頁面...');
     navigate('/create-challenge', {
       state: {
         teamId,
         teamName,
         playerIds: [redMemberId, greenMemberId].filter(Boolean),
+        matchDetailId: matchDetailId ? matchDetailId.toString() : undefined // 添加 matchDetailId 到導航狀態
       }
     });
   };
@@ -1127,17 +1192,20 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
             >
               <RotateCcw size={20} />
             </button>
+          </div>
+          
+          {/* 約戰按鈕 */}
+          <div>
             <button 
               onClick={handleChallengeClick}
-              className="ml-2 px-4 py-2 bg-green-600 text-white rounded"
-              title="約戰"
+              className={sourceType === 'contest' && matchDetailId ? "ml-2 px-4 py-2 bg-gray-400 text-gray-600 rounded" : "ml-2 px-4 py-2 bg-green-600 text-white rounded"}
+              title={sourceType === 'contest' && matchDetailId ? "請從戰況室使用約戰功能" : "約戰"}
+              disabled={sourceType === 'contest' && matchDetailId ? true : !currentLoggedInUser}
             >
-              約戰
+              📣
             </button>
           </div>
-        </div>
-
-        <div className="w-full max-w-md flex justify-center mb-4 gap-8">
+          
           {/* 來源標示 */}
           <span
             className={`px-3 py-2 rounded text-white font-bold text-lg select-none ${
