@@ -45,6 +45,14 @@ const BattleRoomPage: React.FC = () => {
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null); // 選中的隊伍ID
   const [allTeams, setAllTeams] = useState<{id: number, name: string}[]>([]); // 所有隊伍列表 // 存儲隊伍ID到隊長名稱的映射
   
+  // 新增：存儲每個 match_detail_id 對應的選手狀態
+  const [playerStatusMap, setPlayerStatusMap] = useState<Record<number, {
+    player1_status?: string,
+    player2_status?: string,
+    player3_status?: string,
+    player4_status?: string
+  }>>({});
+  
   // 獲取顯示的隊員名稱文本
   const getTeamMembersDisplay = (match: MatchDetail, teamNumber: 1 | 2): React.ReactNode => {
     const isTeam1 = teamNumber === 1;
@@ -80,6 +88,70 @@ const BattleRoomPage: React.FC = () => {
     return match.team1_members_submitted && match.team2_members_submitted;
   };
 
+  // 新增：取得選手狀態顯示的函數
+  const getPlayerStatus = (match: MatchDetail, teamNumber: 1 | 2, playerIndex: number): React.ReactNode => {
+    if (!match.match_detail_id || !playerStatusMap[match.match_detail_id]) {
+      return null;
+    }
+    
+    // 單打模式下，只顯示第一位選手的狀態
+    if ((match.match_type === 'single' || match.match_type === '單打')) {
+      // 單打每隊只顯示第一位選手的狀態
+      if (playerIndex > 0) {
+        return null; // 不顯示第二位選手狀態
+      }
+      
+      // 單打下將狀態重新映射到前兩個位置
+      const singlePlayerStatusKey = `player${teamNumber === 1 ? 0 : 2}_status` as keyof typeof playerStatusMap[number];
+      const status = playerStatusMap[match.match_detail_id][singlePlayerStatusKey];
+      
+      if (!status) return null;
+      
+      // 根據狀態設置顏色
+      let statusColor = 'text-gray-500';
+      if (status === '已接受') statusColor = 'text-green-500';
+      if (status === '已拒絕') statusColor = 'text-red-500';
+      if (status === '考慮中') statusColor = 'text-yellow-500';
+      
+      return (
+        <span className={`text-xs ${statusColor}`}>
+          [{status}]
+        </span>
+      );
+    } else {
+      // 雙打模式，顯示所有選手狀態
+      const statusKey = `player${playerIndex + (teamNumber === 1 ? 0 : 2)}_status` as keyof typeof playerStatusMap[number];
+      const status = playerStatusMap[match.match_detail_id][statusKey];
+      
+      if (!status) return null;
+      
+      // 根據狀態設置顏色
+      let statusColor = 'text-gray-500';
+      if (status === '已接受') statusColor = 'text-green-500';
+      if (status === '已拒絕') statusColor = 'text-red-500';
+      if (status === '考慮中') statusColor = 'text-yellow-500';
+      
+      return (
+        <span className={`text-xs ${statusColor}`}>
+          [{status}]
+        </span>
+      );
+    }
+  };
+  
+  // 新增：檢查是否應該禁用約戰按鈕
+  const shouldDisableChallengeButton = (match: MatchDetail): boolean => {
+    if (!match.match_detail_id || !playerStatusMap[match.match_detail_id]) {
+      // 沒有任何狀態紀錄，不禁用
+      return false;
+    }
+    const statusMap = playerStatusMap[match.match_detail_id];
+    // 只要有任何人「已拒絕」，不禁用
+    const hasRejection = Object.values(statusMap).includes('已拒絕');
+    // 只要有狀態紀錄且沒有人拒絕，就禁用
+    return !hasRejection;
+  };
+
   useEffect(() => {
     // 先獲取比賽詳情，然後再獲取比賽數據
     const fetchData = async () => {
@@ -113,6 +185,50 @@ const BattleRoomPage: React.FC = () => {
     
     fetchData();
   }, [contestId]);
+  
+  // 新增：取得選手狀態
+  useEffect(() => {
+    async function fetchPlayerStatus() {
+      if (!matches.length) return;
+      
+      // 先獲取所有有效的 match_detail_id
+      const matchDetailIds = matches
+        .filter(match => match.match_detail_id)
+        .map(match => match.match_detail_id);
+        
+      if (matchDetailIds.length === 0) return;
+      
+      // 查詢對應的狀態
+      const { data, error } = await supabase
+        .from('challenge_status_logs')
+        .select('match_detail_id, player1_status, player2_status, player3_status, player4_status')
+        .in('match_detail_id', matchDetailIds);
+        
+      if (error || !data) {
+        console.error('獲取選手狀態失敗:', error);
+        return;
+      }
+      
+      console.log('從 challenge_status_logs 取得的數據:', data);
+      
+      // 將結果轉換為易於查詢的格式
+      const statusMap: Record<number, any> = {};
+      data.forEach(item => {
+        if (item.match_detail_id) {
+          statusMap[item.match_detail_id] = {
+            player1_status: item.player1_status,
+            player2_status: item.player2_status,
+            player3_status: item.player3_status,
+            player4_status: item.player4_status
+          };
+        }
+      });
+      
+      setPlayerStatusMap(statusMap);
+    }
+    
+    fetchPlayerStatus();
+  }, [matches]);
 
   // 檢查用戶角色和在比賽中的隊伍
   const checkUserRole = async () => {
@@ -790,6 +906,107 @@ const BattleRoomPage: React.FC = () => {
     setSelectedTeamId(null);
   };
   
+  // 直接前往約戰頁面的按鈕處理函數
+  const navigateToChallenge = async (match: MatchDetail) => {
+    try {
+
+      
+      // 認定是當前用戶所屬的隊伍
+      const userTeamId = localStorageUser?.team_id || '';
+      
+      // 準備要傳送的成員信息
+      let playerIds: string[] = [];
+      let playerNames: string[] = [];
+      
+      // 解析隊伍成員 IDs 和名稱
+      const team1Ids = typeof match.team1_member_ids === 'string' 
+        ? JSON.parse(match.team1_member_ids) 
+        : match.team1_member_ids || [];
+      
+      const team2Ids = typeof match.team2_member_ids === 'string' 
+        ? JSON.parse(match.team2_member_ids) 
+        : match.team2_member_ids || [];
+      
+      // 根據比賽類型選擇成員
+      if (match.match_type === 'single' || match.match_type === '單打') {
+        // 單打也需要傳送所有選手
+        if (team1Ids.length > 0) {
+          playerIds = [...playerIds, ...team1Ids];
+          if (match.team1_members) {
+            playerNames = [...playerNames, ...match.team1_members];
+          }
+        }
+        if (team2Ids.length > 0) {
+          playerIds = [...playerIds, ...team2Ids];
+          if (match.team2_members) {
+            playerNames = [...playerNames, ...match.team2_members];
+          }
+        }
+      } else {
+        // 雙打選擇所有成員
+        if (team1Ids.length > 0) {
+          playerIds = [...playerIds, ...team1Ids];
+          if (match.team1_members) {
+            playerNames = [...playerNames, ...match.team1_members];
+          }
+        }
+        if (team2Ids.length > 0) {
+          playerIds = [...playerIds, ...team2Ids];
+          if (match.team2_members) {
+            playerNames = [...playerNames, ...match.team2_members];
+          }
+        }
+      }
+      
+      // 判斷是否有足夠成員參與約戰
+      if (playerIds.length === 0) {
+        console.warn('無法發起約戰，因為沒有成員 IDs');
+        return;
+      }
+      
+      // 取得正確的隊伍名稱，而不僅是隊伍 ID
+      let correctTeamName = localStorageUser?.team_name || '';
+      
+      // 如果 localStorageUser 沒有隊伍名稱，則根據 userTeamId 取得對應的隊名
+      if (!correctTeamName && userTeamId) {
+        if (userTeamId === match.team1_id?.toString()) {
+          correctTeamName = match.team1_name;
+        } else if (userTeamId === match.team2_id?.toString()) {
+          correctTeamName = match.team2_name;
+        }
+      }
+      
+      // 如果仍然找不到隊名，才使用 teamId
+      correctTeamName = correctTeamName || userTeamId;
+      
+      // 在控制台中輸出重要資訊供調試
+      console.log('約戰資訊:', {
+        playerIds,
+        playerNames,
+        match_detail_id: match.match_detail_id.toString(),
+        teamId: userTeamId,
+        teamName: correctTeamName,
+        matchTeam1: match.team1_name,
+        matchTeam2: match.team2_name
+      });
+      
+      // 使用 navigate 跳轉到約戰頁面，並使用 state 傳送參數
+      navigate('/create-challenge', { 
+        state: {
+          teamId: userTeamId, 
+          teamName: correctTeamName,
+          playerIds: playerIds,
+          playerNames: playerNames, // 增加傳送成員名稱
+          matchDetailId: match.match_detail_id.toString()
+        }
+      });
+      
+    } catch (err: any) {
+      console.error('導航到約戰頁面失敗:', err);
+      setError(err.message);
+    }
+  };
+  
   return (
     <div className="container mx-auto px-4 py-8">
       {loading ? (
@@ -911,7 +1128,8 @@ const BattleRoomPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* 中間區域：隊伍資訊和比分 */}
+                    {/* 在這裡渲染比賽資訊內容，例如隊伍名稱、分數、狀態等 */}
+
                     <div className="flex justify-between items-center mb-4">
                       {/* 隊伍1 */}
                       <div className="text-center w-2/5">
@@ -919,6 +1137,21 @@ const BattleRoomPage: React.FC = () => {
                         <div className="text-xs text-gray-500">({teamCaptains[match.team1_id] || '無隊長'})</div>
                         <div className="text-sm mt-1 text-gray-600">
                           {getTeamMembersDisplay(match, 1)}
+                          {/* 針對單打比賽，顯示人員名字底下的狀態 */}
+                          {match.match_detail_id && (match.match_type === 'single' || match.match_type === '單打') && (
+                            <div className="mt-1 text-xs">
+                              {match.team1_members && match.team1_members.length > 0 && playerStatusMap[match.match_detail_id] && (
+                                <div className="mt-0.5">{playerStatusMap[match.match_detail_id].player1_status || '未讀取'}</div>
+                              )}
+                            </div>
+                          )}
+                          {/* 保留原有的狀態顯示機制（用於雙打） */}
+                          {match.match_detail_id && (match.match_type !== 'single' && match.match_type !== '單打') && (
+                            <div className="mt-1">
+                              {getPlayerStatus(match, 1, 1)}
+                              {getPlayerStatus(match, 1, 2)}
+                            </div>
+                          )}
                         </div>
                       </div>
 
@@ -951,6 +1184,21 @@ const BattleRoomPage: React.FC = () => {
                         <div className="text-xs text-gray-500">({teamCaptains[match.team2_id] || '無隊長'})</div>
                         <div className="text-sm mt-1 text-gray-600">
                           {getTeamMembersDisplay(match, 2)}
+                          {/* 針對單打比賽，顯示人員名字底下的狀態 */}
+                          {match.match_detail_id && (match.match_type === 'single' || match.match_type === '單打') && (
+                            <div className="mt-1 text-xs">
+                              {match.team2_members && match.team2_members.length > 0 && playerStatusMap[match.match_detail_id] && (
+                                <div className="mt-0.5">{playerStatusMap[match.match_detail_id].player2_status || '未讀取'}</div>
+                              )}
+                            </div>
+                          )}
+                          {/* 保留原有的狀態顯示機制（用於雙打） */}
+                          {match.match_detail_id && (match.match_type !== 'single' && match.match_type !== '單打') && (
+                            <div className="mt-1">
+                              {getPlayerStatus(match, 2, 1)}
+                              {getPlayerStatus(match, 2, 2)}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -961,12 +1209,22 @@ const BattleRoomPage: React.FC = () => {
                         <span className="text-green-600 font-bold">{match.winner_team_name ? `${match.winner_team_name}獲勝` : '等待結果...'}</span>
                       ) : (
                         shouldShowArrow(match) ? (
-                          <button
-                            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded"
-                            onClick={() => navigateToGame(match)}
-                          >
-                            前往比賽
-                          </button>
+                          <div className="flex justify-center items-center space-x-2">
+                            <button
+                              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded"
+                              onClick={() => navigateToGame(match)}
+                            >
+                              前往比賽
+                            </button>
+                            <button
+                              className={`${shouldDisableChallengeButton(match) ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'} text-white w-8 h-8 rounded-full flex items-center justify-center`}
+                              onClick={() => !shouldDisableChallengeButton(match) && navigateToChallenge(match)}
+                              title={shouldDisableChallengeButton(match) ? '邀請已發送，等待回應中' : '直接發起約戰'}
+                              disabled={shouldDisableChallengeButton(match)}
+                            >
+                              約
+                            </button>
+                          </div>
                         ) : (
                           <span className="text-gray-400 italic text-sm">等待雙方提交名單</span>
                         )
