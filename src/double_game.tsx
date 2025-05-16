@@ -119,6 +119,9 @@ function DoubleGame() {
   // 取得網址 query string 並自動帶入選手
   const location = useLocation();
   
+  // 新增：判斷來源是否為比賽（contest）
+  const [isContestMode, setIsContestMode] = useState(false);
+  
   // 從 URL 獲取參數相關功能已移至 usePlayerManagement Hook
   // 當 members 或 URL 參數變動時才設定預設值，並加上 debug log
   useEffect(() => {
@@ -127,10 +130,41 @@ function DoubleGame() {
     const p2 = params.get('player2');
     const p3 = params.get('player3');
     const p4 = params.get('player4');
+    const match_detail_id = params.get('match_detail_id');
+    const contest_id = params.get('contest_id');
+    const contest_name = params.get('contest_name');
+    const from_contest = params.get('from_contest');
+    const from_battleroom = params.get('from_battleroom');
+    
+    // 判斷來源類型
+    const isFromContest = 
+      from_battleroom === 'true' || 
+      from_contest === 'true' || 
+      !!match_detail_id;
+      
+    // 設置比賽狀態旗標
+    setIsContestMode(isFromContest);
+    
     console.log('double_game.tsx debug:', {
       url: location.search,
       player1: p1, player2: p2, player3: p3, player4: p4,
+      match_detail_id: match_detail_id || 'null', // 如果沒收到也顯示 null
+      contest_id: contest_id || 'null',
+      contest_name: contest_name || 'null',
+      from_contest: from_contest || 'null',
+      from_battleroom: from_battleroom || 'null',
+      isFromContest: isFromContest ? '是' : '否',
       members
+    });
+    
+    // 在頁面上顯示 match_detail_id 的值（僅供測試）
+    console.log('比賽來源資訊：', {
+      match_detail_id: match_detail_id || 'null',
+      contest_id: contest_id || 'null',
+      contest_name: contest_name || 'null',
+      from_contest: from_contest === 'true' ? '是' : '否',
+      from_battleroom: from_battleroom === 'true' ? '是' : '否',
+      最終判定: isFromContest ? '是比賽(contest)' : '一般挑戰'
     });
     
     // 先轉成連結全部成員 id 與 member_id
@@ -1078,8 +1112,8 @@ function DoubleGame() {
         win2_name: isTopWinner ? green?.name : yellow?.name,
         notes: `${new Date().toISOString()} - Auto recorded, 場次數:${gameHistory.length}`,
         created_by_name: loginUserName, // 新增這行
-        source_type: isFromBattleroom ? 'contest' : 'challenge', // 根據來源設置類型
-        source_id: isFromBattleroom && matchDetailId ? matchDetailId : null, // 設置來源ID
+        source_type: isContestMode ? 'contest' : 'challenge', // 根據來源設置類型
+        source_id: isContestMode && matchDetailId ? matchDetailId : null, // 設置來源ID
       };
       const { data, error: insertError } = await supabase
         .from('g_double_game')
@@ -1100,8 +1134,8 @@ function DoubleGame() {
       // 設置為已儲存，禁用儲存按鈕
       setHasSaved(true);
       
-      // 如果是從戰況室進入，更新 contest_match_detail 表並自動返回
-      if (isFromBattleroom && matchDetailId) {
+      // 如果是從戰況室或比賽進入，更新 contest_match_detail 表並自動返回
+      if (isContestMode && matchDetailId) {
         try {
           console.log('DEBUG: 開始更新戰況室比賽結果...');
           console.log('DEBUG: 當前狀態:', {
@@ -1280,7 +1314,7 @@ function DoubleGame() {
   const handleCreateChallenge = async (teamId: string, playerIds: string[]) => {
     const { data, error } = await supabase.from('courts').select('name').eq('team_id', teamId).maybeSingle();
     const teamName = data?.name || teamId;
-    navigate('/create-challenge', { state: { teamId, teamName, playerIds } });
+    navigate('/create-challenge', { state: { teamId, teamName, playerIds, matchDetailId } });
   };
 
   // 根據ID獲取會員資訊
@@ -1297,8 +1331,65 @@ function DoubleGame() {
 
     const userTeamId = currentLoggedInUser?.team_id;
     const playerIds = [redMember, greenMember, blueMember, yellowMember];
-    handleCreateChallenge(userTeamId, playerIds);
+    
+    // 檢查如果是比賽模式，而且有 match_detail_id
+    if (isContestMode && matchDetailId) {
+      try {
+        console.log('[約戰] 檢查是否已有約戰記錄, matchDetailId:', matchDetailId);
+        const { data, error } = await supabase
+          .from('challenges')
+          .select('challenge_id')
+          .eq('match_detail_id', matchDetailId)
+          .maybeSingle();
+        console.log('[約戰] 查詢結果:', { data, error });
+        if (error) {
+          console.error('[約戰] 查詢現有約戰記錄時發生錯誤:', error);
+          // 即使發生錯誤，仍繼續創建新約戰
+        } else if (data && data.challenge_id) {
+          // 已有記錄，顯示確認對話框
+          const isConfirmed = window.confirm(
+            '此比賽已經有約戰記錄。\n\n要刪除現有約戰記錄並創建新的嗎？'
+          );
+          console.log('[約戰] 用戶選擇:', isConfirmed ? '確定' : '取消');
+          if (isConfirmed) {
+            // 用戶確認後，刪除記錄
+            console.log('[約戰] 開始刪除約戰記錄...');
+            const { error: deleteError } = await supabase
+              .from('challenges')
+              .delete()
+              .eq('match_detail_id', matchDetailId);
+            console.log('[約戰] 刪除結果:', { deleteError });
+            if (deleteError) {
+              console.error('[約戰] 刪除記錄時發生錯誤:', deleteError);
+              alert('刪除現有約戰記錄失敗，請稍後再試');
+              return;
+            } else {
+              console.log('[約戰] 已刪除現有約戰記錄，準備創建新約戰');
+              // 繼續創建新約戰
+              handleCreateChallenge(userTeamId, playerIds);
+            }
+          } else {
+            // 用戶取消，不創建新約戰
+            console.log('[約戰] 用戶取消創建新約戰');
+            return;
+          }
+        } else {
+          // 沒有現有記錄，直接創建
+          console.log('[約戰] 無現有約戰記錄，直接創建');
+          handleCreateChallenge(userTeamId, playerIds);
+        }
+      } catch (err) {
+        console.error('[約戰] 處理約戰檢查時發生錯誤:', err);
+        // 即使發生錯誤，仍繼續創建新約戰
+        handleCreateChallenge(userTeamId, playerIds);
+      }
+    } else {
+      // 非比賽模式或沒有 match_detail_id，直接創建約戰
+      console.log('[約戰] 非比賽模式或無 match_detail_id，直接創建');
+      handleCreateChallenge(userTeamId, playerIds);
+    }
   };
+
 
   // 結束：重設所有狀態
   const handleEndGame = () => {
@@ -1373,16 +1464,31 @@ function DoubleGame() {
     </button>
   );
 
-  const challengeButton = (
-    <button
-      onClick={handleSendChallenge}
-      className="px-4 py-2 bg-green-500 text-white rounded"
-      disabled={!currentLoggedInUser}
-      title="發起約戰"
-    >
-      📣
-    </button>
-  );
+  // 根據來源模式決定約戰按鈕的顯示
+  const renderChallengeButton = () => {
+    if (isContestMode && matchDetailId) {
+      return (
+        <button
+          className="px-4 py-2 bg-gray-400 text-gray-600 rounded"
+          disabled={true}
+          title="請從戰況室使用約戰功能"
+        >
+          📣
+        </button>
+      );
+    }
+    
+    return (
+      <button
+        onClick={handleSendChallenge}
+        className="px-4 py-2 bg-green-500 text-white rounded"
+        disabled={!currentLoggedInUser}
+        title="發起約戰"
+      >
+        📣
+      </button>
+    );
+  };
 
   // 判斷是否顯示交換按鈕
   const canShowSwapButtons = (
@@ -1393,7 +1499,7 @@ function DoubleGame() {
   // 已移除上方的交換按鈕，只保留中間的上下交換按鈕
 
   return (
-    <div className="h-screen bg-black flex flex-col justify-center">
+    <div className="h-screen bg-black flex flex-col">
       {/* 登入資訊顯示區塊 (改為固定在頂部) */}
       <div className="w-full py-2 px-4 bg-gray-900 text-white text-sm flex justify-between items-center">
         <div>
@@ -1420,19 +1526,19 @@ function DoubleGame() {
         </div>
       </div>
 
-      {/* 主內容區 (精簡中區，不使用 flex-grow 填滿) */}
-      <div className="flex flex-col items-center p-0 gap-0 self-center">
+      {/* 主內容區 (使用 flex-grow 填滿剩餘空間) */}
+      <div className="flex-grow flex flex-col items-center justify-between p-4 gap-8">
         {/* 上方隊伍區塊 */}
         <div className="w-full max-w-md flex items-center justify-center mb-4 gap-8">
-          {/* 來源標示 */}
+          {/* 來源標示 - 修改為使用 isContestMode */}
           <span
             className={`px-3 py-2 rounded text-white font-bold text-lg select-none ${
-              location.search.includes('from_battleroom=true') ? 'bg-green-500' : 'bg-blue-500'
+              isContestMode ? 'bg-green-500' : 'bg-blue-500'
             }`}
-            title={location.search.includes('from_battleroom=true') ? '賽程' : '挑戰賽'}
+            title={isContestMode ? '賽程' : '挑戰賽'}
             style={{ letterSpacing: 2 }}
           >
-            {location.search.includes('from_battleroom=true') ? 'R' : 'C'}
+            {isContestMode ? 'R' : 'C'}
           </span>
           <button
             onClick={toggleFinalGame}
@@ -1445,209 +1551,203 @@ function DoubleGame() {
             FG
           </button>
           {submitButton}
-          {challengeButton}
+          {renderChallengeButton()}
+        </div>
+
+        <div className="w-full max-w-md flex items-center justify-center mb-4">
+          <button 
+            onClick={decrementTopScore}
+            className={getButtonStyle(true)}
+            disabled={gameOver || topScore <= 0}
+          >
+            <div className="w-6 h-1 bg-white rounded-full"></div>
+          </button>
+          <div className="text-white text-6xl font-bold mx-4">{topScore}</div>
+          <div 
+            id="top-w-button"
+            draggable={!gameOver}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onClick={() => handleWButtonClick('top')}
+            className={getButtonStyle(true, true)}
+          >
+            <div className="text-white font-bold text-lg">W</div>
+          </div>
         </div>
 
         {/* 上方顏色區塊（紅、綠） */}
-        <div className="w-full max-w-md flex flex-col">
-          {/* 上方分數區 */}
-          <div className="flex justify-center items-center mb-1">
-            <button 
-              onClick={decrementTopScore}
-              className="bg-red-600 rounded-full flex items-center justify-center shadow"
-              disabled={gameOver || topScore <= 0}
-              style={{ width: 36, height: 36 }}
-            >
-              <div className="w-5 h-1 bg-white rounded-full"></div>
-            </button>
-            <div className="text-white text-6xl font-bold mx-4">{topScore}</div>
-            <button 
-              id="top-w-button"
-              draggable={!gameOver}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-              onClick={() => handleWButtonClick('top')}
-              className="bg-red-600 rounded-full flex items-center justify-center shadow"
-              style={{ width: 36, height: 36 }}
-            >
-              <div className="text-white font-bold text-lg">W</div>
-            </button>
-          </div>
-
-          {/* 顏色區塊容器 */}
-          <div className="w-full flex relative">
-            <div style={{ display: 'flex', width: '100%' }}>
-              {/* 紅色區塊 */}
-              <div style={{ flex: 1, padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-                <select
-                  value={redMember}
-                  onChange={e => setRedMember(e.target.value)}
-                  className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700"
-                >
-                  <option value="">選擇選手</option>
-                  {members.filter(m =>
-                    currentLoggedInUser
-                      ? m.team_id === currentLoggedInUser.team_id
-                      : m.team_id === 'T'
-                  ).map(member => {
-                    const info = memberPointsMap[member.id] || { points: 0, rank: members.length };
-                    return (
-                      <option
-                        key={member.id}
-                        value={member.id}
-                        disabled={
-                          member.id === greenMember && greenMember !== '' ||
-                          member.id === blueMember && blueMember !== '' ||
-                          member.id === yellowMember && yellowMember !== ''
-                        }
-                      >
-                        {member.name}（{info.points}分/{info.rank}名）
-                      </option>
-                    );
-                  })}
-                </select>
-                <button
-                  className={getSquareStyle(topColors[0], isTopFlashing)}
-                  onClick={incrementTopScore}
-                  disabled={gameOver}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, 'top')}
-                  style={{ width: '100%', height: '100px', position: 'relative' }}
-                >
-                  <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-4xl font-bold">
-                    {renderStars(getWins(true))}
-                  </span>
-                </button>
-                {/* 紅/綠區塊左右交換按鈕 */}
-                {canShowSwapButtons && (
-                  <button
-                    style={{
-                      position: 'absolute',
-                      right: '-22px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      zIndex: 10,
-                      fontSize: 24,
-                      width: 36,
-                      height: 36,
-                      borderRadius: 18,
-                      background: '#222',
-                      color: '#fff',
-                      border: '1px solid #555',
-                      cursor: 'pointer',
-                      opacity: 1,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.18)'
-                    }}
-                    title="交換上方兩位選手"
-                    onClick={() => {
-                      const temp = redMember;
-                      setRedMember(greenMember);
-                      setGreenMember(temp);
-                    }}
-                  >
-                    ⇄
-                  </button>
-                )}
-              </div>
-              {/* 綠色區塊 */}
-              <div style={{ flex: 1, padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-                <select
-                  value={greenMember}
-                  onChange={e => setGreenMember(e.target.value)}
-                  className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700"
-                >
-                  <option value="">選擇選手</option>
-                  {members.filter(m =>
-                    currentLoggedInUser
-                      ? m.team_id === currentLoggedInUser.team_id
-                      : m.team_id === 'T'
-                  ).map(member => {
-                    const info = memberPointsMap[member.id] || { points: 0, rank: members.length };
-                    return (
-                      <option
-                        key={member.id}
-                        value={member.id}
-                        disabled={
-                          member.id === redMember && redMember !== '' ||
-                          member.id === blueMember && blueMember !== '' ||
-                          member.id === yellowMember && yellowMember !== ''
-                        }
-                      >
-                        {member.name}（{info.points}分/{info.rank}名）
-                      </option>
-                    );
-                  })}
-                </select>
-                <button
-                  className={getSquareStyle(topColors[1], isTopFlashing)}
-                  onClick={incrementTopScore}
-                  disabled={gameOver}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, 'top')}
-                  style={{ width: '100%', height: '100px', position: 'relative' }}
-                >
-                  <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-4xl font-bold">
-                    {/* 綠色區塊星號留空，僅紅色區塊顯示 */}
-                  </span>
-                </button>
-              </div>
-            </div>
-            {/* 中央上下交換按鈕 */}
-            {canShowSwapButtons && (
-              <div
-                style={{
-                  position: 'absolute',
-                  left: '50%',
-                  top: '100%',
-                  transform: 'translate(-50%, 0)',
-                  zIndex: 30,
-                  pointerEvents: 'auto',
-                }}
+        <div className="w-full max-w-md flex relative">
+          <div style={{ display: 'flex', width: '100%' }}>
+            {/* 紅色區塊 */}
+            <div style={{ flex: 1, padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+              <select
+                value={redMember}
+                onChange={e => setRedMember(e.target.value)}
+                className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700"
               >
+                <option value="">選擇選手</option>
+                {members.filter(m =>
+                  currentLoggedInUser
+                    ? m.team_id === currentLoggedInUser.team_id
+                    : m.team_id === 'T'
+                ).map(member => {
+                  const info = memberPointsMap[member.id] || { points: 0, rank: members.length };
+                  return (
+                    <option
+                      key={member.id}
+                      value={member.id}
+                      disabled={
+                        member.id === greenMember && greenMember !== '' ||
+                        member.id === blueMember && blueMember !== '' ||
+                        member.id === yellowMember && yellowMember !== ''
+                      }
+                    >
+                      {member.name}（{info.points}分/{info.rank}名）
+                    </option>
+                  );
+                })}
+              </select>
+              <button
+                className={getSquareStyle(topColors[0], isTopFlashing)}
+                onClick={incrementTopScore}
+                disabled={gameOver}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, 'top')}
+                style={{ width: '100%', height: '100px', position: 'relative' }}
+              >
+                <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-4xl font-bold">
+                  {renderStars(getWins(true))}
+                </span>
+              </button>
+              {/* 紅/綠區塊左右交換按鈕 */}
+              {canShowSwapButtons && (
                 <button
                   style={{
-                    fontSize: 28,
-                    width: 44,
-                    height: 44,
-                    borderRadius: 22,
-                    background: '#444',
+                    position: 'absolute',
+                    right: '-22px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 10,
+                    fontSize: 24,
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    background: '#222',
                     color: '#fff',
-                    border: '2px solid #888',
+                    border: '1px solid #555',
                     cursor: 'pointer',
                     opacity: 1,
                     boxShadow: '0 2px 8px rgba(0,0,0,0.18)'
                   }}
-                  title="交換上下兩組選手"
+                  title="交換上方兩位選手"
                   onClick={() => {
-                    // 交換選手
-                    const prevRed = redMember;
-                    const prevGreen = greenMember;
-                    const prevBlue = blueMember;
-                    const prevYellow = yellowMember;
-                    setRedMember(prevBlue);
-                    setGreenMember(prevYellow);
-                    setBlueMember(prevRed);
-                    setYellowMember(prevGreen);
-                    
-                    // 增加交換次數
-                    setPositionSwapCount((prev: number) => prev + 1);
-                    
-                    // 記錄新的交換次數和狀態
-                    console.log('上下交換完成，目前交換次數:', positionSwapCount + 1);
-                    console.log('交換後狀態:', (positionSwapCount + 1) % 2 === 1 ? '已交換' : '未交換');
+                    const temp = redMember;
+                    setRedMember(greenMember);
+                    setGreenMember(temp);
                   }}
                 >
-                  ⇅
+                  ⇄
                 </button>
-              </div>
-            )}
+              )}
+            </div>
+            {/* 綠色區塊 */}
+            <div style={{ flex: 1, padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+              <select
+                value={greenMember}
+                onChange={e => setGreenMember(e.target.value)}
+                className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700"
+              >
+                <option value="">選擇選手</option>
+                {members.filter(m =>
+                  currentLoggedInUser
+                    ? m.team_id === currentLoggedInUser.team_id
+                    : m.team_id === 'T'
+                ).map(member => {
+                  const info = memberPointsMap[member.id] || { points: 0, rank: members.length };
+                  return (
+                    <option
+                      key={member.id}
+                      value={member.id}
+                      disabled={
+                        member.id === redMember && redMember !== '' ||
+                        member.id === blueMember && blueMember !== '' ||
+                        member.id === yellowMember && yellowMember !== ''
+                      }
+                    >
+                      {member.name}（{info.points}分/{info.rank}名）
+                    </option>
+                  );
+                })}
+              </select>
+              <button
+                className={getSquareStyle(topColors[1], isTopFlashing)}
+                onClick={incrementTopScore}
+                disabled={gameOver}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, 'top')}
+                style={{ width: '100%', height: '100px', position: 'relative' }}
+              >
+                <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-4xl font-bold">
+                  {/* 綠色區塊星號留空，僅紅色區塊顯示 */}
+                </span>
+              </button>
+            </div>
           </div>
+          {/* 中央上下交換按鈕 */}
+          {canShowSwapButtons && (
+            <div
+              style={{
+                position: 'absolute',
+                left: '50%',
+                top: '100%',
+                transform: 'translate(-50%, 0)',
+                zIndex: 30,
+                pointerEvents: 'auto',
+              }}
+            >
+              <button
+                style={{
+                  fontSize: 28,
+                  width: 44,
+                  height: 44,
+                  borderRadius: 22,
+                  background: '#444',
+                  color: '#fff',
+                  border: '2px solid #888',
+                  cursor: 'pointer',
+                  opacity: 1,
+                  boxShadow: '0 2px 8px rgba(0,0,0,0.18)',
+                }}
+                title="交換上下兩組選手"
+                onClick={() => {
+                  // 交換選手
+                  const prevRed = redMember;
+                  const prevGreen = greenMember;
+                  const prevBlue = blueMember;
+                  const prevYellow = yellowMember;
+                  setRedMember(prevBlue);
+                  setGreenMember(prevYellow);
+                  setBlueMember(prevRed);
+                  setYellowMember(prevGreen);
+                  
+                  // 增加交換次數
+                  setPositionSwapCount((prev: number) => prev + 1);
+                  
+                  // 記錄新的交換次數和狀態
+                  console.log('上下交換完成，目前交換次數:', positionSwapCount + 1);
+                  console.log('交換後狀態:', (positionSwapCount + 1) % 2 === 1 ? '已交換' : '未交換');
+                }}
+              >
+                ⇅
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 中央計分版 - 上下排列 */}
-        <div className="w-full max-w-md py-0 my-1">
+        <div className="w-full max-w-md">
           <div className="flex flex-wrap justify-center gap-4 text-white">
             {gameHistory.map((game, index) => (
               <div key={index} className="text-center">
@@ -1660,151 +1760,145 @@ function DoubleGame() {
         </div>
 
         {/* 下方顏色區塊（藍、黃） */}
-        <div className="w-full max-w-md flex flex-col">
-          {/* 顏色區塊容器 */}
-          <div className="w-full flex relative">
-            <div style={{ display: 'flex', width: '100%' }}>
-              {/* 藍色區塊 */}
-              <div style={{ flex: 1, padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-                <select
-                  value={blueMember}
-                  onChange={e => setBlueMember(e.target.value)}
-                  className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700"
-                >
-                  <option value="">選擇選手</option>
-                  {members.filter(m =>
-                    currentLoggedInUser
-                      ? m.team_id === currentLoggedInUser.team_id
-                      : m.team_id === 'T'
-                  ).map(member => {
-                    const info = memberPointsMap[member.id] || { points: 0, rank: members.length };
-                    return (
-                      <option
-                        key={member.id}
-                        value={member.id}
-                        disabled={
-                          member.id === redMember && redMember !== '' ||
-                          member.id === greenMember && greenMember !== '' ||
-                          member.id === yellowMember && yellowMember !== ''
-                        }
-                      >
-                        {member.name}（{info.points}分/{info.rank}名）
-                      </option>
-                    );
-                  })}
-                </select>
+        <div className="w-full max-w-md flex relative">
+          <div style={{ display: 'flex', width: '100%' }}>
+            {/* 藍色區塊 */}
+            <div style={{ flex: 1, padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+              <select
+                value={blueMember}
+                onChange={e => setBlueMember(e.target.value)}
+                className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700"
+              >
+                <option value="">選擇選手</option>
+                {members.filter(m =>
+                  currentLoggedInUser
+                    ? m.team_id === currentLoggedInUser.team_id
+                    : m.team_id === 'T'
+                ).map(member => {
+                  const info = memberPointsMap[member.id] || { points: 0, rank: members.length };
+                  return (
+                    <option
+                      key={member.id}
+                      value={member.id}
+                      disabled={
+                        member.id === redMember && redMember !== '' ||
+                        member.id === greenMember && greenMember !== '' ||
+                        member.id === yellowMember && yellowMember !== ''
+                      }
+                    >
+                      {member.name}（{info.points}分/{info.rank}名）
+                    </option>
+                  );
+                })}
+              </select>
+              <button
+                className={getSquareStyle(bottomColors[0], !isTopFlashing)}
+                onClick={incrementBottomScore}
+                disabled={gameOver}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, 'bottom')}
+                style={{ width: '100%', height: '100px', position: 'relative' }}
+              >
+                <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-4xl font-bold">
+                  {renderStars(getWins(false))}
+                </span>
+              </button>
+              {/* 藍/黃區塊左右交換按鈕 */}
+              {canShowSwapButtons && (
                 <button
-                  className={getSquareStyle(bottomColors[0], !isTopFlashing)}
-                  onClick={incrementBottomScore}
-                  disabled={gameOver}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, 'bottom')}
-                  style={{ width: '100%', height: '100px', position: 'relative' }}
+                  style={{
+                    position: 'absolute',
+                    right: '-22px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    zIndex: 10,
+                    fontSize: 24,
+                    width: 36,
+                    height: 36,
+                    borderRadius: 18,
+                    background: '#222',
+                    color: '#fff',
+                    border: '1px solid #555',
+                    cursor: 'pointer',
+                    opacity: 1,
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.18)'
+                  }}
+                  title="交換下方兩位選手"
+                  onClick={() => {
+                    const temp = blueMember;
+                    setBlueMember(yellowMember);
+                    setYellowMember(temp);
+                  }}
                 >
-                  <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-4xl font-bold">
-                    {renderStars(getWins(false))}
-                  </span>
+                  ⇄
                 </button>
-                {/* 藍/黃區塊左右交換按鈕 */}
-                {canShowSwapButtons && (
-                  <button
-                    style={{
-                      position: 'absolute',
-                      right: '-22px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      zIndex: 10,
-                      fontSize: 24,
-                      width: 36,
-                      height: 36,
-                      borderRadius: 18,
-                      background: '#222',
-                      color: '#fff',
-                      border: '1px solid #555',
-                      cursor: 'pointer',
-                      opacity: 1,
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.18)'
-                    }}
-                    title="交換下方兩位選手"
-                    onClick={() => {
-                      const temp = blueMember;
-                      setBlueMember(yellowMember);
-                      setYellowMember(temp);
-                    }}
-                  >
-                    ⇄
-                  </button>
-                )}
-              </div>
-              {/* 黃色區塊 */}
-              <div style={{ flex: 1, padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
-                <select
-                  value={yellowMember}
-                  onChange={e => setYellowMember(e.target.value)}
-                  className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700"
-                >
-                  <option value="">選擇選手</option>
-                  {members.filter(m =>
-                    currentLoggedInUser
-                      ? m.team_id === currentLoggedInUser.team_id
-                      : m.team_id === 'T'
-                  ).map(member => {
-                    const info = memberPointsMap[member.id] || { points: 0, rank: members.length };
-                    return (
-                      <option
-                        key={member.id}
-                        value={member.id}
-                        disabled={
-                          member.id === redMember && redMember !== '' ||
-                          member.id === greenMember && greenMember !== '' ||
-                          member.id === blueMember && blueMember !== ''
-                        }
-                      >
-                        {member.name}（{info.points}分/{info.rank}名）
-                      </option>
-                    );
-                  })}
-                </select>
-                <button
-                  className={getSquareStyle(bottomColors[1], !isTopFlashing)}
-                  onClick={incrementBottomScore}
-                  disabled={gameOver}
-                  onDragOver={handleDragOver}
-                  onDragLeave={handleDragLeave}
-                  onDrop={(e) => handleDrop(e, 'bottom')}
-                  style={{ width: '100%', height: '100px', position: 'relative' }}
-                >
-                  <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-4xl font-bold">
-                    {/* 黃色區塊星號留空，僅藍色區塊顯示 */}
-                  </span>
-                </button>
-              </div>
+              )}
+            </div>
+            {/* 黃色區塊 */}
+            <div style={{ flex: 1, padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+              <select
+                value={yellowMember}
+                onChange={e => setYellowMember(e.target.value)}
+                className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700"
+              >
+                <option value="">選擇選手</option>
+                {members.filter(m =>
+                  currentLoggedInUser
+                    ? m.team_id === currentLoggedInUser.team_id
+                    : m.team_id === 'T'
+                ).map(member => {
+                  const info = memberPointsMap[member.id] || { points: 0, rank: members.length };
+                  return (
+                    <option
+                      key={member.id}
+                      value={member.id}
+                      disabled={
+                        member.id === redMember && redMember !== '' ||
+                        member.id === greenMember && greenMember !== '' ||
+                        member.id === blueMember && blueMember !== ''
+                      }
+                    >
+                      {member.name}（{info.points}分/{info.rank}名）
+                    </option>
+                  );
+                })}
+              </select>
+              <button
+                className={getSquareStyle(bottomColors[1], !isTopFlashing)}
+                onClick={incrementBottomScore}
+                disabled={gameOver}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={(e) => handleDrop(e, 'bottom')}
+                style={{ width: '100%', height: '100px', position: 'relative' }}
+              >
+                <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-4xl font-bold">
+                  {/* 黃色區塊星號留空，僅藍色區塊顯示 */}
+                </span>
+              </button>
             </div>
           </div>
+        </div>
 
-          {/* 下方分數區 */}
-          <div className="flex justify-center items-center mt-1">
-            <button
-              onClick={decrementBottomScore}
-              className="bg-blue-600 rounded-full flex items-center justify-center shadow"
-              disabled={gameOver || bottomScore <= 0}
-              style={{ width: 36, height: 36 }}
-            >
-              <div className="w-5 h-1 bg-white rounded-full"></div>
-            </button>
-            <div className="text-white text-6xl font-bold mx-4">{bottomScore}</div>
-            <button
-              id="bottom-w-button"
-              draggable={!gameOver}
-              onDragStart={handleDragStart}
-              onDragEnd={handleDragEnd}
-              onClick={() => handleWButtonClick('bottom')}
-              className="bg-blue-600 rounded-full flex items-center justify-center shadow"
-              style={{ width: 36, height: 36 }}
-            >
-              <div className="text-white font-bold text-lg">W</div>
-            </button>
+        <div className="w-full max-w-md flex items-center justify-center mt-4">
+          <button
+            onClick={decrementBottomScore}
+            className={getButtonStyle(false)}
+            disabled={gameOver || bottomScore <= 0}
+          >
+            <div className="w-6 h-1 bg-white rounded-full"></div>
+          </button>
+          <div className="text-white text-6xl font-bold mx-4">{bottomScore}</div>
+          <div
+            id="bottom-w-button"
+            draggable={!gameOver}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onClick={() => handleWButtonClick('bottom')}
+            className={getButtonStyle(false, true)}
+          >
+            <div className="text-white font-bold text-lg">W</div>
           </div>
         </div>
       </div>
