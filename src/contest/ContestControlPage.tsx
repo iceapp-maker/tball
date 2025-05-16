@@ -73,19 +73,22 @@ const ContestControlPage: React.FC = () => {
 
       if (contestsError) throw contestsError;
       setContests(contestsData || []);
+      console.log('[fetchContests] contestsData', contestsData);
 
       // 獲取每個比賽的隊伍數量
       const counts: {[key: string]: number} = {};
       for (const contest of contestsData || []) {
-        const { count, error: countError } = await supabase
+        const { count, error: countError, data: teamData } = await supabase
           .from('contest_team')
-          .select('*', { count: true })
+          .select('contest_team_id', { count: 'exact' })
           .eq('contest_id', contest.contest_id);
 
         if (countError) throw countError;
         counts[contest.contest_id] = count || 0;
+        console.log(`[fetchContests] contest_id=${contest.contest_id} 查到隊伍數:`, count, '隊伍資料:', teamData);
       }
       setTeamCounts(counts);
+      console.log('[fetchContests] counts 統計結果', counts);
 
       // 檢查每個進行中比賽的比分填寫狀態
       const scoresStatus: {[key: string]: boolean} = {};
@@ -241,7 +244,7 @@ await supabase
         const expectedTeams = contest ? contest.expected_teams : 0;
         
         if (teamCount === expectedTeams) {
-          text = '出賽名單安排中';
+          text = '人員招募完成';
         } else {
           text = '人員招募中';
         }
@@ -306,7 +309,9 @@ await supabase
             <tbody>
               {contests.map((contest) => (
                 <tr key={contest.contest_id} className="hover:bg-gray-50">
-                  <td className="py-3 px-4 border">{contest.contest_name}</td>
+                  <td className="py-3 px-4 border">
+  {contest.contest_name}
+</td>
                   <td className="py-3 px-4 border">{renderStatusBadge(contest.contest_status)}</td>
                   
                   
@@ -320,8 +325,8 @@ await supabase
                       >
                         編輯
                       </button>
-                      
-                      {contest.contest_status === 'recruiting' && 
+
+{contest.contest_status === 'recruiting' && 
                         teamCounts[contest.contest_id] === contest.expected_teams && (
                         <button
                           className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm"
