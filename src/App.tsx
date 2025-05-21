@@ -24,9 +24,10 @@ import NewPersonalInfo from './personal/NewPersonalInfo';
 import LineupEditorPage from './contest/LineupEditorPage';  // 請確保路徑正確
 import ContestResultsPage from './contest/ContestResultsPage';
 import LineupStatusPage from './contest/LineupStatusPage'; // 新增比賽結果分析頁面
+import ContestTableView from './contest/ContestTableView';
 
 // 版本信息
-const CURRENT_VERSION = "a.18";
+const CURRENT_VERSION = "a.20";
 
 // 創建會員資料表的函數
 async function createMembersTable() {
@@ -397,6 +398,8 @@ function App() {
             <Route path="/contest/:contestId/results" element={<ContestResultsPage />} />
             <Route path="/contest/:contestId/lineup-status" element={<LineupStatusPage />} />
             <Route path="/new-personal-info" element={<NewPersonalInfo />} />
+            <Route path="/contest/:contestId/table-view" element={<ContestTableView />} />
+
           </Routes>
         </Router>
       </div>
@@ -446,7 +449,7 @@ function Menu({ currentLoggedInUser, setCurrentLoggedInUser, unreadCount, invita
           <text x="90" y="16" textAnchor="middle" fill="#333" fontSize="14" fontWeight="bold" fontFamily="Arial">乒乓風雲</text>
         </svg>
       </div>      
-      <h1 className="text-3xl font-bold mb-4">乒乓球計分比賽系統</h1>
+      <h1 className="text-3xl font-bold mb-4">乒乓記分寶</h1>
     
       <div className="flex flex-col gap-4 w-64">
         <button
