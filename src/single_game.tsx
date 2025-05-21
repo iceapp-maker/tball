@@ -33,6 +33,8 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
   const [fgButtonVisible, setFgButtonVisible] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hasSaved, setHasSaved] = useState(false);
+  // 新增狀態來追蹤比賽是否已完成並記錄比分
+  const [isMatchCompleted, setIsMatchCompleted] = useState(false);
   
   // 新增：追蹤上下交換次數
   const [swapCount, setSwapCount] = useState(0);
@@ -281,6 +283,27 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
         }
       });
       setMemberPointsMap(pointsMap);
+      
+      // 如果是從戰況室進入，檢查比賽是否已完成
+      if (isFromBattleroom && matchDetailId) {
+        console.log('戰況室模式，檢查比賽是否已完成，matchDetailId:', matchDetailId);
+        const { data, error } = await supabase
+          .from('contest_match_detail')
+          .select('score')
+          .eq('match_detail_id', matchDetailId)
+          .not('score', 'is', null) // 檢查 score 是否不為 null
+          .maybeSingle();
+          
+        if (error) {
+          console.error('查詢比賽完成狀態錯誤:', error);
+        } else if (data) {
+          console.log('比賽已完成，比分:', data.score);
+          setIsMatchCompleted(true); // 比賽已完成
+        } else {
+          console.log('比賽尚未完成');
+          setIsMatchCompleted(false); // 比賽尚未完成
+        }
+      }
       
       // 如果還沒有通過 ID 設置選手，嘗試通過名稱匹配
       if (!redMember || !greenMember) {
@@ -770,12 +793,12 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
   // 取得雙方勝場數（星號數）
   const redWins = getWins(true);
   const greenWins = getWins(false);
-  const isSaveDisabled = redWins === 0 && greenWins === 0;
+  const isSaveDisabled = redWins === 0 && greenWins === 0 || isMatchCompleted;
 
   // 提交比賽結果到後端
   const submitGameResult = async () => {
-    // 如果已儲存過，就不再重複儲存
-    if (hasSaved) {
+    // 如果已儲存過或比賽已完成，就不再重複儲存
+    if (hasSaved || isMatchCompleted) {
       return;
     }
 
@@ -1198,7 +1221,9 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
           <div>
             <button 
               onClick={handleChallengeClick}
-              className={sourceType === 'contest' && matchDetailId ? "ml-2 px-4 py-2 bg-gray-400 text-gray-600 rounded" : "ml-2 px-4 py-2 bg-green-600 text-white rounded"}
+              className={`ml-2 px-4 py-2 rounded ${
+                sourceType === 'contest' && matchDetailId ? 'bg-gray-400 text-gray-600' : 'bg-green-600 text-white'
+              }`}
               title={sourceType === 'contest' && matchDetailId ? "請從戰況室使用約戰功能" : "約戰"}
               disabled={sourceType === 'contest' && matchDetailId ? true : !currentLoggedInUser}
             >
@@ -1208,9 +1233,7 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
           
           {/* 來源標示 */}
           <span
-            className={`px-3 py-2 rounded text-white font-bold text-lg select-none ${
-              sourceType === 'challenge' ? 'bg-blue-500' : 'bg-green-500'
-            }`}
+            className={`px-3 py-2 rounded text-white font-bold text-lg select-none ${sourceType === 'challenge' ? 'bg-blue-500' : 'bg-green-500'}`}
             title={sourceType === 'challenge' ? '挑戰賽' : '賽程'}
             style={{ letterSpacing: 2 }}
           >
@@ -1218,11 +1241,9 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
           </span>
           <button
             onClick={toggleFinalGame}
-            className={`px-4 py-2 rounded ${
-              isFinalGame 
-                ? `${fgButtonVisible ? 'bg-red-600' : 'bg-red-800'} text-white` 
-                : 'bg-gray-700 text-gray-300'
-            } transition-colors`}
+            className={`px-4 py-2 rounded ${isFinalGame 
+                ? `${fgButtonVisible ? 'bg-red-600' : 'bg-red-800'}` 
+                : 'bg-gray-700 text-gray-300'} text-white transition-colors`}
           >
             FG
           </button>
@@ -1230,11 +1251,18 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
             onClick={submitGameResult}
             className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
             disabled={isSaveDisabled || submitStatus === 'loading' || hasSaved}
-            title={hasSaved ? '已經儲存過了' : isSaveDisabled ? '請先完成至少一場比賽' : '儲存比賽結果'}
+            title={hasSaved ? '已經儲存過了' : isSaveDisabled ? '請先完成至少一場比賽或比賽已完成' : '儲存比賽結果'}
           >
             儲存
           </button>
         </div>
+
+        {/* 新增比賽已完成的提示訊息 */}
+        {isMatchCompleted && (
+          <div className="w-full max-w-md text-center text-yellow-400 font-bold text-xl mt-4">
+            此場比賽已完成，比分已記錄，無法再次儲存。
+          </div>
+        )}
 
         <div className="w-full max-w-md flex items-center justify-center">
           <button 

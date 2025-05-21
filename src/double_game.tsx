@@ -53,6 +53,9 @@ function DoubleGame() {
   } = useAudioEffects();
   const [hasSaved, setHasSaved] = useState(false);
   
+  // 新增 isMatchCompleted 狀態
+  const [isMatchCompleted, setIsMatchCompleted] = useState(false);
+  
   // Drag and drop related states
   const [showWinConfirmation, setShowWinConfirmation] = useState(false);
   const [winSide, setWinSide] = useState<'top' | 'bottom' | null>(null);
@@ -122,100 +125,94 @@ function DoubleGame() {
   // 新增：判斷來源是否為比賽（contest）
   const [isContestMode, setIsContestMode] = useState(false);
   
+  // 檢查比賽是否已有分數
+  const checkMatchScore = async () => {
+    // 只有在從比賽進入且有matchDetailId時才檢查
+    if (isFromBattleroom && matchDetailId) {
+      console.log('檢查比賽是否已有分數，match_detail_id:', matchDetailId);
+      
+      try {
+        const { data, error } = await supabase
+          .from('contest_match_detail')
+          .select('score')
+          .eq('match_detail_id', matchDetailId)
+          .not('score', 'is', null) // 檢查 score 是否不為 null
+          .maybeSingle();
+          
+        if (error) {
+          console.error('查詢比賽完成狀態錯誤:', error);
+        } else if (data) {
+          console.log('比賽已完成，比分:', data.score);
+          setIsMatchCompleted(true); // 比賽已完成
+          // 顯示提示訊息
+          setSubmitMessage('此場比賽已有比分記錄，無法重複儲存。');
+          setShowSubmitMessage(true);
+          setTimeout(() => setShowSubmitMessage(false), 3000); // 3秒後自動關閉提示
+        } else {
+          console.log('比賽尚未完成，可以儲存比分');
+          setIsMatchCompleted(false); // 比賽尚未完成
+        }
+      } catch (err) {
+        console.error('檢查比賽分數時出錯:', err);
+      }
+    }
+  };
+  
+  // 在從比賽進入時檢查比賽是否已有分數
+  useEffect(() => {
+    if (isFromBattleroom && matchDetailId) {
+      checkMatchScore();
+    }
+  }, [isFromBattleroom, matchDetailId]);
+  
   // 從 URL 獲取參數相關功能已移至 usePlayerManagement Hook
   // 當 members 或 URL 參數變動時才設定預設值，並加上 debug log
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const p1 = params.get('player1');
-    const p2 = params.get('player2');
-    const p3 = params.get('player3');
-    const p4 = params.get('player4');
-    const match_detail_id = params.get('match_detail_id');
-    const contest_id = params.get('contest_id');
-    const contest_name = params.get('contest_name');
-    const from_contest = params.get('from_contest');
     const from_battleroom = params.get('from_battleroom');
+    const from_contest = params.get('from_contest'); // Assuming this might also be used from challenge page
     
     // 判斷來源類型
     const isFromContest = 
       from_battleroom === 'true' || 
       from_contest === 'true' || 
-      !!match_detail_id;
+      !!params.get('match_detail_id');
       
     // 設置比賽狀態旗標
     setIsContestMode(isFromContest);
     
-    console.log('double_game.tsx debug:', {
-      url: location.search,
-      player1: p1, player2: p2, player3: p3, player4: p4,
-      match_detail_id: match_detail_id || 'null', // 如果沒收到也顯示 null
-      contest_id: contest_id || 'null',
-      contest_name: contest_name || 'null',
-      from_contest: from_contest || 'null',
-      from_battleroom: from_battleroom || 'null',
-      isFromContest: isFromContest ? '是' : '否',
-      members
+    // Removed detailed logging from here to a separate useEffect
+
+  }, [location.search]); // Keep location.search as dependency for isContestMode
+  
+  // 新增 useEffect 只在組件載入時記錄 URL 參數
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const from_battleroom = params.get('from_battleroom');
+    const from_contest = params.get('from_contest');
+    
+    // 判斷來源類型 (複製自上面的 useEffect)
+    const isFromContest = 
+      from_battleroom === 'true' || 
+      from_contest === 'true' || 
+      !!params.get('match_detail_id');
+
+    const source = from_battleroom === 'true' ? '戰況室' : (isFromContest ? '挑戰清單頁面' : '未知來源'); // Use isFromContest here
+    console.log(`DEBUG: 從 ${source} 頁面進入 double_game，帶入參數:`);
+    params.forEach((value, key) => {
+      console.log(`  ${key}: ${value}`);
     });
     
-    // 在頁面上顯示 match_detail_id 的值（僅供測試）
-    console.log('比賽來源資訊：', {
-      match_detail_id: match_detail_id || 'null',
-      contest_id: contest_id || 'null',
-      contest_name: contest_name || 'null',
+    console.log('DEBUG: 比賽來源資訊：', { // Simplified log
+      match_detail_id: params.get('match_detail_id') || 'null',
+      contest_id: params.get('contest_id') || 'null',
+      contest_name: params.get('contest_name') || 'null',
       from_contest: from_contest === 'true' ? '是' : '否',
       from_battleroom: from_battleroom === 'true' ? '是' : '否',
       最終判定: isFromContest ? '是比賽(contest)' : '一般挑戰'
     });
-    
-    // 先轉成連結全部成員 id 與 member_id
-    if (members.length > 0) {
-      console.log('所有成員:', members.map(m => ({ id: m.id, member_id: m.member_id, name: m.name })));
-      
-      // 比較靈活的匹配方式，檢查 id 或 member_id 的尾部是否相符
-      const findMemberByShortId = (shortId: string | null) => {
-        if (!shortId) return null;
-        
-        // 先完全匹配 member_id
-        const exactMatch = members.find(m => m.member_id === shortId);
-        if (exactMatch) {
-          console.log(`找到完全匹配 ${shortId}:`, exactMatch);
-          return exactMatch;
-        }
-        
-        // 再完全匹配 id
-        const idMatch = members.find(m => m.id === shortId);
-        if (idMatch) {
-          console.log(`找到ID匹配 ${shortId}:`, idMatch);
-          return idMatch;
-        }
-        
-        // 再查看 id 或 member_id 是否以這個短 ID 結尾
-        const endMatch = members.find(m => 
-          (m.id && m.id.endsWith(shortId)) || 
-          (m.member_id && m.member_id.endsWith(shortId)));
-        
-        if (endMatch) {
-          console.log(`找到尾部匹配 ${shortId}:`, endMatch);
-          return endMatch;
-        }
-        
-        console.log(`未找到成員 ${shortId}`);
-        return null;
-      };
-      
-      const red = findMemberByShortId(p1);
-      const green = findMemberByShortId(p2);
-      const blue = findMemberByShortId(p3);
-      const yellow = findMemberByShortId(p4);
-      
-      console.log('find:', {red, green, blue, yellow});
-      
-      if (red) setRedMember(red.id);
-      if (green) setGreenMember(green.id);
-      if (blue) setBlueMember(blue.id);
-      if (yellow) setYellowMember(yellow.id);
-    }
-  }, [members, location.search]);
+
+  }, [location.search]); // Empty dependency array means this runs only once on mount
 
   // 提交結果狀態
   const [submitStatus, setSubmitStatus] = useState<'success' | 'error' | 'loading'>('success');
@@ -259,6 +256,7 @@ function DoubleGame() {
     // Reset drag and drop states
     setShowWinConfirmation(false);
     setWinSide(null);
+    setShowPostSaveModal(false);
   };
 
   useEffect(() => {
@@ -1000,9 +998,11 @@ function DoubleGame() {
 
   // 提交比賽結果到後端
   const submitGameResult = async () => {
-    // 如果已儲存過，就不再重複儲存
-    if (hasSaved) {
-      return;
+    // 組建要儲存的資料
+    // 如果已經儲存過或無有效勝利次數，或比賽已完成，不執行
+    if (hasSaved || isMatchCompleted) {
+      console.log('已儲存過或比賽已有記錄，不再儲存');
+      return; // 避免重複儲存
     }
 
     // 檢查所有會員是否已選擇
@@ -1456,13 +1456,15 @@ function DoubleGame() {
   const submitButton = (
     <button 
       onClick={submitGameResult}
-      className={`px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors ${isSaveDisabled || hasSaved ? 'opacity-50 cursor-not-allowed' : ''}`}
-      title={isSaveDisabled ? '請先完成至少一場比賽' : hasSaved ? '已經儲存過了' : '儲存比賽結果'}
-      disabled={isSaveDisabled || hasSaved}
+      className={`px-4 py-2 rounded bg-blue-600 hover:bg-blue-700 text-white transition-colors ${isSaveDisabled || hasSaved || isMatchCompleted ? 'opacity-50 cursor-not-allowed' : ''}`}
+      title={isSaveDisabled ? '請先完成至少一場比賽' : hasSaved ? '已經儲存過了' : isMatchCompleted ? '此場比賽已有比分記錄' : '儲存比賽結果'}
+      disabled={isSaveDisabled || hasSaved || isMatchCompleted}
     >
       儲存
     </button>
   );
+
+  //console.log('DEBUG: 儲存按鈕狀態: ', { hasSaved, isMatchCompleted, isSaveDisabled, isDisabled: isSaveDisabled || hasSaved || isMatchCompleted }); // Added isSaveDisabled to log
 
   // 根據來源模式決定約戰按鈕的顯示
   const renderChallengeButton = () => {
@@ -1527,22 +1529,22 @@ function DoubleGame() {
       </div>
 
       {/* 主內容區 (使用 flex-grow 填滿剩餘空間) */}
-      <div className="flex-grow flex flex-col items-center justify-between p-4 gap-8">
+      <div className="flex-grow flex flex-col items-center justify-between p-2 gap-2 overflow-auto">
         {/* 上方隊伍區塊 */}
-        <div className="w-full max-w-md flex items-center justify-center mb-4 gap-8">
+        <div className="w-full max-w-md flex items-center justify-center gap-4">
           {/* 來源標示 - 修改為使用 isContestMode */}
           <span
-            className={`px-3 py-2 rounded text-white font-bold text-lg select-none ${
+            className={`px-2 py-1 rounded text-white font-bold text-base select-none ${
               isContestMode ? 'bg-green-500' : 'bg-blue-500'
             }`}
             title={isContestMode ? '賽程' : '挑戰賽'}
-            style={{ letterSpacing: 2 }}
+            style={{ letterSpacing: 1 }}
           >
             {isContestMode ? 'R' : 'C'}
           </span>
           <button
             onClick={toggleFinalGame}
-            className={`px-4 py-2 rounded ${
+            className={`px-3 py-1 rounded ${
               isFinalGame 
                 ? `${fgButtonVisible ? 'bg-red-600' : 'bg-red-800'} text-white` 
                 : 'bg-gray-700 text-gray-300'
@@ -1554,7 +1556,7 @@ function DoubleGame() {
           {renderChallengeButton()}
         </div>
 
-        <div className="w-full max-w-md flex items-center justify-center mb-4">
+        <div className="w-full max-w-md flex items-center justify-center">
           <button 
             onClick={decrementTopScore}
             className={getButtonStyle(true)}
@@ -1562,7 +1564,7 @@ function DoubleGame() {
           >
             <div className="w-6 h-1 bg-white rounded-full"></div>
           </button>
-          <div className="text-white text-6xl font-bold mx-4">{topScore}</div>
+          <div className="text-white text-5xl font-bold mx-4">{topScore}</div>
           <div 
             id="top-w-button"
             draggable={!gameOver}
@@ -1579,11 +1581,11 @@ function DoubleGame() {
         <div className="w-full max-w-md flex relative">
           <div style={{ display: 'flex', width: '100%' }}>
             {/* 紅色區塊 */}
-            <div style={{ flex: 1, padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+            <div style={{ flex: 1, padding: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
               <select
                 value={redMember}
                 onChange={e => setRedMember(e.target.value)}
-                className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700"
+                className="w-full p-1 rounded bg-gray-800 text-white border border-gray-700 text-sm"
               >
                 <option value="">選擇選手</option>
                 {members.filter(m =>
@@ -1614,9 +1616,9 @@ function DoubleGame() {
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, 'top')}
-                style={{ width: '100%', height: '100px', position: 'relative' }}
+                style={{ width: '100%', height: '80px', position: 'relative' }}
               >
-                <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-4xl font-bold">
+                <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-3xl font-bold">
                   {renderStars(getWins(true))}
                 </span>
               </button>
@@ -1625,14 +1627,14 @@ function DoubleGame() {
                 <button
                   style={{
                     position: 'absolute',
-                    right: '-22px',
+                    right: '-18px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     zIndex: 10,
-                    fontSize: 24,
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
+                    fontSize: 20,
+                    width: 30,
+                    height: 30,
+                    borderRadius: 15,
                     background: '#222',
                     color: '#fff',
                     border: '1px solid #555',
@@ -1652,11 +1654,11 @@ function DoubleGame() {
               )}
             </div>
             {/* 綠色區塊 */}
-            <div style={{ flex: 1, padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+            <div style={{ flex: 1, padding: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
               <select
                 value={greenMember}
                 onChange={e => setGreenMember(e.target.value)}
-                className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700"
+                className="w-full p-1 rounded bg-gray-800 text-white border border-gray-700 text-sm"
               >
                 <option value="">選擇選手</option>
                 {members.filter(m =>
@@ -1687,9 +1689,9 @@ function DoubleGame() {
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, 'top')}
-                style={{ width: '100%', height: '100px', position: 'relative' }}
+                style={{ width: '100%', height: '80px', position: 'relative' }}
               >
-                <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-4xl font-bold">
+                <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-3xl font-bold">
                   {/* 綠色區塊星號留空，僅紅色區塊顯示 */}
                 </span>
               </button>
@@ -1709,10 +1711,10 @@ function DoubleGame() {
             >
               <button
                 style={{
-                  fontSize: 28,
-                  width: 44,
-                  height: 44,
-                  borderRadius: 22,
+                  fontSize: 24,
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
                   background: '#444',
                   color: '#fff',
                   border: '2px solid #888',
@@ -1748,12 +1750,12 @@ function DoubleGame() {
 
         {/* 中央計分版 - 上下排列 */}
         <div className="w-full max-w-md">
-          <div className="flex flex-wrap justify-center gap-4 text-white">
+          <div className="flex flex-wrap justify-center gap-2 text-white">
             {gameHistory.map((game, index) => (
               <div key={index} className="text-center">
-                <div className="text-lg font-bold">{game.topScore}</div>
-                <div className="text-lg font-bold">{game.bottomScore}</div>
-                <div className="text-sm text-gray-400">Game {index + 1}</div>
+                <div className="text-base font-bold">{game.topScore}</div>
+                <div className="text-base font-bold">{game.bottomScore}</div>
+                <div className="text-xs text-gray-400">Game {index + 1}</div>
               </div>
             ))}
           </div>
@@ -1763,11 +1765,11 @@ function DoubleGame() {
         <div className="w-full max-w-md flex relative">
           <div style={{ display: 'flex', width: '100%' }}>
             {/* 藍色區塊 */}
-            <div style={{ flex: 1, padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+            <div style={{ flex: 1, padding: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
               <select
                 value={blueMember}
                 onChange={e => setBlueMember(e.target.value)}
-                className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700"
+                className="w-full p-1 rounded bg-gray-800 text-white border border-gray-700 text-sm"
               >
                 <option value="">選擇選手</option>
                 {members.filter(m =>
@@ -1798,9 +1800,9 @@ function DoubleGame() {
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, 'bottom')}
-                style={{ width: '100%', height: '100px', position: 'relative' }}
+                style={{ width: '100%', height: '80px', position: 'relative' }}
               >
-                <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-4xl font-bold">
+                <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-3xl font-bold">
                   {renderStars(getWins(false))}
                 </span>
               </button>
@@ -1809,14 +1811,14 @@ function DoubleGame() {
                 <button
                   style={{
                     position: 'absolute',
-                    right: '-22px',
+                    right: '-18px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     zIndex: 10,
-                    fontSize: 24,
-                    width: 36,
-                    height: 36,
-                    borderRadius: 18,
+                    fontSize: 20,
+                    width: 30,
+                    height: 30,
+                    borderRadius: 15,
                     background: '#222',
                     color: '#fff',
                     border: '1px solid #555',
@@ -1836,11 +1838,11 @@ function DoubleGame() {
               )}
             </div>
             {/* 黃色區塊 */}
-            <div style={{ flex: 1, padding: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
+            <div style={{ flex: 1, padding: 4, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
               <select
                 value={yellowMember}
                 onChange={e => setYellowMember(e.target.value)}
-                className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700"
+                className="w-full p-1 rounded bg-gray-800 text-white border border-gray-700 text-sm"
               >
                 <option value="">選擇選手</option>
                 {members.filter(m =>
@@ -1871,9 +1873,9 @@ function DoubleGame() {
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, 'bottom')}
-                style={{ width: '100%', height: '100px', position: 'relative' }}
+                style={{ width: '100%', height: '80px', position: 'relative' }}
               >
-                <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-4xl font-bold">
+                <span className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 text-white text-3xl font-bold">
                   {/* 黃色區塊星號留空，僅藍色區塊顯示 */}
                 </span>
               </button>
@@ -1881,7 +1883,7 @@ function DoubleGame() {
           </div>
         </div>
 
-        <div className="w-full max-w-md flex items-center justify-center mt-4">
+        <div className="w-full max-w-md flex items-center justify-center">
           <button
             onClick={decrementBottomScore}
             className={getButtonStyle(false)}
@@ -1889,7 +1891,7 @@ function DoubleGame() {
           >
             <div className="w-6 h-1 bg-white rounded-full"></div>
           </button>
-          <div className="text-white text-6xl font-bold mx-4">{bottomScore}</div>
+          <div className="text-white text-5xl font-bold mx-4">{bottomScore}</div>
           <div
             id="bottom-w-button"
             draggable={!gameOver}

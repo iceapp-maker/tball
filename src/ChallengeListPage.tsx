@@ -32,6 +32,20 @@ export default function ChallengeListPage() {
   // 新增：儲存比賽名稱映射 (match_detail_id -> contest_name)
   const [contestNames, setContestNames] = React.useState<Record<number, string>>({});
   const [matchDetailToContestMap, setMatchDetailToContestMap] = React.useState<Record<number, number>>({});
+  // 新增：儲存隊伍資訊映射 (match_detail_id -> team info)
+  const [teamInfoMap, setTeamInfoMap] = React.useState<Record<number, {
+    team1_id?: number;
+    team2_id?: number;
+    team1_name?: string;
+    team2_name?: string;
+    team1_members?: string[];
+    team2_members?: string[];
+  }>>({});
+  // 新增：保存玩家ID格式映射
+  const [playerIdMap, setPlayerIdMap] = React.useState<Record<string, {
+    shortId?: string;
+    name?: string;
+  }>>({});
 
   React.useEffect(() => {
     async function fetchMembers() {
@@ -42,7 +56,44 @@ export default function ChallengeListPage() {
     fetchMembers();
   }, [user?.team_id]);
 
-  // 新增：獲取比賽名稱
+  // 新增：從 URL 獲取參數功能
+  React.useEffect(() => {
+    async function fetchPlayerIdMapping() {
+      if (!user?.team_id) return;
+      try {
+        // 獲取所有相關成員的短ID格式（只限於當前用戶的團隊）
+        const { data, error } = await supabase
+          .from('members')
+          .select('id, name, member_id, team_id')
+          .eq('team_id', user.team_id)  // 添加團隊限制，只查詢當前用戶團隊
+          .order('name', { ascending: true });
+
+        if (error) {
+          console.error('獲取成員ID映射錯誤:', error);
+          return;
+        }
+
+        if (data && data.length > 0) {
+          // 建立玩家名稱到ID映射的字典
+          const idMapping: Record<string, {shortId?: string; name?: string}> = {};
+          data.forEach(member => {
+            idMapping[member.name] = {
+              shortId: member.member_id || member.id,
+              name: member.name
+            };
+          });
+          setPlayerIdMap(idMapping);
+          console.log('玩家ID映射:', idMapping);
+        }
+      } catch (err) {
+        console.error('查詢玩家ID映射失敗:', err);
+      }
+    }
+    
+    fetchPlayerIdMapping();
+  }, [user?.team_id]);
+  
+  // 新增：從 URL 獲取參數功能
   React.useEffect(() => {
     async function fetchContestNames() {
       if (!user) return;
@@ -78,11 +129,11 @@ export default function ChallengeListPage() {
         return;
       }
       
-      // 3. 使用 match_detail_id 查詢 contest_match_detail 表獲取 contest_id
+      // 3. 使用 match_detail_id 查詢 contest_match_detail 表獲取 match_id 和 contest_id
       console.log('開始查詢 contest_match_detail 表...');
       const { data: matchDetails, error: matchDetailError } = await supabase
         .from('contest_match_detail')
-        .select('match_detail_id, contest_id')
+        .select('match_detail_id, match_id, contest_id')
         .in('match_detail_id', matchDetailIds);
       
       console.log('從 contest_match_detail 表查詢到的資料:', matchDetails);
@@ -93,40 +144,111 @@ export default function ChallengeListPage() {
         return;
       }
       
-      // 4. 建立 match_detail_id 到 contest_id 的映射
+      // 4. 從 contest_match 表中獲取隊伍ID
+      const matchIds = matchDetails.map((detail: any) => detail.match_id).filter(Boolean);
+      
+      const { data: matchData, error: matchError } = await supabase
+        .from('contest_match')
+        .select('match_id, team1_id, team2_id')
+        .in('match_id', matchIds);
+      
+      if (matchError || !matchData) {
+        console.error('查詢 contest_match 表錯誤:', matchError);
+        return;
+      }
+      
+      // 5. 獲取隊伍名稱
+      const teamIds = matchData.flatMap((match: any) => [match.team1_id, match.team2_id]).filter(Boolean);
+      
+      const { data: teamData, error: teamError } = await supabase
+        .from('contest_team')
+        .select('contest_team_id, team_name')
+        .in('contest_team_id', teamIds);
+      
+      if (teamError || !teamData) {
+        console.error('查詢隊伍資料錯誤:', teamError);
+        return;
+      }
+      
+      // 6. 建立 match_detail_id 到數據的映射
       const mdToContestIdMap: Record<number, number> = {};
+      const nameMap: Record<number, string> = {};
+      const idMap: Record<number, number> = {};
+      const teamInfo: Record<number, any> = {};
+      
+      // 建立 match_id 到 team 信息的映射
+      const matchToTeamsMap: Record<number, {team1_id?: number, team2_id?: number}> = {};
+      matchData.forEach((match: any) => {
+        matchToTeamsMap[match.match_id] = {
+          team1_id: match.team1_id,
+          team2_id: match.team2_id
+        };
+      });
+      
+      // 建立 team_id 到 team_name 的映射
+      const teamIdToNameMap: Record<number, string> = {};
+      teamData.forEach((team: any) => {
+        teamIdToNameMap[team.contest_team_id] = team.team_name;
+      });
+      
+      // 為每個 match_detail_id 整合所有相關信息
       matchDetails.forEach((detail: any) => {
-        if (detail.match_detail_id && detail.contest_id) {
-          mdToContestIdMap[Number(detail.match_detail_id)] = Number(detail.contest_id);
+        const mdId = detail.match_detail_id;
+        const matchId = detail.match_id;
+        const contestId = detail.contest_id;
+        
+        if (mdId && contestId) {
+          mdToContestIdMap[mdId] = contestId;
+          
+          // 添加隊伍信息
+          if (matchToTeamsMap[matchId]) {
+            const team1Id = matchToTeamsMap[matchId].team1_id;
+            const team2Id = matchToTeamsMap[matchId].team2_id;
+            
+            teamInfo[mdId] = {
+              team1_id: team1Id,
+              team2_id: team2Id,
+              team1_name: team1Id ? teamIdToNameMap[team1Id] : undefined,
+              team2_name: team2Id ? teamIdToNameMap[team2Id] : undefined,
+              team1_members: [], // 先初始化为空数组
+              team2_members: []  // 先初始化为空数组
+            };
+          }
         }
       });
       
-      console.log('match_detail_id 到 contest_id 的映射:', mdToContestIdMap);
+      // 获取所有挑战，提取成员信息
+      const allChallenges = [...receivedChallenges, ...initiatedChallenges];
+      allChallenges.forEach(ch => {
+        if (ch.match_detail_id && teamInfo[ch.match_detail_id]) {
+          // 将成员名称添加到对应队伍的数组中
+          if (ch.player1 || ch.player2) {
+            teamInfo[ch.match_detail_id].team1_members = [
+              ch.player1, 
+              ch.player2
+            ].filter(Boolean) as string[];
+          }
+          
+          if (ch.player3 || ch.player4) {
+            teamInfo[ch.match_detail_id].team2_members = [
+              ch.player3, 
+              ch.player4
+            ].filter(Boolean) as string[];
+          }
+        }
+      });
       
-      // 5. 查詢 contest 表獲取比賽名稱
-      const contestIds = Object.values(mdToContestIdMap);
-      if (contestIds.length === 0) {
-        console.log('沒有有效的 contest_id');
-        return;
-      }
-      
-      const { data: contests, error: contestError } = await supabase
+      // 為每個 match_detail_id 尋找對應的 contest_name
+      const { data: contests, error: contestsError } = await supabase
         .from('contest')
         .select('contest_id, contest_name')
-        .in('contest_id', contestIds);
+        .in('contest_id', Object.values(mdToContestIdMap));
       
-      console.log('從 contest 表查詢到的資料:', contests);
-      console.log('查詢錯誤:', contestError);
-      
-      if (!contests || contests.length === 0) {
-        console.log('沒有在 contest 表中找到記錄');
+      if (contestsError) {
+        console.error('查詢比賽錯誤:', contestsError);
         return;
       }
-      
-      // 6. 建立最終的映射: match_detail_id -> contest_name
-      const nameMap: Record<number, string> = {};
-      const idMap: Record<number, number> = {};
-      
+
       // 為每個 match_detail_id 尋找對應的 contest_name
       for (const mdId of matchDetailIds) {
         const contestId = mdToContestIdMap[mdId];
@@ -142,9 +264,11 @@ export default function ChallengeListPage() {
       
       console.log('最終的名稱映射:', nameMap);
       console.log('最終的 ID 映射:', idMap);
+      console.log('隊伍信息映射:', teamInfo);
       
       setContestNames(nameMap);
       setMatchDetailToContestMap(idMap);
+      setTeamInfoMap(teamInfo);
     }
     
     fetchContestNames();
@@ -204,8 +328,8 @@ export default function ChallengeListPage() {
       }
     }
     // 合併 status_log
-    setReceivedChallenges((receivedData || []).map(ch => ({ ...ch, status_log: logsMap[ch.status_code] || {} })));
-    setInitiatedChallenges((initiatedData || []).map(ch => ({ ...ch, status_log: logsMap[ch.status_code] || {} })));
+    setReceivedChallenges((receivedData || []).map((ch: ChallengeDetail) => ({ ...ch, status_log: logsMap[ch.status_code || ''] || {} })));
+    setInitiatedChallenges((initiatedData || []).map((ch: ChallengeDetail) => ({ ...ch, status_log: logsMap[ch.status_code || ''] || {} })));
     setLoading(false);
   }, [user]);
 
@@ -315,9 +439,54 @@ export default function ChallengeListPage() {
       console.error('Supabase update error:', error);
     } else {
       console.log('狀態更新成功', updateObj);
+
+      // 新增邏輯：如果接受挑戰且有 match_detail_id，更新 contest_match_detail 的隊伍 ID
+      if (action === '已接受' && ch.match_detail_id) {
+        console.log('DEBUG ChallengeListPage: 接受挑戰，開始更新 contest_match_detail 的隊伍 ID');
+        
+        // 根據挑戰類型和玩家找到隊伍 ID
+        let team1IdToUpdate: string | null = null;
+        let team2IdToUpdate: string | null = null;
+
+        const getMemberTeamId = (playerName: string | undefined) => {
+            if (!playerName) return null;
+            const member = members.find(m => m.name === playerName);
+            return member ? member.team_id : null;
+        };
+
+        if (ch.game_type === 'single') {
+            // 單打：player1 和 player2 各自代表一個隊伍
+            team1IdToUpdate = getMemberTeamId(ch.player1);
+            team2IdToUpdate = getMemberTeamId(ch.player2);
+        } else if (ch.game_type === 'double') {
+            // 雙打：player1/player2 同隊，player3/player4 同隊
+            // 假設 player1 和 player3 至少會有一位，以他們的隊伍 ID 為準
+            team1IdToUpdate = getMemberTeamId(ch.player1) || getMemberTeamId(ch.player2);
+            team2IdToUpdate = getMemberTeamId(ch.player3) || getMemberTeamId(ch.player4);
+        }
+
+        console.log('DEBUG ChallengeListPage: 根據挑戰玩家確定的隊伍 ID:', { team1IdToUpdate, team2IdToUpdate });
+
+        if (team1IdToUpdate && team2IdToUpdate) {
+             const { error: updateDetailError } = await supabase
+              .from('contest_match_detail')
+              .update({ team1_id: team1IdToUpdate, team2_id: team2IdToUpdate })
+              .eq('match_detail_id', ch.match_detail_id);
+
+            if (updateDetailError) {
+              console.error('DEBUG ChallengeListPage: 更新 contest_match_detail 隊伍 ID 失敗:', updateDetailError);
+            } else {
+              console.log('DEBUG ChallengeListPage: 成功更新 contest_match_detail 的隊伍 ID');
+            }
+        } else {
+             console.warn('DEBUG ChallengeListPage: 無法確定隊伍 ID，跳過更新 contest_match_detail');
+        }
+      }
+
+      await fetchAll();
     }
     const updateLocalCount = () => {
-      const pendingCount = receivedChallenges.filter(ch => {
+      const pendingCount = receivedChallenges.filter((ch: ChallengeDetail) => {
         let playerField = '';
         if (user.name === ch.player1) playerField = 'player1_status';
         else if (user.name === ch.player2) playerField = 'player2_status';
@@ -339,7 +508,7 @@ export default function ChallengeListPage() {
   React.useEffect(() => {
     if (!user) return;
     const updateUnreadCount = () => {
-      const count = receivedChallenges.filter(ch => {
+      const count = receivedChallenges.filter((ch: ChallengeDetail) => {
         let playerField = '';
         if (user.name === ch.player1) playerField = 'player1_status';
         else if (user.name === ch.player2) playerField = 'player2_status';
@@ -358,7 +527,7 @@ export default function ChallengeListPage() {
   // 在組件內部，計算未回覆數量 NotrRsponse
   const NotrRsponse = React.useMemo(() => {
     if (!user) return 0;
-    return receivedChallenges.filter(ch => {
+    return receivedChallenges.filter((ch: ChallengeDetail) => {
       let playerField = '';
       if (user.name === ch.player1) playerField = 'player1_status';
       else if (user.name === ch.player2) playerField = 'player2_status';
@@ -372,11 +541,11 @@ export default function ChallengeListPage() {
 
   // 在 return 之前，分組
   const expiredChallenges = receivedChallenges.filter(isExpired);
-  const activeChallenges = receivedChallenges.filter(ch => !isExpired(ch));
+  const activeChallenges = receivedChallenges.filter((ch: ChallengeDetail) => !isExpired(ch));
 
   // 將 initiatedChallenges 用 isExpired 分成 activeInitiated/expiredInitiated
   const expiredInitiated = initiatedChallenges.filter(isExpired);
-  const activeInitiated = initiatedChallenges.filter(ch => !isExpired(ch));
+  const activeInitiated = initiatedChallenges.filter((ch: ChallengeDetail) => !isExpired(ch));
 
   return (
     <div style={{ maxWidth: 1100, margin: '32px auto', padding: 24, background: '#fff', borderRadius: 18, boxShadow: '0 2px 16px rgba(0,0,0,0.08)', minHeight: 600 }}>
@@ -415,7 +584,14 @@ export default function ChallengeListPage() {
                     ) : (
                       activeChallenges.map((ch, idx) => (
                         <tr key={ch.challenge_id} style={{ background: idx%2===0?'#fff':'#f7f9fa' }}>
-                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.initiator}</td>
+                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>
+                            {ch.initiator}
+                            {ch.match_detail_id && (
+                              <div style={{ fontSize: 10, color: 'red' }}>
+                                ID: {ch.match_detail_id}
+                              </div>
+                            )}
+                          </td>
                           <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player1 || '-'}</td>
                           <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player2 || '-'}</td>
                           <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player3 || '-'}</td>
@@ -517,7 +693,16 @@ export default function ChallengeListPage() {
                                 style={{ background: '#f5f5f5', border: '1px solid #ccc', borderRadius: 16, padding: '4px 10px', cursor: 'pointer' }}
                                 title={ch.game_type === 'single' ? '前往單打頁面' : '前往雙打頁面'}
                                 onClick={() => {
-                                  const getIdByName = (name: string) => members.find((m) => m.name === name)?.id || '';
+                                  console.log('DEBUG: ChallengeListPage 前往按鈕點擊，挑戰詳情:', ch); // Added debug log
+                                  // 優先使用短格式ID
+                                  const getIdByName = (name: string) => {
+                                    // 先查找playerIdMap中是否有該玩家的短ID
+                                    if (playerIdMap[name] && playerIdMap[name].shortId) {
+                                      return playerIdMap[name].shortId || '';
+                                    }
+                                    // 回退到之前的方法
+                                    return members.find((m) => m.name === name)?.id || '';
+                                  };
                                   const params = new URLSearchParams();
                                   if (ch.game_type === 'single') {
                                     if (ch.player1) {
@@ -528,6 +713,33 @@ export default function ChallengeListPage() {
                                       const id = getIdByName(ch.player2);
                                       if (id) params.append('player2', id);
                                     }
+                                    if (ch.player3) {
+                                      const id = getIdByName(ch.player3);
+                                      if (id) params.append('player3', id);
+                                    }
+                                    if (ch.player4) {
+                                      const id = getIdByName(ch.player4);
+                                      if (id) params.append('player4', id);
+                                    }
+                                    
+                                    // 如果有 match_detail_id，添加比賽相關參數
+                                    if (ch.match_detail_id) {
+                                      params.append('match_detail_id', ch.match_detail_id.toString());
+                                      
+                                      // 加入 contest_id（如果有映射）
+                                      if (matchDetailToContestMap && matchDetailToContestMap[ch.match_detail_id]) {
+                                        params.append('contest_id', matchDetailToContestMap[ch.match_detail_id].toString());
+                                      }
+                                      
+                                      // 加入比賽名稱（如果有）
+                                      if (contestNames && contestNames[ch.match_detail_id]) {
+                                        params.append('contest_name', contestNames[ch.match_detail_id]);
+                                      }
+                                      
+                                      // 標記為從戰況室來的
+                                      params.append('from_battleroom', 'true');
+                                    }
+                                    
                                     navigate(`/single?${params.toString()}`);
                                   } else {
                                     if (ch.player1) {
@@ -561,9 +773,38 @@ export default function ChallengeListPage() {
                                       if (contestNames && contestNames[ch.match_detail_id]) {
                                         params.append('contest_name', contestNames[ch.match_detail_id]);
                                       }
+
+                                      // 加入隊伍信息（如果有）
+                                      if (teamInfoMap && teamInfoMap[ch.match_detail_id]) {
+                                        const teamInfo = teamInfoMap[ch.match_detail_id];
+                                        
+                                        // 添加隊伍ID
+                                        if (teamInfo.team1_id) {
+                                          params.append('team1_id', teamInfo.team1_id.toString());
+                                        }
+                                        if (teamInfo.team2_id) {
+                                          params.append('team2_id', teamInfo.team2_id.toString());
+                                        }
+                                        
+                                        // 添加隊伍名稱
+                                        if (teamInfo.team1_name) {
+                                          params.append('team1_name', teamInfo.team1_name);
+                                        }
+                                        if (teamInfo.team2_name) {
+                                          params.append('team2_name', teamInfo.team2_name);
+                                        }
+                                        
+                                        // 添加隊伍成員陣列
+                                        if (teamInfo.team1_members && teamInfo.team1_members.length > 0) {
+                                          params.append('team1_members', JSON.stringify(teamInfo.team1_members));
+                                        }
+                                        if (teamInfo.team2_members && teamInfo.team2_members.length > 0) {
+                                          params.append('team2_members', JSON.stringify(teamInfo.team2_members));
+                                        }
+                                      }
                                       
-                                      // 標記為從比賽來的
-                                      params.append('from_contest', 'true');
+                                      // 標記為從戰況室來的
+                                      params.append('from_battleroom', 'true');
                                     }
                                     
                                     navigate(`/double_game?${params.toString()}`);
@@ -625,7 +866,14 @@ export default function ChallengeListPage() {
                     ) : (
                       expiredChallenges.map((ch, idx) => (
                         <tr key={ch.challenge_id} style={{ background: idx%2===0?'#fff':'#f7f9fa' }}>
-                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.initiator}</td>
+                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>
+                            {ch.initiator}
+                            {ch.match_detail_id && (
+                              <div style={{ fontSize: 10, color: 'red' }}>
+                                ID: {ch.match_detail_id}
+                              </div>
+                            )}
+                          </td>
                           <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player1 || '-'}</td>
                           <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player2 || '-'}</td>
                           <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player3 || '-'}</td>
@@ -653,6 +901,7 @@ export default function ChallengeListPage() {
                               style={{ background: '#f5f5f5', border: '1px solid #ccc', borderRadius: 16, padding: '4px 10px', cursor: 'pointer' }}
                               title={ch.game_type === 'single' ? '前往單打頁面' : '前往雙打頁面'}
                               onClick={() => {
+                                console.log('DEBUG: ChallengeListPage 前往按鈕點擊，挑戰詳情:', ch); // Added debug log
                                 const getIdByName = (name: string) => members.find((m) => m.name === name)?.id || '';
                                 const params = new URLSearchParams();
                                 if (ch.game_type === 'single') {
@@ -664,6 +913,33 @@ export default function ChallengeListPage() {
                                     const id = getIdByName(ch.player2);
                                     if (id) params.append('player2', id);
                                   }
+                                  if (ch.player3) {
+                                    const id = getIdByName(ch.player3);
+                                    if (id) params.append('player3', id);
+                                  }
+                                  if (ch.player4) {
+                                    const id = getIdByName(ch.player4);
+                                    if (id) params.append('player4', id);
+                                  }
+                                  
+                                  // 如果有 match_detail_id，添加比賽相關參數
+                                  if (ch.match_detail_id) {
+                                    params.append('match_detail_id', ch.match_detail_id.toString());
+                                    
+                                    // 加入 contest_id（如果有映射）
+                                    if (matchDetailToContestMap && matchDetailToContestMap[ch.match_detail_id]) {
+                                      params.append('contest_id', matchDetailToContestMap[ch.match_detail_id].toString());
+                                    }
+                                    
+                                    // 加入比賽名稱（如果有）
+                                    if (contestNames && contestNames[ch.match_detail_id]) {
+                                      params.append('contest_name', contestNames[ch.match_detail_id]);
+                                    }
+                                    
+                                    // 標記為從戰況室來的
+                                    params.append('from_battleroom', 'true');
+                                  }
+                                  
                                   navigate(`/single?${params.toString()}`);
                                 } else {
                                   if (ch.player1) {
@@ -682,6 +958,25 @@ export default function ChallengeListPage() {
                                     const id = getIdByName(ch.player4);
                                     if (id) params.append('player4', id);
                                   }
+                                  
+                                  // 如果有 match_detail_id，添加比賽相關參數
+                                  if (ch.match_detail_id) {
+                                    params.append('match_detail_id', ch.match_detail_id.toString());
+                                    
+                                    // 加入 contest_id（如果有映射）
+                                    if (matchDetailToContestMap && matchDetailToContestMap[ch.match_detail_id]) {
+                                      params.append('contest_id', matchDetailToContestMap[ch.match_detail_id].toString());
+                                    }
+                                    
+                                    // 加入比賽名稱（如果有）
+                                    if (contestNames && contestNames[ch.match_detail_id]) {
+                                      params.append('contest_name', contestNames[ch.match_detail_id]);
+                                    }
+                                    
+                                    // 標記為從戰況室來的
+                                    params.append('from_battleroom', 'true');
+                                  }
+                                  
                                   navigate(`/double_game?${params.toString()}`);
                                 }
                               }}
