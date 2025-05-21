@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from 'react';
 import { UserContext } from '../UserContext';
 import { supabase } from '../supabaseClient';
+import { useNavigate } from 'react-router-dom';
 
 interface ContestProgress {
   contest_id: number;
@@ -19,6 +20,7 @@ const NewContestProgressBlock: React.FC = () => {
   const { user } = useContext(UserContext) ?? { user: null };
   const [contests, setContests] = useState<ContestProgress[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchContests = async () => {
@@ -88,6 +90,11 @@ const NewContestProgressBlock: React.FC = () => {
     fetchContests();
   }, [user?.member_id]);
 
+  // 導航到比賽頁面的函數
+  const navigateToContestJoinPage = (contestId: number) => {
+    navigate(`/contest/${contestId}/join`);
+  };
+
   return (
     <div className="mb-6 p-4 bg-blue-50 rounded shadow">
       <h3 className="font-bold mb-2 text-lg">已報名比賽進度</h3>
@@ -102,9 +109,12 @@ const NewContestProgressBlock: React.FC = () => {
               <b>{c.contest_name}</b>｜隊伍：{c.team_name}｜狀態：{c.status}｜比賽狀態：{c.contest_status}
               {c.status === 'captain' && c.team_member_status !== 'done' && 
                c.acceptedMembersCount >= (c.players_per_team || 0) && (
-                <span className="text-orange-500 ml-2 font-medium">
+                <button 
+                  onClick={() => navigateToContestJoinPage(c.contest_id)}
+                  className="text-orange-500 ml-2 font-medium hover:underline cursor-pointer"
+                >
                   ! 隊伍人數已足夠，請前往比賽頁面確認「人員已到位」
-                </span>
+                </button>
               )}
               {c.status === 'captain' && c.team_member_status === 'done' && (
                 <span className="text-green-600 ml-2 font-medium">✓ 已確認人員到位</span>
