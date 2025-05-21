@@ -203,7 +203,7 @@ const ContestResultsPage: React.FC = () => {
       }
     });
 
-    // 統計勝局數 - 從match_detail表中計算每個隊伍贏得的局數
+    // 統計勝局數 - 從match_detail表中計算每個隊伍贏得的局數總和
     matchDetails.forEach(detail => {
       const winnerId = detail.winner_team_id;
       if (winnerId && resultsData.teamIdToIndex[winnerId] !== undefined) {
@@ -217,30 +217,175 @@ const ContestResultsPage: React.FC = () => {
       team.gamesWon = team.wins;
     });
 
-    // 先按勝場數排序，若相同則按勝局數排序
-    resultsData.teams.sort((a, b) => {
-      // 首先按勝場數降序排列
-      if (b.gamesWon !== a.gamesWon) {
-        return b.gamesWon - a.gamesWon;
+    // 按勝場數分組，相同勝場數的隊伍放在同一組
+    const teamsByWins: Record<number, TeamResult[]> = {};
+    resultsData.teams.forEach(team => {
+      if (!teamsByWins[team.gamesWon]) {
+        teamsByWins[team.gamesWon] = [];
       }
-      // 如果勝場數相同，則按勝局數降序排列
-      return b.winningGames - a.winningGames;
+      teamsByWins[team.gamesWon].push(team);
+    });
+
+    // 處理每個勝場數分組
+    const sortedTeams: TeamResult[] = [];
+    Object.keys(teamsByWins)
+      .map(Number)
+      .sort((a, b) => b - a) // 按勝場數降序排列
+      .forEach(wins => {
+        const teamsWithSameWins = teamsByWins[wins];
+        
+        // 如果該分組只有一支隊伍，直接加入結果
+        if (teamsWithSameWins.length === 1) {
+          sortedTeams.push(teamsWithSameWins[0]);
+          return;
+        }
+        
+        // 檢查分組中隊伍間的直接對戰關係
+        const sortedGroup = sortTeamsByHeadToHead(teamsWithSameWins, resultsData.teamIdToIndex);
+        sortedTeams.push(...sortedGroup);
+      });
+
+    // 將排序後的結果更新到resultsData
+    resultsData.teams = sortedTeams;
+    
+    // 重建teamIdToIndex映射關係
+    resultsData.teamIdToIndex = {};
+    resultsData.teams.forEach((team, index) => {
+      resultsData.teamIdToIndex[team.teamId] = index;
     });
     
-    // 分配排名（勝場數和勝局數都相同時才有相同排名）
+    // 分配排名
     let currentRank = 1;
-    let previousWins = -1;
-    let previousWinningGames = -1;
     resultsData.teams.forEach((team, index) => {
-      if (team.gamesWon !== previousWins || team.winningGames !== previousWinningGames) {
-        currentRank = index + 1;
-        previousWins = team.gamesWon;
-        previousWinningGames = team.winningGames;
-      }
-      team.tableNumber = currentRank;
+      team.tableNumber = currentRank++;
     });
 
     return resultsData;
+  };
+
+  // 新增函數：根據直接對戰結果對同一勝場數的隊伍進行排序
+  const sortTeamsByHeadToHead = (teams: TeamResult[], teamIdToIndex: Record<number, number>) => {
+    // 如果只有兩支隊伍，直接比較對戰結果
+    if (teams.length === 2) {
+      const team1 = teams[0];
+      const team2 = teams[1];
+      
+      // 檢查兩隊之間的直接對戰結果
+      const matchResult = team1.matchResults[team2.teamId];
+      if (matchResult) {
+        const [team1Score, team2Score] = matchResult.split(':').map(Number);
+        if (team1Score > team2Score) {
+          return [team1, team2]; // team1勝出
+        } else if (team1Score < team2Score) {
+          return [team2, team1]; // team2勝出
+        }
+      }
+      
+      // 如果沒有直接對戰結果或平局，則按勝局數排序
+      return [...teams].sort((a, b) => b.winningGames - a.winningGames);
+    }
+    
+    // 處理三隊或更多隊伍的情況
+    
+    // 1. 檢查是否存在循環勝負關係（A勝B，B勝C，C勝A）
+    const hasCircularWinning = checkCircularWinning(teams);
+    
+    // 2. 如果存在循環勝負，直接按勝局數排序
+    if (hasCircularWinning) {
+      return [...teams].sort((a, b) => b.winningGames - a.winningGames);
+    }
+    
+    // 3. 否則，使用直接對戰勝負關係來排序
+    // 創建一個勝負矩陣，記錄隊伍間的勝負關係
+    const winMatrix: Record<number, Set<number>> = {};
+    teams.forEach(team => {
+      winMatrix[team.teamId] = new Set();
+    });
+    
+    // 填充勝負矩陣
+    teams.forEach(team => {
+      teams.forEach(opponent => {
+        if (team.teamId === opponent.teamId) return;
+        
+        const matchResult = team.matchResults[opponent.teamId];
+        if (matchResult) {
+          const [teamScore, opponentScore] = matchResult.split(':').map(Number);
+          if (teamScore > opponentScore) {
+            winMatrix[team.teamId].add(opponent.teamId);
+          }
+        }
+      });
+    });
+    
+    // 計算每個隊伍的直接對戰勝利數
+    const directWins: Record<number, number> = {};
+    teams.forEach(team => {
+      directWins[team.teamId] = winMatrix[team.teamId].size;
+    });
+    
+    // 按直接對戰勝利數和勝局數排序
+    return [...teams].sort((a, b) => {
+      const aWins = directWins[a.teamId];
+      const bWins = directWins[b.teamId];
+      
+      if (aWins !== bWins) {
+        return bWins - aWins; // 按直接對戰勝利數降序排列
+      }
+      
+      // 如果直接對戰勝利數相同，則按勝局數排序
+      return b.winningGames - a.winningGames;
+    });
+  };
+  
+  // 新增函數：檢查一組隊伍是否存在循環勝負關係
+  const checkCircularWinning = (teams: TeamResult[]) => {
+    // 創建一個有向圖表示勝負關係
+    const winGraph: Record<number, number[]> = {};
+    teams.forEach(team => {
+      winGraph[team.teamId] = [];
+    });
+    
+    // 填充有向圖
+    teams.forEach(team => {
+      teams.forEach(opponent => {
+        if (team.teamId === opponent.teamId) return;
+        
+        const matchResult = team.matchResults[opponent.teamId];
+        if (matchResult) {
+          const [teamScore, opponentScore] = matchResult.split(':').map(Number);
+          if (teamScore > opponentScore) {
+            winGraph[team.teamId].push(opponent.teamId);
+          }
+        }
+      });
+    });
+    
+    // 檢查圖中是否存在環（循環）
+    const visited = new Set<number>();
+    const recursionStack = new Set<number>();
+    
+    function hasCycle(node: number): boolean {
+      if (recursionStack.has(node)) return true;
+      if (visited.has(node)) return false;
+      
+      visited.add(node);
+      recursionStack.add(node);
+      
+      for (const neighbor of winGraph[node]) {
+        if (hasCycle(neighbor)) return true;
+      }
+      
+      recursionStack.delete(node);
+      return false;
+    }
+    
+    for (const team of teams) {
+      if (!visited.has(team.teamId) && hasCycle(team.teamId)) {
+        return true;
+      }
+    }
+    
+    return false;
   };
 
   return (
@@ -273,7 +418,7 @@ const ContestResultsPage: React.FC = () => {
                     <th className="py-3 px-4 border text-center">隊伍/對手</th>
                     {resultsData.teams.map(team => (
                       <th key={`head-${team.teamId}`} className="py-3 px-4 border text-center">
-                        {team.teamName} ({team.teamId})
+                        {team.teamName}
                       </th>
                     ))}
                     <th className="py-3 px-4 border text-center">名次</th>
@@ -283,7 +428,7 @@ const ContestResultsPage: React.FC = () => {
                   {resultsData.teams.map(rowTeam => (
                     <tr key={`row-${rowTeam.teamId}`} className="hover:bg-gray-50">
                       <td className="py-3 px-4 border font-bold">
-                        {rowTeam.teamName} ({rowTeam.teamId})
+                        {rowTeam.teamName}
                       </td>
                       {resultsData.teams.map(colTeam => (
                         <td key={`cell-${rowTeam.teamId}-${colTeam.teamId}`} className="py-3 px-4 border text-center">
@@ -307,7 +452,7 @@ const ContestResultsPage: React.FC = () => {
                     </tr>
                   ))}
                   <tr className="bg-gray-50">
-                    <td className="py-3 px-4 border font-bold text-blue-600">勝場數</td>
+                    <td className="py-3 px-4 border font-bold text-blue-600">勝場(隊)數</td>
                     {resultsData.teams.map(team => (
                       <td key={`wins-${team.teamId}`} className="py-3 px-4 border text-center font-bold text-blue-600">
                         {team.gamesWon}
@@ -348,9 +493,11 @@ const ContestResultsPage: React.FC = () => {
               <li>表格中顯示了每個隊伍間的比賽結果。</li>
               <li>行隊伍對戰列隊伍的比分直接顯示，格式為 "行隊伍得分:列隊伍得分"。</li>
               <li>勝利的比分以橘色顯示。</li>
-              <li>名次首先根據勝場數排序，若勝場數相同則根據勝局數排序。</li>
+              <li>名次首先根據勝場(隊)數排序。</li>
+              <li>當兩隊勝場(隊)數相同時，直接對戰獲勝者排名較前。</li>
+              <li>當三隊或更多隊勝場(隊)數相同且存在循環勝負關係時(例如A勝B、B勝C、C勝A)，則按勝局數排序。</li>
               <li>勝局數統計每個隊伍在所有比賽中獲勝的局數總和。</li>
-              <li>隊伍名稱旁的數字為隊伍ID (team_id)。</li>
+              <li>隊伍名稱顯示在表格的行和列頭部。</li>
             </ul>
           </div>
         </div>

@@ -11,7 +11,7 @@ interface MatchDetail {
   score: string | null;
   sequence: number;
   match_type: 'single' | 'double' | '單打' | '雙打';
-  table_no: number | null;
+  table_no: number | string | null; // 修改為支援 number、string 或 null
   team1_name: string;
   team2_name: string;
   team1_members: string[];
@@ -53,6 +53,10 @@ const BattleRoomPage: React.FC = () => {
     player4_status?: string
   }>>({});
   
+  // Debug 相關狀態 - 保留但隱藏
+  const [debugAssignedMatches, setDebugAssignedMatches] = useState<MatchDetail[]>([]);
+  const [debugNextMatches, setDebugNextMatches] = useState<MatchDetail[]>([]);
+
   // 獲取顯示的隊員名稱文本
   const getTeamMembersDisplay = (match: MatchDetail, teamNumber: 1 | 2): React.ReactNode => {
     const isTeam1 = teamNumber === 1;
@@ -161,6 +165,8 @@ const BattleRoomPage: React.FC = () => {
       const fetchedTableCount = await fetchContestDetails();
       await fetchMatches(fetchedTableCount);
       await fetchAllTeams(); // 獲取所有參賽隊伍
+      
+      // 注意：將獲取隊長資訊移到獨立的 useEffect 中處理
     };
     
     // 從 localStorage 獲取用戶資訊
@@ -185,7 +191,106 @@ const BattleRoomPage: React.FC = () => {
     
     fetchData();
   }, [contestId]);
-  
+
+  // 新增：專門處理隊長資訊的 useEffect
+  useEffect(() => {
+    // 確保有 matches 資料後才獲取隊長資訊
+    if (matches && matches.length > 0) {
+      console.log('matches 已更新，獲取隊長資訊');
+      fetchCaptainsForAllTeams();
+    }
+  }, [matches]); // 依賴於 matches 的變化
+
+  // 修改 fetchCaptainsForAllTeams 函數
+  const fetchCaptainsForAllTeams = async () => {
+    try {
+      if (!matches || matches.length === 0) {
+        console.log('沒有比賽資料，跳過獲取隊長資訊');
+        return;
+      }
+      
+      // 從所有比賽中收集所有隊伍ID
+      const allTeamIds = new Set<number>();
+      matches.forEach((match: MatchDetail) => {
+        if (match.team1_id) allTeamIds.add(match.team1_id);
+        if (match.team2_id) allTeamIds.add(match.team2_id);
+      });
+      
+      const teamIdsArray = Array.from(allTeamIds);
+      
+      if (teamIdsArray.length === 0) {
+        console.log('沒有有效的隊伍ID，跳過獲取隊長資訊');
+        return;
+      }
+      
+      console.log('開始查詢所有隊伍的隊長資訊，隊伍IDs:', teamIdsArray);
+      
+      // 直接查詢所有隊伍的隊長資訊
+      const { data, error } = await supabase
+        .from('contest_team_member')
+        .select('contest_team_id, member_name')
+        .in('contest_team_id', teamIdsArray)
+        .eq('status', 'captain');
+      
+      if (error) {
+        console.error('獲取隊長資訊錯誤:', error);
+        return;
+      }
+      
+      if (!data || data.length === 0) {
+        console.log('未找到任何隊長資訊');
+        return;
+      }
+      
+      // 建立隊伍ID到隊長名稱的映射 (確保將ID轉為字符串)
+      const captainsMap: {[teamId: string]: string} = {};
+      data.forEach((item: {contest_team_id: number; member_name: string}) => {
+        captainsMap[item.contest_team_id.toString()] = item.member_name;
+      });
+      
+      console.log('獲取到的隊長資訊:', captainsMap);
+      setTeamCaptains(captainsMap);
+    } catch (err) {
+      console.error('獲取隊長資訊時發生錯誤:', err);
+    }
+  };
+
+  useEffect(() => {
+    // 先獲取比賽詳情，然後再獲取比賽數據
+    const fetchData = async () => {
+      // 檢查用戶是否為管理員
+      await checkUserRole();
+      
+      const fetchedTableCount = await fetchContestDetails();
+      await fetchMatches(fetchedTableCount);
+      await fetchAllTeams(); // 獲取所有參賽隊伍
+      
+      // 注意：將獲取隊長資訊移到獨立的 useEffect 中處理
+    };
+    
+    // 從 localStorage 獲取用戶資訊
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('loginUser') || '{}');
+      setLocalStorageUser(storedUser);
+      
+      // 如果 localStorage 中有用戶名稱但狀態中沒有，則設置之
+      if (storedUser.userName && !currentUserName) {
+        setCurrentUserName(storedUser.userName);
+      }
+      
+      // 如果 localStorage 中有隊伍 ID 但狀態中沒有，則設置之
+      if (storedUser.team_id && !currentUserTeamId) {
+        setCurrentUserTeamId(storedUser.team_id);
+      }
+      
+      console.log('從 localStorage 獲取的用戶資訊:', storedUser);
+    } catch (err) {
+      console.error('解析 localStorage 用戶資訊錯誤:', err);
+    }
+    
+    fetchData();
+  }, [contestId]);
+
   // 新增：取得選手狀態
   useEffect(() => {
     async function fetchPlayerStatus() {
@@ -243,8 +348,29 @@ const BattleRoomPage: React.FC = () => {
         setIsAdmin(isUserAdmin);
         
         // 設置用戶名
-        const username = storedUser.userName || storedUser.username || '';
+        const username = storedUser.userName || storedUser.username || storedUser.name || '';
         setCurrentUserName(username);
+        
+        // 如果 localStorage 中沒有 team_name，但有 team_id，嘗試獲取球隊名稱
+        if (!storedUser.team_name && storedUser.team_id) {
+          try {
+            const { data } = await supabase
+              .from('courts')
+              .select('name')
+              .eq('team_id', storedUser.team_id)
+              .maybeSingle();
+            
+            if (data?.name) {
+              // 更新 localStorageUser，添加球隊名稱
+              storedUser.team_name = data.name;
+              // 可以選擇保存回 localStorage，但這不是必需的
+              // localStorage.setItem('loginUser', JSON.stringify(storedUser));
+            }
+          } catch (err) {
+            console.error('獲取球隊名稱失敗:', err);
+          }
+        }
+        
         setLocalStorageUser(storedUser);
         
         // 設置 team_id
@@ -341,48 +467,6 @@ const BattleRoomPage: React.FC = () => {
     }
   };
 
-  // 獲取所有隊伍的隊長資訊
-  const fetchTeamCaptains = async (teamIds: (number | undefined)[]) => {
-    try {
-      console.log('獲取所有隊伍隊長資訊，隊伍IDs:', teamIds);
-      const filteredTeamIds = teamIds.filter(id => id !== undefined) as number[];
-      
-      if (filteredTeamIds.length === 0) {
-        console.log('沒有有效的隊伍ID，跳過獲取隊長資訊');
-        return {};
-      }
-      
-      // 查詢所有隊伍的隊長資訊
-      const { data, error } = await supabase
-        .from('contest_team_member')
-        .select('contest_team_id, member_name')
-        .in('contest_team_id', filteredTeamIds)
-        .eq('status', 'captain');
-      
-      if (error) {
-        console.error('獲取隊長資訊錯誤:', error);
-        return {};
-      }
-      
-      if (!data || data.length === 0) {
-        console.log('未找到任何隊長資訊');
-        return {};
-      }
-      
-      // 建立隊伍ID到隊長名稱的映射
-      const captainsMap: {[teamId: string]: string} = {};
-      data.forEach((item: {contest_team_id: number; member_name: string}) => {
-        captainsMap[item.contest_team_id.toString()] = item.member_name;
-      });
-      
-      console.log('獲取到的隊長資訊:', captainsMap);
-      return captainsMap;
-    } catch (err) {
-      console.error('獲取隊長資訊時發生錯誤:', err);
-      return {};
-    }
-  };
-
   const fetchContestDetails = async () => {
     try {
       console.log('查詢 contest 資料表，比賽 ID:', contestId);
@@ -447,7 +531,6 @@ const BattleRoomPage: React.FC = () => {
     try {
       console.log('開始獲取比賽數據，可用桌次數量:', availableTables);
       
-      // 1. 獲取所有比賽對戰
       const { data: matchData, error: matchError } = await supabase
         .from('contest_match')
         .select('match_id, team1_id, team2_id')
@@ -456,19 +539,14 @@ const BattleRoomPage: React.FC = () => {
       if (matchError) throw matchError;
 
       if (matchData && matchData.length > 0) {
-        // 2. 獲取對戰詳情
         const { data: detailData, error: detailError } = await supabase
           .from('contest_match_detail')
           .select('match_detail_id, match_id, team1_member_ids, team2_member_ids, winner_team_id, score, sequence, match_type, table_no')
-          .in('match_id', matchData.map(match => match.match_id));
+          .in('match_id', matchData.map((match: { match_id: number }) => match.match_id));
 
         if (detailError) throw detailError;
 
-        // 輸出 table_no 欄位的數據，確認是否為空
-        console.log('從資料庫獲取的 table_no 值:', detailData.map(d => ({ id: d.match_detail_id, table_no: d.table_no })));
-
-        // 3. 獲取隊伍資訊
-        const teamIds = matchData.flatMap(match => [match.team1_id, match.team2_id]).filter(Boolean);
+        const teamIds = matchData.flatMap((match: { team1_id: number; team2_id: number }) => [match.team1_id, match.team2_id]).filter(Boolean);
         
         const { data: teamData, error: teamError } = await supabase
           .from('contest_team')
@@ -477,7 +555,6 @@ const BattleRoomPage: React.FC = () => {
 
         if (teamError) throw teamError;
 
-        // 4. 查詢隊員資訊
         const { data: memberData, error: memberError } = await supabase
           .from('contest_team_member')
           .select('contest_team_id, member_id, member_name')
@@ -485,24 +562,19 @@ const BattleRoomPage: React.FC = () => {
 
         if (memberError) throw memberError;
         
-        // 5. 組合數據
-        const processedMatches = detailData.map(detail => {
-          const match = matchData.find(m => m.match_id === detail.match_id);
+        const processedMatches = detailData.map((detail: any) => {
+          const match = matchData.find((m: { match_id: number }) => m.match_id === detail.match_id);
           
-          // 獲取隊伍名稱
-          const team1 = teamData.find(t => t.contest_team_id === match?.team1_id);
-          const team2 = teamData.find(t => t.contest_team_id === match?.team2_id);
+          const team1 = teamData.find((t: { contest_team_id: number }) => t.contest_team_id === match?.team1_id);
+          const team2 = teamData.find((t: { contest_team_id: number }) => t.contest_team_id === match?.team2_id);
           
-          // 如果有winner_team_id，直接查詢勝方隊伍名稱
           const winnerTeam = detail.winner_team_id 
-            ? teamData.find(t => t.contest_team_id === detail.winner_team_id) 
+            ? teamData.find((t: { contest_team_id: number }) => t.contest_team_id === detail.winner_team_id) 
             : null;
             
-          // 解析 team1_member_ids 和 team2_member_ids
           let team1Ids: string[] = [];
           let team2Ids: string[] = [];
           
-          // 檢查是否已提交名單（空陣列也視為未提交）
           const isNonEmptyArray = (arr: any) => Array.isArray(arr) && arr.length > 0;
           const isNonEmptyStringArray = (str: any) => {
             try {
@@ -515,23 +587,20 @@ const BattleRoomPage: React.FC = () => {
           const team1MembersSubmitted = isNonEmptyArray(detail.team1_member_ids) || isNonEmptyStringArray(detail.team1_member_ids);
           const team2MembersSubmitted = isNonEmptyArray(detail.team2_member_ids) || isNonEmptyStringArray(detail.team2_member_ids);
           
-          // 解析 team1_member_ids
           if (team1MembersSubmitted) {
             team1Ids = typeof detail.team1_member_ids === 'string' 
               ? JSON.parse(detail.team1_member_ids) 
               : detail.team1_member_ids || [];
           }
           
-          // 解析 team2_member_ids
           if (team2MembersSubmitted) {
             team2Ids = typeof detail.team2_member_ids === 'string' 
               ? JSON.parse(detail.team2_member_ids) 
               : detail.team2_member_ids || [];
           }
           
-          // 獲取隊員名稱
           const team1Members = team1MembersSubmitted ? team1Ids.map(memberId => {
-            const member = memberData.find(m => 
+            const member = memberData.find((m: { contest_team_id: number; member_id: string }) => 
               m.contest_team_id === match?.team1_id && 
               m.member_id === memberId
             );
@@ -539,7 +608,7 @@ const BattleRoomPage: React.FC = () => {
           }) : [];
           
           const team2Members = team2MembersSubmitted ? team2Ids.map(memberId => {
-            const member = memberData.find(m => 
+            const member = memberData.find((m: { contest_team_id: number; member_id: string }) => 
               m.contest_team_id === match?.team2_id && 
               m.member_id === memberId
             );
@@ -556,33 +625,25 @@ const BattleRoomPage: React.FC = () => {
             team2_members: team2Members,
             team1_members_submitted: team1MembersSubmitted,
             team2_members_submitted: team2MembersSubmitted,
-            winner_team_name: winnerTeam?.team_name || '' // 直接保存勝方隊伍名稱
+            winner_team_name: winnerTeam?.team_name || ''
           };
         });
 
-        // 按照 contest_match_detail 表中的 match_detail_id 順序排序
         const sortedMatches = sortMatchesByDetailId(processedMatches);
         
-        // 執行桌次分配邏輯
-        await assignTableNumbers(sortedMatches, availableTables);
+        // 更新 Debug 資訊 - 保留但隱藏
+        const assignedMatches = sortedMatches.filter(match => match.table_no !== null);
+        const nextMatches = sortedMatches.filter(match => 
+          match.table_no === null && 
+          match.team1_members_submitted && 
+          match.team2_members_submitted
+        );
         
-        // 獲取所有團隊ID並去重
-      const allTeamIds = Array.from(new Set(
-        sortedMatches.flatMap(match => [
-          match.team1_id,
-          match.team2_id
-        ]).filter((id): id is number => id !== undefined)
-      ));
-      
-      // 獲取所有隊伍的隊長資訊
-      const captainsMap = await fetchTeamCaptains(allTeamIds);
-      setTeamCaptains(captainsMap);
-      
-      // 設置更新後的比賽數據到 matches 狀態變量
-      setMatches(sortedMatches);
-      
-      // 檢查比賽是否已結束
-      checkContestCompleted(sortedMatches);
+        setDebugAssignedMatches(assignedMatches);
+        setDebugNextMatches(nextMatches);
+        
+        await assignTableNumbers(sortedMatches, availableTables);
+        setMatches(sortedMatches);
       }
     } catch (err: any) {
       console.error('獲取比賽數據錯誤:', err);
@@ -608,52 +669,77 @@ const BattleRoomPage: React.FC = () => {
     
     try {
       // 檢查資料庫中是否已經有任何一個比賽被分配桌次
-      // 只要有一個比賽已經分配桌次，就不再執行桌次分配
-      const hasAnyTableAssigned = matches.some(m => m.table_no !== null);
+      const hasAnyTableAssigned = matches.some(m => m.table_no !== null && m.table_no !== 'Next');
       
       if (hasAnyTableAssigned) {
         console.log('資料庫中已有桌次分配，跳過初始分配步驟');
-        return matches; // 直接返回現有數據，不做任何修改
+        return matches;
       }
       
-      console.log('資料庫中尚無桌次分配，進行初始分配');
-      
-      // 確保 availableTables 至少為 1
+      // 確保桌次數量至少為 1
       const tables = Math.max(1, availableTables);
-      console.log('最終使用的桌次數量:', tables);
-      console.log('比賽總數:', matches.length);
+      console.log('使用的桌次數量:', tables);
       
-      // 準備要更新的桌次分配
+      // 找出所有符合條件的比賽
+      const eligibleMatches = matches.filter(match => 
+        match.match_detail_id && 
+        !match.score && 
+        match.team1_members_submitted && 
+        match.team2_members_submitted
+      ).sort((a, b) => (a.match_detail_id || 0) - (b.match_detail_id || 0));
+      
+      console.log('符合條件的比賽數量:', eligibleMatches.length);
+      
+      if (eligibleMatches.length === 0) {
+        console.log('沒有符合條件的比賽，跳過桌次分配');
+        return matches;
+      }
+      
+      // 已使用的桌次集合
+      const usedTables = new Set<number>();
       const tableAssignments = [];
       
-      // 為前 N 場比賽分配桌次，N 由 table_count 決定
-      for (let i = 0; i < Math.min(matches.length, tables); i++) {
-        const match = matches[i];
-        const tableNo = i + 1; // 桌次從 1 開始
+      // 第一輪分配：為符合條件的比賽分配桌次（最多分配可用桌次數量）
+      for (let i = 0; i < Math.min(tables, eligibleMatches.length); i++) {
+        const match = eligibleMatches[i];
+        // 分配桌次號碼（從1開始）
+        const tableNo = i + 1;
+        
         console.log(`分配桌次: ID ${match.match_detail_id}, 桌次 ${tableNo}`);
-        tableAssignments.push({ matchId: match.match_detail_id, tableNo });
-        // 更新前端顯示的桌次
+        tableAssignments.push({ matchId: match.match_detail_id, tableNo: tableNo.toString() });
+        usedTables.add(tableNo);
         match.table_no = tableNo;
       }
       
-      // 將分配結果更新到資料庫
+      // 第二輪處理：標記最多兩場額外的比賽為 "Next"
+      const nextMatchCount = Math.min(2, eligibleMatches.length - tables);
+      if (nextMatchCount > 0) {
+        for (let i = 0; i < nextMatchCount; i++) {
+          const matchIndex = tables + i;
+          if (matchIndex < eligibleMatches.length) {
+            const match = eligibleMatches[matchIndex];
+            console.log(`標記為 Next: ID ${match.match_detail_id}`);
+            tableAssignments.push({ matchId: match.match_detail_id, tableNo: "Next" });
+            match.table_no = "Next";
+          }
+        }
+      }
+      
+      // 更新資料庫
       if (tableAssignments.length > 0) {
-        console.log(`將 ${tableAssignments.length} 個桌次分配更新到資料庫`);
         await updateTableNumbersInDatabase(tableAssignments);
-      } else {
-        console.log('沒有桌次需要分配');
       }
       
       return matches;
     } catch (err: any) {
       console.error('桌次分配錯誤:', err);
-      return matches; // 發生錯誤時返回原始數據
+      return matches;
     }
   };
 
   
   // 更新桌次到資料庫
-  const updateTableNumbersInDatabase = async (tableAssignments: { matchId: number; tableNo: number | null }[]) => {
+  const updateTableNumbersInDatabase = async (tableAssignments: { matchId: number; tableNo: number | string | null }[]) => {
     console.log('開始更新桌次到資料庫');
     console.log('要更新的桌次分配:', tableAssignments);
     
@@ -879,26 +965,90 @@ const BattleRoomPage: React.FC = () => {
     }
   };
   
-  // 過濾比賽資料
+  // 修正 filteredMatches 函數，使用簡單直接的實現方法
   const filteredMatches = matches.filter((match: MatchDetail) => {
-    console.log('過濾比賽:', { match, searchKeyword, selectedTeamId });
-    // 依照搜尋關鍵字過濾
-    const keywordMatches = searchKeyword === '' || (
-      (match.team1_name?.toLowerCase().includes(searchKeyword.toLowerCase()) ||
-       match.team2_name?.toLowerCase().includes(searchKeyword.toLowerCase()) ||
-       match.team1_members?.some((member: string) => member.toLowerCase().includes(searchKeyword.toLowerCase())) ||
-       match.team2_members?.some((member: string) => member.toLowerCase().includes(searchKeyword.toLowerCase())))
-    );
+    // 依照搜尋關鍵字過濾，確保關鍵字非空
+    let keywordMatches = true;
+    if (searchKeyword !== '') {
+      const keyword = searchKeyword.toLowerCase();
+      
+      // 檢查成員名稱是否包含關鍵字，不區分隊長和普通隊員
+      const team1MembersMatch = match.team1_members?.some((member: string) => {
+        const isMatch = member.toLowerCase().includes(keyword);
+        if (isMatch) {
+          // 檢查是否是隊長，只是為了記錄日誌
+          const isCaptain = match.team1_id && teamCaptains[match.team1_id.toString()] === member;
+          console.log(`關鍵字 "${keyword}" 匹配到隊伍1成員: ${member}${isCaptain ? ' (隊長)' : ''}`);
+        }
+        return isMatch;
+      }) || false;
+      
+      const team2MembersMatch = match.team2_members?.some((member: string) => {
+        const isMatch = member.toLowerCase().includes(keyword);
+        if (isMatch) {
+          // 檢查是否是隊長，只是為了記錄日誌
+          const isCaptain = match.team2_id && teamCaptains[match.team2_id.toString()] === member;
+          console.log(`關鍵字 "${keyword}" 匹配到隊伍2成員: ${member}${isCaptain ? ' (隊長)' : ''}`);
+        }
+        return isMatch;
+      }) || false;
+      
+      // 也可以選擇性地檢查隊伍名稱，如果需要的話
+      const team1NameMatch = match.team1_name?.toLowerCase().includes(keyword) || false;
+      const team2NameMatch = match.team2_name?.toLowerCase().includes(keyword) || false;
+      
+      // 總匹配結果 - 只要隊員名字匹配即可，可以選擇是否包含隊伍名稱
+      keywordMatches = team1MembersMatch || team2MembersMatch;
+      
+      // 日誌記錄匹配結果
+      if (keywordMatches) {
+        console.log(`比賽 ${match.match_detail_id} 匹配關鍵字 "${keyword}":`, {
+          team1MembersMatch,
+          team2MembersMatch
+        });
+      }
+    }
     
     // 依照選擇的隊伍過濾
     const teamMatches = selectedTeamId === null || 
       match.team1_id === selectedTeamId || 
       match.team2_id === selectedTeamId;
-      
-    console.log(`比賽 ${match.match_detail_id} 過濾結果:`, { keywordMatches, teamMatches });
     
     return keywordMatches && teamMatches;
   });
+
+  // handleSearchSelf 函數保持不變
+  const handleSearchSelf = () => {
+    // 先重置所有過濾條件
+    setSelectedTeamId(null);
+    
+    // 獲取用戶名稱（優先使用 localStorageUser.userName，其次使用 currentUserName）
+    const userName = localStorageUser?.userName || currentUserName;
+    
+    if (userName) {
+      // 如果有用戶名稱，直接使用作為搜尋關鍵字
+      console.log(`執行搜尋自己操作，設置搜尋關鍵字為: ${userName}`);
+      setSearchKeyword(userName);
+      return;
+    }
+    
+    // 如果沒有用戶名稱但有隊伍 ID，嘗試使用隊伍 ID 過濾
+    if (localStorageUser?.team_id) {
+      console.log(`執行搜尋自己操作，設置隊伍 ID 為: ${localStorageUser.team_id}`);
+      setSelectedTeamId(parseInt(localStorageUser.team_id));
+      return;
+    }
+    
+    if (currentUserTeamId) {
+      console.log(`執行搜尋自己操作，設置當前比賽隊伍 ID 為: ${currentUserTeamId}`);
+      setSelectedTeamId(currentUserTeamId);
+      return;
+    }
+    
+    // 如果都沒有找到相關信息，提示用戶
+    console.log('搜尋自己：無法找到用戶相關信息');
+    alert('無法找到您的相關信息，請手動輸入搜尋關鍵字');
+  };
 
   // 重置搜尋和過濾條件
   const resetFilters = () => {
@@ -906,6 +1056,14 @@ const BattleRoomPage: React.FC = () => {
     setSelectedTeamId(null);
   };
   
+  // 新增：處理依桌次排列按鈕點擊，導航到新頁面
+  const handleSortByTable = () => {
+    if (contestId) {
+      // 導航到新的桌次視圖頁面
+      navigate(`/contest/${contestId}/table-view`);
+    }
+  };
+
   // 直接前往約戰頁面的按鈕處理函數
   const navigateToChallenge = async (match: MatchDetail) => {
     try {
@@ -1006,9 +1164,18 @@ const BattleRoomPage: React.FC = () => {
       setError(err.message);
     }
   };
-  
+
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* 使用者資訊區塊 - 修改樣式 */}
+      <div className="p-4 bg-gray-100 flex justify-end items-center">
+        <span className="text-gray-600">
+          登入者：{localStorageUser?.userName || currentUserName || '訪客'}
+          {localStorageUser?.team_name ? `（${localStorageUser.team_name}隊）` : ''}
+          {isAdmin && <span className="ml-2 text-blue-600 font-semibold">[管理員]</span>}
+        </span>
+      </div>
+      
       {loading ? (
         <p className="text-center">載入中...</p>
       ) : error ? (
@@ -1026,68 +1193,86 @@ const BattleRoomPage: React.FC = () => {
               <h1 className="text-2xl font-bold">{contestName} - 戰況室</h1>
             </div>
             {/* 比分表按鈕 - 始終顯示 */}
-            <div className="flex gap-2">
-              <button
-                onClick={navigateToResults}
-                className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md"
-              >
-                比分表
-              </button>
-              <button
-                onClick={() => navigate(`/contest/${contestId}/lineup-status`)}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
-              >
-                名單狀況
-              </button>
-            </div>
+            <button
+              onClick={navigateToResults}
+              className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md mr-2"
+            >
+              比分表
+            </button>
+            {/* 新增名單狀況按鈕 */}
+            <button
+              onClick={() => navigate(`/contest/${contestId}/lineup-status`)}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md mr-2"
+            >
+              名單狀況
+            </button>
+            {/* 在這裡新增依桌次排列按鈕 */}
+            <button
+              onClick={handleSortByTable}
+              className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-md"
+            >
+              依桌次
+            </button>
           </div>
           
-          {/* 搜尋和過濾區域 */}
-          <div className="mb-6 bg-white p-4 rounded-lg shadow-sm border">
-            <h2 className="text-lg font-semibold mb-3 text-blue-800">搜尋和過濾</h2>
-            <div className="flex flex-wrap gap-4">
-              {/* 關鍵字搜尋 */}
-              <div className="flex-1 min-w-[200px]">
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          {/* 搜尋和過濾區域 - 修改為更緊湊的橫向布局 */}
+          <div className="mb-6 bg-white p-3 rounded-lg shadow-sm border">
+            <div className="flex flex-wrap items-center justify-between">
+              {/* 左側：標題和搜尋元素 */}
+              <div className="flex items-center flex-wrap gap-3 flex-1">
+                <h2 className="text-base font-semibold text-blue-800 whitespace-nowrap">搜尋和過濾:</h2>
+                
+                {/* 關鍵字搜尋 - 更窄 */}
+                <div className="relative w-48 md:w-56">
+                  <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
                     <span className="text-gray-400">🔍</span>
                   </div>
                   <input
                     type="text"
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="搜尋隊伍名稱或成員"
+                    className="block w-full pl-8 pr-2 py-1.5 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    placeholder="搜尋隊伍或成員"
                     value={searchKeyword}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchKeyword(e.target.value)}
                   />
                 </div>
+                
+                {/* 隊伍選擇下拉選單 - 更窄 */}
+                <div className="w-40 md:w-48">
+                  <select
+                    className="block w-full py-1.5 px-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    value={selectedTeamId === null ? '' : selectedTeamId}
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedTeamId(e.target.value ? parseInt(e.target.value) : null)}
+                  >
+                    <option value="">所有隊伍</option>
+                    {allTeams.map((team: {id: number, name: string}) => (
+                      <option key={team.id} value={team.id}>{team.name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                {/* 操作按鈕 - 更小巧 */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSearchSelf}
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded text-sm transition duration-200"
+                    title="過濾顯示自己的隊伍"
+                  >
+                    搜尋自己
+                  </button>
+                  
+                  <button
+                    onClick={resetFilters}
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1.5 rounded text-sm transition duration-200"
+                  >
+                    顯示全部
+                  </button>
+                </div>
               </div>
               
-              {/* 隊伍選擇下拉選單 */}
-              <div className="flex-1 min-w-[200px]">
-                <select
-                  className="block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  value={selectedTeamId === null ? '' : selectedTeamId}
-                  onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedTeamId(e.target.value ? parseInt(e.target.value) : null)}
-                >
-                  <option value="">所有隊伍</option>
-                  {allTeams.map((team: {id: number, name: string}) => (
-                    <option key={team.id} value={team.id}>{team.name}</option>
-                  ))}
-                </select>
+              {/* 右側：搜尋結果計數 */}
+              <div className="text-sm text-gray-600 whitespace-nowrap">
+                顯示 {filteredMatches.length} / {matches.length} 場比賽
               </div>
-              
-              {/* 重置按鈕 */}
-              <button
-                onClick={resetFilters}
-                className="bg-gray-200 hover:bg-gray-300 text-gray-700 px-4 py-2 rounded-md transition duration-200"
-              >
-                重置過濾
-              </button>
-            </div>
-            
-            {/* 搜尋結果計數 */}
-            <div className="mt-2 text-sm text-gray-600">
-              顯示 {filteredMatches.length} / {matches.length} 場比賽
             </div>
           </div>
           
@@ -1134,7 +1319,10 @@ const BattleRoomPage: React.FC = () => {
                       {/* 隊伍1 */}
                       <div className="text-center w-2/5">
                         <div className="font-bold text-lg">{match.team1_name}</div>
-                        <div className="text-xs text-gray-500">({teamCaptains[match.team1_id] || '無隊長'})</div>
+                        <div className="text-xs text-gray-400">ID: {match.team1_id}</div>
+                        <div className="text-xs text-gray-500">
+                          隊長: {match.team1_id && teamCaptains[match.team1_id.toString()] ? teamCaptains[match.team1_id.toString()] : '無隊長'}
+                        </div>
                         <div className="text-sm mt-1 text-gray-600">
                           {getTeamMembersDisplay(match, 1)}
                           {/* 針對單打比賽，顯示人員名字底下的狀態 */}
@@ -1181,7 +1369,10 @@ const BattleRoomPage: React.FC = () => {
                       {/* 隊伍2 */}
                       <div className="text-center w-2/5">
                         <div className="font-bold text-lg">{match.team2_name}</div>
-                        <div className="text-xs text-gray-500">({teamCaptains[match.team2_id] || '無隊長'})</div>
+                        <div className="text-xs text-gray-400">ID: {match.team2_id}</div>
+                        <div className="text-xs text-gray-500">
+                          隊長: {match.team2_id && teamCaptains[match.team2_id.toString()] ? teamCaptains[match.team2_id.toString()] : '無隊長'}
+                        </div>
                         <div className="text-sm mt-1 text-gray-600">
                           {getTeamMembersDisplay(match, 2)}
                           {/* 針對單打比賽，顯示人員名字底下的狀態 */}
@@ -1248,7 +1439,5 @@ const BattleRoomPage: React.FC = () => {
     </div>
   );
 };
-
-
 
 export default BattleRoomPage;

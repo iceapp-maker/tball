@@ -266,7 +266,8 @@ const LineupEditorPage: React.FC = () => {
     <div className="p-4">
       <h2 className="text-xl font-bold mb-2">編排出賽名單</h2>
       
-      {/* 顯示 Debug 資訊 */}
+      {/* Debug 資訊區塊 (已隱藏，需時請移除註解) */}
+      {/*
       {matchInfo && (
         <div className="mb-4">
           <div className="p-3 bg-gray-100 rounded mb-4 border-2 border-red-500">
@@ -283,6 +284,7 @@ const LineupEditorPage: React.FC = () => {
           <p><strong>對手隊伍：</strong>{matchInfo.opponent_name}</p>
         </div>
       )}
+      */}
       
       {matchDetails.length === 0 ? (
         <p>沒有找到比賽項目資料</p>
