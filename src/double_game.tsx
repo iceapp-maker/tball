@@ -1271,20 +1271,31 @@ function DoubleGame() {
             }
           }
           
-          // 自動返回戰況室
+          // 比賽模式：直接自動返回戰況室，不顯示後續選擇彈窗
           console.log('準備返回戰況室頁面...');
           setTimeout(() => {
             navigate(-1);
           }, 1500);
           
+          // 比賽模式下不需要顯示後續彈窗，直接返回
+          setTimeout(() => setShowSubmitMessage(false), 1500);
+          return; // 重要：在比賽模式下直接返回，不執行後面的彈窗顯示
+          
         } catch (error) {
           console.error('更新戰況室比賽結果失敗:', error);
+          // 即使更新失敗，仍然跳轉回戰況室
+          setTimeout(() => {
+            navigate(-1);
+          }, 1500);
+          setTimeout(() => setShowSubmitMessage(false), 1500);
+          return;
         }
       }
       
-      // 儲存成功後顯示後續選擇彈窗
+      // 只有非比賽模式才顯示後續選擇彈窗
       setShowPostSaveModal(true);
       setTimeout(() => setShowSubmitMessage(false), 3000);
+      
     } catch (error) {
       console.error('儲存過程發生未預期的錯誤:', error);
       setSubmitStatus('error');

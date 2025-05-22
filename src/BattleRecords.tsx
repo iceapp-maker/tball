@@ -13,6 +13,8 @@ interface ScoreSummary {
   winning_rate?: number;
   total_games: number;
   win_games?: number;
+  source_type: string;
+  game_type_name: string;
 }
 
 const TEAM_NAMES: Record<string, string> = {
@@ -21,6 +23,13 @@ const TEAM_NAMES: Record<string, string> = {
   'T': '測試',
   // 其他團隊可依需求擴充
 };
+
+// 比賽類型選項
+const GAME_TYPE_OPTIONS = [
+  { value: 'all', label: '全部比賽' },
+  { value: 'challenge', label: '挑戰賽' },
+  { value: 'contest', label: '正式比賽' }
+];
 
 // 取得登入者資訊（優先用 props，其次 localStorage，否則顯示訪客）
 function getCurrentUser() {
@@ -44,6 +53,7 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
   const pageSize = 10;
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth() + 1);
+  const [selectedGameType, setSelectedGameType] = useState<string>('all'); // 新增比賽類型篩選
   const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
   const [playerRecords, setPlayerRecords] = useState<any[]>([]);
   const [allRecords, setAllRecords] = useState<any[]>([]);
@@ -62,16 +72,22 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
       
       const targetTeamId = user?.team_id || 'T';
       
-      // 獲取當月有比賽且有分數的所有玩家資料
-      const { data, error, count } = await supabase
+      // 建立查詢條件
+      let query = supabase
         .from('member_monthly_score_summary')
         .select('*', { count: 'exact' })
         .eq('team_id', targetTeamId)
         .eq('year', selectedYear)
         .eq('month', selectedMonth)
         .gt('points', 0)
-        .gt('total_games', 0)
-        .order('points', { ascending: false });
+        .gt('total_games', 0);
+      
+      // 根據選擇的比賽類型添加篩選條件
+      if (selectedGameType !== 'all') {
+        query = query.eq('source_type', selectedGameType);
+      }
+      
+      const { data, error, count } = await query.order('points', { ascending: false });
       
       if (error) {
         setErrorMsg('資料查詢失敗: ' + error.message);
@@ -85,30 +101,40 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
     };
     
     fetchAllData();
-  }, [teamId, selectedYear, selectedMonth]);
+  }, [teamId, selectedYear, selectedMonth, selectedGameType]); // 新增 selectedGameType 依賴
 
   // 獲取所有比賽記錄
   const fetchAllRecords = async () => {
     setLoading(true);
+    
     // 查詢單打
-    const { data: single } = await supabase
+    let singleQuery = supabase
       .from("g_single_game")
       .select("*")
-      .eq("team_id", teamId)
-      .order("record_date", { ascending: false });
+      .eq("team_id", teamId);
+    
     // 查詢雙打
-    const { data: double } = await supabase
+    let doubleQuery = supabase
       .from("g_double_game")
       .select("*")
-      .eq("team_id", teamId)
-      .order("record_date", { ascending: false });
+      .eq("team_id", teamId);
+    
+    // 根據選擇的比賽類型添加篩選條件
+    if (selectedGameType !== 'all') {
+      singleQuery = singleQuery.eq('source_type', selectedGameType);
+      doubleQuery = doubleQuery.eq('source_type', selectedGameType);
+    }
+    
+    const { data: single } = await singleQuery.order("record_date", { ascending: false });
+    const { data: double } = await doubleQuery.order("record_date", { ascending: false });
+    
     setAllRecords([...(single || []), ...(double || [])]);
     setLoading(false);
   };
 
   useEffect(() => {
     fetchAllRecords();
-  }, [teamId]);
+  }, [teamId, selectedGameType]); // 新增 selectedGameType 依賴
 
   // 搜尋自己跳到對應頁面
   const handleCenterSelf = async () => {
@@ -116,16 +142,22 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
     
     setLoading(true);
     
-    // 獲取當月有比賽且有分數的所有玩家資料
-    const { data: allMembers, error } = await supabase
+    // 建立查詢條件
+    let query = supabase
       .from('member_monthly_score_summary')
       .select('*')
       .eq('team_id', teamId)
       .eq('year', selectedYear)
       .eq('month', selectedMonth)
       .gt('points', 0)
-      .gt('total_games', 0)
-      .order('points', { ascending: false });
+      .gt('total_games', 0);
+    
+    // 根據選擇的比賽類型添加篩選條件
+    if (selectedGameType !== 'all') {
+      query = query.eq('source_type', selectedGameType);
+    }
+    
+    const { data: allMembers, error } = await query.order('points', { ascending: false });
 
     if (error || !allMembers) {
       setErrorMsg('查詢失敗');
@@ -156,15 +188,14 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
     setLoading(true);
     
     // 查詢單打
-    const { data: singleGames } = await supabase
+    let singleQuery = supabase
       .from("g_single_game")
       .select("*")
       .eq("team_id", teamId)
-      .or(`player1.eq.${playerName},player2.eq.${playerName}`)
-      .order("record_date", { ascending: false });
+      .or(`player1.eq.${playerName},player2.eq.${playerName}`);
     
     // 查詢雙打
-    const { data: doubleGames } = await supabase
+    let doubleQuery = supabase
       .from("g_double_game")
       .select("*")
       .eq("team_id", teamId)
@@ -173,8 +204,16 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
         `player2.eq.${playerName}`,
         `player3.eq.${playerName}`,
         `player4.eq.${playerName}`
-      ].join(","))
-      .order("record_date", { ascending: false });
+      ].join(","));
+    
+    // 根據選擇的比賽類型添加篩選條件
+    if (selectedGameType !== 'all') {
+      singleQuery = singleQuery.eq('source_type', selectedGameType);
+      doubleQuery = doubleQuery.eq('source_type', selectedGameType);
+    }
+    
+    const { data: singleGames } = await singleQuery.order("record_date", { ascending: false });
+    const { data: doubleGames } = await doubleQuery.order("record_date", { ascending: false });
     
     // 處理型態與勝負
     const singleGamesWithResult = (singleGames || []).map(game => ({
@@ -292,6 +331,7 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
       return (
         <div className="bg-white p-2 rounded shadow text-sm">
           <div className="font-bold mb-1">{label}</div>
+          <div>類型：{item.game_type_name || '--'}</div>
           <div>points：{item.points}</div>
           <div>勝率：{item.winning_rate ?? '--'}</div>
           <div>總場次：{item.total_games}</div>
@@ -299,6 +339,38 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
       );
     }
     return null;
+  };
+
+  // 取得比賽類型的樣式
+  const getGameTypeStyle = (sourceType: string) => {
+    switch (sourceType) {
+      case 'challenge':
+        return {
+          color: '#059669', // 綠色文字
+          borderBottom: '2px solid #10b981', // 綠色底線
+          fontWeight: 'bold'
+        };
+      case 'contest':
+        return {
+          color: '#dc2626', // 紅色文字
+          borderBottom: '2px solid #ef4444', // 紅色底線
+          fontWeight: 'bold'
+        };
+      default:
+        return {};
+    }
+  };
+
+  // 取得比賽類型符號
+  const getGameTypeSymbol = (sourceType: string) => {
+    switch (sourceType) {
+      case 'challenge':
+        return '⚡'; // 挑戰賽用閃電
+      case 'contest':
+        return '🏆'; // 正式比賽用獎盃
+      default:
+        return '';
+    }
   };
 
   // 對戰紀錄表格元件（可複用）
@@ -335,7 +407,24 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
 
     return (
       <div className="mt-8">
-        <h2 className="mb-2 font-bold">{playerName ? `${playerName} ` : ''}對戰紀錄月份</h2>
+        <h2 className="mb-2 font-bold">
+          {playerName ? `${playerName} ` : ''}對戰紀錄月份
+          {selectedGameType !== 'all' && (
+            <span className="ml-2 text-sm text-blue-600">
+              ({GAME_TYPE_OPTIONS.find(opt => opt.value === selectedGameType)?.label})
+            </span>
+          )}
+        </h2>
+        
+        {/* 比賽類型圖例說明 */}
+        {selectedGameType === 'all' && (
+          <div className="mb-3 p-2 bg-gray-50 rounded text-sm">
+            <span className="font-bold mr-3">比賽類型：</span>
+            <span className="mr-4">⚡ 挑戰賽</span>
+            <span>🏆 正式比賽</span>
+          </div>
+        )}
+        
         <div className="flex gap-2 mb-2">
           {[1,2,3,4,5,6].map(m => (
             <span key={m} className="relative inline-block">
@@ -404,15 +493,18 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
                 <th className="border px-2">對手</th>
                 <th className="border px-2">比分</th>
                 <th className="border px-2">勝負</th>
+                <th className="border px-2">類型</th>
               </tr>
             </thead>
             <tbody>
               {filteredGames.length === 0 ? (
-                <tr><td colSpan={7}>無紀錄</td></tr>
+                <tr><td colSpan={8}>無紀錄</td></tr>
               ) : (
                 filteredGames.map((game, idx) => {
                   const date = game.record_date ? new Date(game.record_date) : null;
                   const dateStr = date ? `${date.getMonth() + 1}/${date.getDate()}` : '';
+                  const gameTypeSymbol = getGameTypeSymbol(game.source_type);
+                  
                   return (
                     <tr key={game.id || idx}>
                       <td className="border px-2">{idx + 1}</td>
@@ -422,6 +514,7 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
                       <td className="border px-2">{game.opponent}</td>
                       <td className="border px-2">{game.score}</td>
                       <td className="border px-2">{game.result}</td>
+                      <td className="border px-2 text-lg">{gameTypeSymbol}</td>
                     </tr>
                   );
                 })
@@ -449,7 +542,24 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
 
     return (
       <div className="mt-8">
-        <h2 className="mb-2 font-bold">所有成員對戰紀錄月份</h2>
+        <h2 className="mb-2 font-bold">
+          所有成員對戰紀錄月份
+          {selectedGameType !== 'all' && (
+            <span className="ml-2 text-sm text-blue-600">
+              ({GAME_TYPE_OPTIONS.find(opt => opt.value === selectedGameType)?.label})
+            </span>
+          )}
+        </h2>
+        
+        {/* 比賽類型圖例說明 */}
+        {selectedGameType === 'all' && (
+          <div className="mb-3 p-2 bg-gray-50 rounded text-sm">
+            <span className="font-bold mr-3">比賽類型：</span>
+            <span className="mr-4">⚡ 挑戰賽</span>
+            <span>🏆 正式比賽</span>
+          </div>
+        )}
+        
         <div className="flex gap-2 mb-2">
           {[1,2,3,4,5,6].map(m => (
             <span key={m} className="relative inline-block">
@@ -506,15 +616,18 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
                 <th className="border px-2">player3</th>
                 <th className="border px-2">player4</th>
                 <th className="border px-2">比數</th>
+                <th className="border px-2">類型</th>
               </tr>
             </thead>
             <tbody>
               {filteredGames.length === 0 ? (
-                <tr><td colSpan={7}>無紀錄</td></tr>
+                <tr><td colSpan={8}>無紀錄</td></tr>
               ) : (
                 filteredGames.map((game, idx) => {
                   const date = game.record_date ? new Date(game.record_date) : null;
                   const dateStr = date ? `${date.getMonth() + 1}/${date.getDate()}` : '';
+                  const gameTypeSymbol = getGameTypeSymbol(game.source_type);
+                  
                   return (
                     <tr key={game.id || idx}>
                       <td className="border px-2">{idx + 1}</td>
@@ -524,6 +637,7 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
                       <td className="border px-2">{game.player3 || '--'}</td>
                       <td className="border px-2">{game.player4 || '--'}</td>
                       <td className="border px-2">{game.score || '--'}</td>
+                      <td className="border px-2 text-lg">{gameTypeSymbol}</td>
                     </tr>
                   );
                 })
@@ -538,6 +652,9 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
   // 根據當前頁面獲取顯示的數據
   const currentPageData = allData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
+  // 取得當前選擇的比賽類型名稱
+  const currentGameTypeName = GAME_TYPE_OPTIONS.find(opt => opt.value === selectedGameType)?.label || '全部比賽';
+
   return (
     <div className="max-w-3xl mx-auto p-2 sm:p-6 overflow-x-auto">
       <div className="mb-2 text-gray-700 text-sm">
@@ -547,8 +664,26 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
         }
       </div>
       <h2 className="text-2xl font-bold mb-4">
-        {teamName} {selectedYear} 年 {selectedMonth} 月積分
+        {teamName} {selectedYear} 年 {selectedMonth} 月積分 - {currentGameTypeName}
       </h2>
+      
+      {/* 添加圖例說明 */}
+      {selectedGameType === 'all' && (
+        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+          <h3 className="text-sm font-bold mb-2">比賽類型圖例：</h3>
+          <div className="flex gap-4 text-sm">
+            <div className="flex items-center gap-1">
+              <span>⚡</span>
+              <span style={{ color: '#059669', fontWeight: 'bold' }}>挑戰賽</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span>🏆</span>
+              <span style={{ color: '#dc2626', fontWeight: 'bold' }}>正式比賽</span>
+            </div>
+          </div>
+        </div>
+      )}
+      
       <div className="flex flex-wrap gap-2 mb-4">
         <button
           className="px-2 py-1 text-xs sm:text-sm bg-blue-500 text-white rounded"
@@ -556,12 +691,12 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
           disabled={!user}
         >搜尋自己</button>
         
-        {/* 年份、月份選擇 */}
-        <div className="flex ml-4">
+        {/* 年份、月份、比賽類型選擇 */}
+        <div className="flex ml-4 gap-2">
           <select 
             value={selectedYear}
             onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="text-xs sm:text-sm border rounded mr-2"
+            className="text-xs sm:text-sm border rounded"
           >
             {[2024, 2025].map(year => (
               <option key={year} value={year}>{year}年</option>
@@ -575,6 +710,17 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
           >
             {Array.from({ length: 12 }, (_, i) => i + 1).map(month => (
               <option key={month} value={month}>{month}月</option>
+            ))}
+          </select>
+          
+          {/* 新增比賽類型選擇器 */}
+          <select 
+            value={selectedGameType}
+            onChange={(e) => setSelectedGameType(e.target.value)}
+            className="text-xs sm:text-sm border rounded"
+          >
+            {GAME_TYPE_OPTIONS.map(option => (
+              <option key={option.value} value={option.value}>{option.label}</option>
             ))}
           </select>
         </div>
@@ -670,21 +816,27 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
               <th className="border px-2">積分</th>
               <th className="border px-2">勝率</th>
               <th className="border px-2">總場次</th>
+              <th className="border px-2">類型</th>
             </tr>
           </thead>
           <tbody>
             {currentPageData.length === 0 ? (
-              <tr><td colSpan={5}>無紀錄</td></tr>
+              <tr><td colSpan={6}>無紀錄</td></tr>
             ) : (
-              currentPageData.map((row, idx) => (
-                <tr key={row.name} className={selectedPlayer === row.name ? "bg-blue-50" : ""}>
-                  <td className="border px-2">{(currentPage - 1) * pageSize + idx + 1}</td>
-                  <td className="border px-2">{row.name}</td>
-                  <td className="border px-2">{row.points}</td>
-                  <td className="border px-2">{row.winning_rate ?? '--'}</td>
-                  <td className="border px-2">{row.total_games}</td>
-                </tr>
-              ))
+              currentPageData.map((row, idx) => {
+                const gameTypeSymbol = getGameTypeSymbol(row.source_type);
+                
+                return (
+                  <tr key={row.name} className={selectedPlayer === row.name ? "bg-blue-50" : ""}>
+                    <td className="border px-2">{(currentPage - 1) * pageSize + idx + 1}</td>
+                    <td className="border px-2">{row.name}</td>
+                    <td className="border px-2">{row.points}</td>
+                    <td className="border px-2">{row.winning_rate ?? '--'}</td>
+                    <td className="border px-2">{row.total_games}</td>
+                    <td className="border px-2 text-lg">{gameTypeSymbol}</td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

@@ -586,12 +586,7 @@ export default function ChallengeListPage() {
                         <tr key={ch.challenge_id} style={{ background: idx%2===0?'#fff':'#f7f9fa' }}>
                           <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>
                             {ch.initiator}
-                            {ch.match_detail_id && (
-                              <div style={{ fontSize: 10, color: 'red' }}>
-                                ID: {ch.match_detail_id}
-                              </div>
-                            )}
-                          </td>
+                           </td>
                           <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player1 || '-'}</td>
                           <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player2 || '-'}</td>
                           <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player3 || '-'}</td>
@@ -868,11 +863,7 @@ export default function ChallengeListPage() {
                         <tr key={ch.challenge_id} style={{ background: idx%2===0?'#fff':'#f7f9fa' }}>
                           <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>
                             {ch.initiator}
-                            {ch.match_detail_id && (
-                              <div style={{ fontSize: 10, color: 'red' }}>
-                                ID: {ch.match_detail_id}
-                              </div>
-                            )}
+                         
                           </td>
                           <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player1 || '-'}</td>
                           <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player2 || '-'}</td>

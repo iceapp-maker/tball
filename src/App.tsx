@@ -21,9 +21,9 @@ import EditContestPage from './contest/EditContestPage';
 import ContestControlPage from './contest/ContestControlPage';
 import BattleRoomPage from './contest/BattleRoomPage';
 import NewPersonalInfo from './personal/NewPersonalInfo';
-import LineupEditorPage from './contest/LineupEditorPage';  // 請確保路徑正確
+import LineupEditorPage from './contest/LineupEditorPage';
 import ContestResultsPage from './contest/ContestResultsPage';
-import LineupStatusPage from './contest/LineupStatusPage'; // 新增比賽結果分析頁面
+import LineupStatusPage from './contest/LineupStatusPage';
 import ContestTableView from './contest/ContestTableView';
 
 // 版本信息
@@ -74,8 +74,50 @@ async function createMembersTable() {
 
 // 新增管理員專區頁面
 function AdminArea({ currentLoggedInUser }) {
+  const [teamName, setTeamName] = useState('');
+
+  // 根據 team_id 查詢團隊名稱
+  useEffect(() => {
+    const fetchTeamName = async () => {
+      if (currentLoggedInUser?.team_id) {
+        const { data, error } = await supabase
+          .from('courts')
+          .select('name')
+          .eq('team_id', currentLoggedInUser.team_id)
+          .maybeSingle();
+        
+        if (!error && data) {
+          setTeamName(data.name);
+        } else {
+          setTeamName(currentLoggedInUser.team_id); // 如果查不到就顯示 team_id
+        }
+      }
+    };
+    fetchTeamName();
+  }, [currentLoggedInUser?.team_id]);
+
   return (
     <div className="flex flex-col items-center mt-10">
+      {/* 登入者資訊顯示 */}
+      {currentLoggedInUser && (
+        <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200 w-full max-w-md">
+          <div className="text-center">
+            <div className="text-lg font-semibold text-blue-800">
+              登入者：{currentLoggedInUser.name}
+            </div>
+            <div className="text-sm text-blue-600">
+              團隊：{teamName || '載入中...'}
+            </div>
+            <div className="text-sm text-blue-600">
+              角色：{currentLoggedInUser.role}
+            </div>
+            <div className="text-xs text-gray-500">
+              會員ID：{currentLoggedInUser.member_id}
+            </div>
+          </div>
+        </div>
+      )}
+
       <h2 className="text-2xl font-bold mb-6">管理員專區</h2>
       <div className="flex flex-col gap-4 w-64">
         <Link to="/members">
@@ -101,6 +143,13 @@ function AdminArea({ currentLoggedInUser }) {
             </Link>
           </>
         )}
+      </div>
+      
+      {/* 返回主選單按鈕 */}
+      <div className="mt-6">
+        <Link to="/" className="px-6 py-2 bg-gray-500 text-white rounded hover:bg-gray-600">
+          返回主選單
+        </Link>
       </div>
     </div>
   );
@@ -231,6 +280,10 @@ function App() {
         const user = localStorage.getItem('loginUser');
         return user ? JSON.parse(user) : null;
     });
+    
+    // 新增 teamName 狀態
+    const [teamName, setTeamName] = useState('');
+    
     // 更新 currentLoggedInUser 的函數，同時更新 localStorage
     const updateCurrentLoggedInUser = (user) => {
         setCurrentLoggedInUser(user);
@@ -256,21 +309,36 @@ function App() {
     initDb();
   }, []);
 
+  // 修改: 根據登入者的 team_id 查詢團隊名稱
   useEffect(() => {
-    const savedUser = localStorage.getItem('loginUser');
-    if (savedUser) {
-      const user = JSON.parse(savedUser);
-      // 取得 team_name 並補進 user
-      fetchTeamNameByMemberId(user.member_id).then(team_name => {
-        setCurrentLoggedInUser({ ...user, team_name });
-      });
-    }
-  }, []);
+    const fetchTeamName = async () => {
+      if (currentLoggedInUser?.team_id) {
+        const { data, error } = await supabase
+          .from('courts')
+          .select('name')
+          .eq('team_id', currentLoggedInUser.team_id)
+          .maybeSingle();
+        
+        if (!error && data) {
+          setTeamName(data.name);
+          // 更新 currentLoggedInUser 加入 team_name
+          const updatedUser = { ...currentLoggedInUser, team_name: data.name };
+          setCurrentLoggedInUser(updatedUser);
+          localStorage.setItem('loginUser', JSON.stringify(updatedUser));
+        } else {
+          setTeamName(currentLoggedInUser.team_id); // 如果查不到就顯示 team_id
+        }
+      } else {
+        setTeamName('');
+      }
+    };
+    fetchTeamName();
+  }, [currentLoggedInUser?.team_id]);
 
   const { user } = useContext(UserContext) ?? { user: null };
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // 取得 team_name
+  // 取得 team_name (這個函數保留，但主要邏輯已移到上面的 useEffect)
   const fetchTeamNameByMemberId = async (memberId: string) => {
     if (!memberId) return '';
     const teamId = memberId[0];
@@ -304,29 +372,12 @@ function App() {
 
   // 只要登入者名字或隊伍名稱有變動就查詢
   useEffect(() => {
-    if (currentLoggedInUser?.name && currentLoggedInUser?.team_name) {
-      fetchUnreadCount(currentLoggedInUser.name, currentLoggedInUser.team_name);
+    if (currentLoggedInUser?.name && teamName) {
+      fetchUnreadCount(currentLoggedInUser.name, teamName);
     } else {
       setUnreadCount(0);
     }
-  }, [currentLoggedInUser?.name, currentLoggedInUser?.team_name]);
-
-  // 複製團隊名稱對照表
-  const [teamName, setTeamName] = useState('');
-
-  useEffect(() => {
-    const fetchTeamName = async () => {
-      if (currentLoggedInUser?.team_id) {
-        const { data } = await supabase
-          .from('courts')
-          .select('name')
-          .eq('team_id', currentLoggedInUser.team_id)
-          .maybeSingle();
-        setTeamName(data?.name || currentLoggedInUser.team_id);
-      }
-    };
-    fetchTeamName();
-  }, [currentLoggedInUser?.team_id]);
+  }, [currentLoggedInUser?.name, teamName]);
 
   const [invitationCount, setInvitationCount] = useState(0); // 回復為 0
 
@@ -365,13 +416,8 @@ function App() {
                   setCurrentLoggedInUser={setCurrentLoggedInUser} 
                   unreadCount={unreadCount}
                   invitationCount={invitationCount}
+                  teamName={teamName}
                 />
-                {/* 登入者資訊區塊 - 移至鈴噹下方 */}
-                {currentLoggedInUser && (
-                  <div style={{ padding: '8px 0 0 16px', fontSize: '15px', color: '#555' }}>
-                    登入者：{currentLoggedInUser.name}（{teamName}隊）
-                  </div>
-                )}
               </>
             } />
             <Route path="/game" element={<DoubleGame />} />
@@ -385,7 +431,7 @@ function App() {
             <Route path="/admin/court" element={<CourtManagement />} />
             <Route path="/admin/usage" element={<CourtUsagePage />} />
             <Route path="/court-intro" element={<CourtIntroPage />} />
-            <Route path="/challenges" element={<ChallengeListPage fetchUnreadCount={() => fetchUnreadCount(currentLoggedInUser?.name, currentLoggedInUser?.team_name)} />} />
+            <Route path="/challenges" element={<ChallengeListPage fetchUnreadCount={() => fetchUnreadCount(currentLoggedInUser?.name, teamName)} />} />
             <Route path="/create-challenge" element={<ChallengeCreatePage />} />
             <Route path="/contest/create" element={<CreateContestPage />} />
             <Route path="/contests" element={<ContestListPage />} />
@@ -394,6 +440,7 @@ function App() {
             <Route path="/contest-invitations" element={<ContestInvitationsPage />} />
             <Route path="/contest-control" element={<ContestControlPage />} />
             <Route path="/contest/lineup-editor" element={<LineupEditorPage />} />
+            <Route path="/lineup-editor" element={<LineupEditorPage />} />
             <Route path="/contest/:contestId/battleroom" element={<BattleRoomPage />} />
             <Route path="/contest/:contestId/results" element={<ContestResultsPage />} />
             <Route path="/contest/:contestId/lineup-status" element={<LineupStatusPage />} />
@@ -407,7 +454,7 @@ function App() {
   );
 }
 
-function Menu({ currentLoggedInUser, setCurrentLoggedInUser, unreadCount, invitationCount }) {
+function Menu({ currentLoggedInUser, setCurrentLoggedInUser, unreadCount, invitationCount, teamName }) {
   const navigate = useNavigate();
   const { currentUser } = useContext(UserContext) ?? { currentUser: null };
   const [showLogin, setShowLogin] = useState(false);
@@ -449,7 +496,7 @@ function Menu({ currentLoggedInUser, setCurrentLoggedInUser, unreadCount, invita
           <text x="90" y="16" textAnchor="middle" fill="#333" fontSize="14" fontWeight="bold" fontFamily="Arial">乒乓風雲</text>
         </svg>
       </div>      
-      <h1 className="text-3xl font-bold mb-4">乒乓記分寶</h1>
+      <h1 className="text-3xl font-bold mb-4">賽乒乓</h1>
     
       <div className="flex flex-col gap-4 w-64">
         <button
@@ -567,6 +614,24 @@ function Menu({ currentLoggedInUser, setCurrentLoggedInUser, unreadCount, invita
           }
         `}</style>
       </div>
+
+{/* 修改: 簡潔的登入者資訊 - 移至登出按鈕下方 */}
+      {currentLoggedInUser && (
+        <div style={{ 
+          position: 'absolute', 
+          top: '60px', 
+          right: '16px', 
+          background: 'rgba(240, 249, 255, 0.9)', 
+          padding: '6px 12px', 
+          borderRadius: '6px', 
+          fontSize: '12px', 
+          color: '#0c4a6e',
+          zIndex: 10,
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div>{currentLoggedInUser.name}（{teamName || '載入中...'}）</div>
+        </div>
+      )}
 
       {/* 版本號 - 移到右下角 */}
       <div className="absolute bottom-4 right-4 text-gray-500">
