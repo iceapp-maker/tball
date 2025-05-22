@@ -12,12 +12,20 @@ const ContestControlPage: React.FC = () => {
   const [generatingSchedule, setGeneratingSchedule] = useState(false);
   const [generatingContestId, setGeneratingContestId] = useState<string | null>(null);
 
-  // 假設有user context
+  // 獲取登入使用者資訊
   const user = JSON.parse(localStorage.getItem('loginUser') || '{}');
+  const currentUserTeamId = user.team_id;
+  const currentUserTeamName = user.team_name; // 從登入者資訊中取得團隊名稱
 
   useEffect(() => {
+    // 檢查是否有登入使用者和團隊資訊
+    if (!user || !currentUserTeamId || !currentUserTeamName) {
+      setError('請先登入並確認您有團隊權限');
+      setLoading(false);
+      return;
+    }
     fetchContests();
-  }, []);
+  }, [currentUserTeamId, currentUserTeamName]);
 
   interface ContestMatch {
     score: string | null;
@@ -65,15 +73,23 @@ const ContestControlPage: React.FC = () => {
   const fetchContests = async () => {
     setLoading(true);
     try {
-      // 獲取比賽資料
+      // 只獲取當前團隊主辦的比賽資料
+      // 使用 team_name 欄位與登入者的團隊名稱比對
       const { data: contestsData, error: contestsError } = await supabase
         .from('contest')
         .select('*')
+        .eq('team_name', currentUserTeamName)  // 只取得當前團隊主辦的比賽
         .order('contest_id', { ascending: false });
 
-      if (contestsError) throw contestsError;
+      if (contestsError) {
+        console.error('獲取比賽資料失敗:', contestsError);
+        throw contestsError;
+      }
+
       setContests(contestsData || []);
-      console.log('[fetchContests] contestsData', contestsData);
+      console.log('[fetchContests] 當前團隊比賽資料:', contestsData);
+      console.log('[fetchContests] 當前使用者團隊名稱:', currentUserTeamName);
+      console.log('[fetchContests] 篩選條件: team_name =', currentUserTeamName);
 
       // 獲取每個比賽的隊伍數量
       const counts: {[key: string]: number} = {};
@@ -99,13 +115,14 @@ const ContestControlPage: React.FC = () => {
       }
       setContestsWithScores(scoresStatus);
     } catch (err: any) {
+      console.error('載入比賽資料時發生錯誤:', err);
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
 
-  // 產生對戰表（循環賽）
+  // 產生對戰表
   const handleGenerateSchedule = async (contestId: string) => {
     if (!confirm('確定要產生對戰表嗎？產生後將無法更改隊伍名單。')) {
       return;
@@ -134,8 +151,18 @@ const ContestControlPage: React.FC = () => {
         throw new Error('參賽隊伍不足，至少需要2支隊伍');
       }
 
-      // 3. 產生循環賽對戰組合
-      const matches = generateRoundRobinMatches(teamsData, contestData.table_count || 1);
+      // 3. 根據賽制類型產生對戰組合
+      let matches;
+      if (contestData.match_mode === 'round_robin') {
+        // 使用改進的循環賽算法
+        matches = generateImprovedRoundRobinMatches(teamsData, contestData.table_count || 1);
+      } else if (contestData.match_mode === 'elimination') {
+        // 淘汰賽邏輯（此處為示例，可根據需求實現）
+        matches = generateEliminationMatches(teamsData, contestData.table_count || 1);
+      } else {
+        // 默認使用改進的循環賽算法
+        matches = generateImprovedRoundRobinMatches(teamsData, contestData.table_count || 1);
+      }
 
       // 4. 將對戰組合寫入資料庫
       const { data: matchesData, error: matchesError } = await supabase
@@ -178,11 +205,11 @@ const ContestControlPage: React.FC = () => {
         }
       }
 
-     // 7. 確保比賽狀態保持為「名單安排中」
-await supabase
-  .from('contest')
-  .update({ contest_status: 'lineup_arrangement' })
-  .eq('contest_id', contestId);
+      // 6. 確保比賽狀態更新為「名單安排中」
+      await supabase
+        .from('contest')
+        .update({ contest_status: 'lineup_arrangement' })
+        .eq('contest_id', contestId);
 
       alert('對戰表產生成功！');
       fetchContests(); // 重新載入比賽列表
@@ -195,38 +222,207 @@ await supabase
     }
   };
 
-  // 產生循環賽對戰組合的函數
-  const generateRoundRobinMatches = (teams: any[], tableCount: number) => {
+  // 改進的循環賽對戰生成函數 - 確保比賽分配更均勻
+  const generateImprovedRoundRobinMatches = (teams: any[], tableCount: number) => {
     const matches = [];
-    let tableNo = 1;
     let sequence = 1;
     
+    // 創建所有可能的對戰組合
+    const allPairs = [];
     for (let i = 0; i < teams.length; i++) {
       for (let j = i + 1; j < teams.length; j++) {
-        // 修改為使用 contest_team_id
+        // 確保 ID 是數字類型
         const team1Id = typeof teams[i].contest_team_id === 'string' ? parseInt(teams[i].contest_team_id) : teams[i].contest_team_id;
         const team2Id = typeof teams[j].contest_team_id === 'string' ? parseInt(teams[j].contest_team_id) : teams[j].contest_team_id;
         const contestId = typeof teams[i].contest_id === 'string' ? parseInt(teams[i].contest_id) : teams[i].contest_id;
         
-        matches.push({
-          // match_id 是 serial，由資料庫自動生成
-          contest_id: contestId,
-          team1_id: team1Id,
-          team2_id: team2Id,
-          winner_team_id: null,
-          match_date: new Date().toISOString().split('T')[0], // 轉換為 date 類型
-          score: null,
-          sequence: sequence // 添加 sequence 欄位
+        allPairs.push({
+          team1Id: team1Id,
+          team2Id: team2Id,
+          contestId: contestId
         });
-        
-        // 遞增序列號
-        sequence++;
-        
-        // 循環分配桌次
-        tableNo++;
-        if (tableNo > tableCount) tableNo = 1;
       }
     }
+    
+    // 計算總輪次數量：n隊總共需要 n-1 輪（如果n為奇數，則每輪有一隊輪空）
+    const totalRounds = teams.length % 2 === 0 ? teams.length - 1 : teams.length;
+    
+    // 每輪比賽數量：n/2 向下取整
+    const matchesPerRound = Math.floor(teams.length / 2);
+    
+    // 建立每支隊伍的比賽追蹤
+    const teamMatches: {[key: number]: number[]} = {};
+    teams.forEach(team => {
+      const teamId = typeof team.contest_team_id === 'string' ? parseInt(team.contest_team_id) : team.contest_team_id;
+      teamMatches[teamId] = [];
+    });
+    
+    // 建立輪次陣列
+    const rounds: any[][] = Array(totalRounds).fill(null).map(() => []);
+    
+    // 嘗試為每輪分配比賽
+    let currentRound = 0;
+    
+    // 複製一份對戰組合以便操作
+    const remainingPairs = [...allPairs];
+    
+    // 為每輪分配比賽
+    while (remainingPairs.length > 0) {
+      const roundTeams = new Set(); // 追蹤本輪已安排的隊伍
+      
+      // 尋找本輪可安排的比賽
+      for (let i = 0; i < remainingPairs.length; i++) {
+        const pair = remainingPairs[i];
+        
+        // 檢查兩隊是否已在本輪安排比賽
+        if (!roundTeams.has(pair.team1Id) && !roundTeams.has(pair.team2Id)) {
+          // 將比賽添加到當前輪次
+          rounds[currentRound].push(pair);
+          
+          // 標記這兩隊在本輪已安排比賽
+          roundTeams.add(pair.team1Id);
+          roundTeams.add(pair.team2Id);
+          
+          // 更新兩隊的比賽紀錄
+          teamMatches[pair.team1Id].push(currentRound);
+          teamMatches[pair.team2Id].push(currentRound);
+          
+          // 從未分配列表中移除
+          remainingPairs.splice(i, 1);
+          i--; // 因為移除了一個元素，所以索引需要減1
+        }
+      }
+      
+      // 進入下一輪
+      currentRound = (currentRound + 1) % totalRounds;
+      
+      // 如果所有輪次都嘗試過，但仍有未分配的比賽，說明存在無法完美分配的情況
+      // 這時採用貪婪算法，找出對當前輪次影響最小的比賽
+      if (remainingPairs.length > 0 && rounds.every(round => round.length >= matchesPerRound)) {
+        // 找出影響最小的一場比賽加入
+        let bestPairIndex = 0;
+        let minImpact = Infinity;
+        
+        for (let i = 0; i < remainingPairs.length; i++) {
+          const pair = remainingPairs[i];
+          
+          // 計算將這場比賽添加到各輪的影響
+          for (let r = 0; r < totalRounds; r++) {
+            // 檢查該輪次兩隊是否已有比賽
+            const team1HasMatch = teamMatches[pair.team1Id].includes(r);
+            const team2HasMatch = teamMatches[pair.team2Id].includes(r);
+            
+            // 如果兩隊都沒有比賽，這是最理想的情況
+            if (!team1HasMatch && !team2HasMatch) {
+              // 添加這場比賽到當前輪次
+              rounds[r].push(pair);
+              teamMatches[pair.team1Id].push(r);
+              teamMatches[pair.team2Id].push(r);
+              remainingPairs.splice(i, 1);
+              minImpact = -1; // 設置一個標記，表示找到理想解
+              break;
+            }
+          }
+          
+          // 如果找到理想解，退出循環
+          if (minImpact === -1) break;
+          
+          // 如果沒有理想解，找出影響最小的輪次
+          for (let r = 0; r < totalRounds; r++) {
+            // 計算影響值（已有比賽的隊伍數）
+            let impact = (teamMatches[pair.team1Id].includes(r) ? 1 : 0) + 
+                        (teamMatches[pair.team2Id].includes(r) ? 1 : 0);
+            
+            // 如果影響更小，更新最佳選擇
+            if (impact < minImpact) {
+              minImpact = impact;
+              bestPairIndex = i;
+              currentRound = r;
+            }
+          }
+        }
+        
+        // 如果沒有找到理想解，但找到影響最小的選擇
+        if (minImpact !== -1) {
+          const bestPair = remainingPairs[bestPairIndex];
+          rounds[currentRound].push(bestPair);
+          teamMatches[bestPair.team1Id].push(currentRound);
+          teamMatches[bestPair.team2Id].push(currentRound);
+          remainingPairs.splice(bestPairIndex, 1);
+        }
+      }
+    }
+    
+    // 將輪次安排轉換為最終的比賽列表
+    for (let r = 0; r < totalRounds; r++) {
+      for (let m = 0; m < rounds[r].length; m++) {
+        const match = rounds[r][m];
+        matches.push({
+          contest_id: match.contestId,
+          team1_id: match.team1Id,
+          team2_id: match.team2Id,
+          winner_team_id: null,
+          match_date: new Date().toISOString().split('T')[0], // 可以根據需要設定日期
+          score: null,
+          sequence: sequence++, // 遞增序號
+          round: r + 1, // 記錄輪次（從1開始）
+          table_no: ((m % tableCount) + 1) // 循環分配桌次
+        });
+      }
+    }
+    
+    return matches;
+  };
+
+  // 淘汰賽對戰生成函數（僅作示範，可根據需求修改）
+  const generateEliminationMatches = (teams: any[], tableCount: number) => {
+    // 計算完整淘汰賽所需的隊伍數量（2的冪次）
+    const teamCount = teams.length;
+    let fullBracketSize = 1;
+    while (fullBracketSize < teamCount) {
+      fullBracketSize *= 2;
+    }
+    
+    // 計算第一輪需要進行的比賽數量
+    const firstRoundMatches = fullBracketSize - teamCount;
+    
+    // 打亂隊伍順序，確保隨機配對
+    const shuffledTeams = [...teams].sort(() => Math.random() - 0.5);
+    
+    // 產生第一輪比賽
+    const matches = [];
+    let sequence = 1;
+    
+    // 分配直接晉級的隊伍
+    const byeTeams = shuffledTeams.slice(0, teamCount - firstRoundMatches * 2);
+    const matchTeams = shuffledTeams.slice(teamCount - firstRoundMatches * 2);
+    
+    // 產生第一輪需要比賽的對戰
+    for (let i = 0; i < firstRoundMatches; i++) {
+      const team1 = matchTeams[i * 2];
+      const team2 = matchTeams[i * 2 + 1];
+      
+      // 確保ID是數字類型
+      const team1Id = typeof team1.contest_team_id === 'string' ? parseInt(team1.contest_team_id) : team1.contest_team_id;
+      const team2Id = typeof team2.contest_team_id === 'string' ? parseInt(team2.contest_team_id) : team2.contest_team_id;
+      const contestId = typeof team1.contest_id === 'string' ? parseInt(team1.contest_id) : team1.contest_id;
+      
+      matches.push({
+        contest_id: contestId,
+        team1_id: team1Id,
+        team2_id: team2Id,
+        winner_team_id: null,
+        match_date: new Date().toISOString().split('T')[0], // 可以根據需要設定日期
+        score: null,
+        sequence: sequence++, // 遞增序號
+        round: 1, // 第一輪
+        table_no: ((i % tableCount) + 1) // 循環分配桌次
+      });
+    }
+    
+    // 注意：對於淘汰賽，後續輪次的比賽需要等前一輪結果出來後才能產生
+    // 這裡我們只產生第一輪的比賽，後續輪次可以在比賽進行中動態產生
+    
     return matches;
   };
 
@@ -276,7 +472,14 @@ await supabase
   return (
     <div className="max-w-6xl mx-auto mt-8 p-6 bg-white rounded shadow">
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">賽程控制區</h2>
+        <div>
+          <h2 className="text-2xl font-bold">賽程控制區</h2>
+          {currentUserTeamName && (
+            <p className="text-sm text-gray-600 mt-1">
+              目前顯示：{currentUserTeamName} 團隊主辦的比賽
+            </p>
+          )}
+        </div>
         <Link to="/contest/create">
           <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded">
             建立比賽
@@ -290,7 +493,7 @@ await supabase
         <div className="text-red-500 text-center py-8">{error}</div>
       ) : contests.length === 0 ? (
         <div className="text-center py-8 text-gray-500">
-          目前沒有比賽，請點擊「建立比賽」按鈕創建新比賽。
+          目前 {currentUserTeamName} 團隊沒有主辦的比賽，請點擊「建立比賽」按鈕創建新比賽。
         </div>
       ) : (
         <div className="overflow-x-auto">
@@ -299,10 +502,7 @@ await supabase
               <tr>
                 <th className="py-2 px-4 border text-left">比賽名稱</th>
                 <th className="py-2 px-4 border text-left">狀態</th>
-                
-                
                 <th className="py-2 px-4 border text-left">報名截止日</th>
-                
                 <th className="py-2 px-4 border text-left sticky right-0 bg-gray-100 shadow-md z-10">操作</th>
               </tr>
             </thead>
@@ -310,13 +510,10 @@ await supabase
               {contests.map((contest) => (
                 <tr key={contest.contest_id} className="hover:bg-gray-50">
                   <td className="py-3 px-4 border">
-  {contest.contest_name}
-</td>
+                    {contest.contest_name}
+                  </td>
                   <td className="py-3 px-4 border">{renderStatusBadge(contest.contest_status)}</td>
-                  
-                  
                   <td className="py-3 px-4 border">{(() => { const d = new Date(contest.signup_end_date); return `${d.getMonth() + 1}/${d.getDate()}`; })()}</td>
-                  
                   <td className="py-3 px-4 border sticky right-0 bg-white shadow-md z-10">
                     <div className="flex space-x-2">
                       <button
@@ -326,7 +523,7 @@ await supabase
                         編輯
                       </button>
 
-{contest.contest_status === 'recruiting' && 
+                      {contest.contest_status === 'recruiting' && 
                         teamCounts[contest.contest_id] === contest.expected_teams && (
                         <button
                           className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm"
@@ -382,9 +579,9 @@ await supabase
       <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
         <h3 className="font-bold text-yellow-800 mb-2">說明</h3>
         <ul className="list-disc pl-5 text-sm text-yellow-700">
-          <li>當比賽狀態為「名單安排中」時，可以產生對戰表。</li>
+          <li>當比賽狀態為「招募完成」時，可以產生對戰表。</li>
           <li>循環賽：每隊都會與其他所有隊伍對戰一次。</li>
-          <li>產生對戰表後，比賽狀態將更新為「比賽進行中」。</li>
+          <li>淘汰賽：輸一場就淘汰，優勝者晉級下一輪。</li>
           <li>產生對戰表後，將由隊長編排出賽名單。</li>
         </ul>
       </div>

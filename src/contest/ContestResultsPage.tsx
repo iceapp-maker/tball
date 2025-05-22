@@ -461,7 +461,7 @@ const ContestResultsPage: React.FC = () => {
                     <td className="py-3 px-4 border">—</td>
                   </tr>
                   <tr className="bg-gray-50">
-                    <td className="py-3 px-4 border font-bold text-green-600">勝局數</td>
+                    <td className="py-3 px-4 border font-bold text-green-600">勝局(點)數</td>
                     {resultsData.teams.map(team => (
                       <td key={`winning-games-${team.teamId}`} className="py-3 px-4 border text-center font-bold text-green-600">
                         {team.winningGames}
@@ -495,8 +495,8 @@ const ContestResultsPage: React.FC = () => {
               <li>勝利的比分以橘色顯示。</li>
               <li>名次首先根據勝場(隊)數排序。</li>
               <li>當兩隊勝場(隊)數相同時，直接對戰獲勝者排名較前。</li>
-              <li>當三隊或更多隊勝場(隊)數相同且存在循環勝負關係時(例如A勝B、B勝C、C勝A)，則按勝局數排序。</li>
-              <li>勝局數統計每個隊伍在所有比賽中獲勝的局數總和。</li>
+              <li>當三隊或更多隊勝場(隊)數相同且存在循環勝負關係時(例如A勝B、B勝C、C勝A)，則按勝局(點)數排序。</li>
+              <li>勝局(點)數統計每個隊伍在所有比賽中獲勝的局(點)數總和。</li>
               <li>隊伍名稱顯示在表格的行和列頭部。</li>
             </ul>
           </div>
