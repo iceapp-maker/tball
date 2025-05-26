@@ -27,6 +27,9 @@ const LineupStatusPage: React.FC = () => {
   const [localStorageUser, setLocalStorageUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // 控制是否顯示 Debug 資訊的變數
+  const showDebug = process.env.NODE_ENV === 'development';
+
   useEffect(() => {
     if (contestId) {
       // 先獲取用戶身份資訊
@@ -314,14 +317,16 @@ const LineupStatusPage: React.FC = () => {
         </span>
       </div>
 
-      {/* Debug 資訊區塊 (開發時使用，生產環境請移除) */}
-      <div className="mb-4 p-3 bg-yellow-100 rounded border-2 border-yellow-500">
-        <h3 className="font-bold text-yellow-800">Debug 資訊:</h3>
-        <p><strong>當前用戶 ID:</strong> {currentUserId || '未取得'}</p>
-        <p><strong>用戶擔任隊長的隊伍:</strong> {Array.from(userCaptainTeams).join(', ') || '無'}</p>
-        <p><strong>比賽資料數量:</strong> {lineups.length}</p>
-        <p><strong>localStorage 用戶:</strong> {JSON.stringify(localStorageUser)}</p>
-      </div>
+      {/* Debug 資訊區塊 - 只在開發環境顯示 */}
+      {showDebug && (
+        <div className="mb-4 p-3 bg-yellow-100 rounded border-2 border-yellow-500">
+          <h3 className="font-bold text-yellow-800">Debug 資訊:</h3>
+          <p><strong>當前用戶 ID:</strong> {currentUserId || '未取得'}</p>
+          <p><strong>用戶擔任隊長的隊伍:</strong> {Array.from(userCaptainTeams).join(', ') || '無'}</p>
+          <p><strong>比賽資料數量:</strong> {lineups.length}</p>
+          <p><strong>localStorage 用戶:</strong> {JSON.stringify(localStorageUser)}</p>
+        </div>
+      )}
       
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-extrabold tracking-tight text-blue-900">
