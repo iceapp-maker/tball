@@ -1341,8 +1341,7 @@ const BattleRoomPage: React.FC = () => {
                       {/* 隊伍1 */}
                       <div className="text-center w-2/5">
                         <div className="font-bold text-lg">{match.team1_name}</div>
-                        <div className="text-xs text-gray-400">ID: {match.team1_id}</div>
-                        <div className="text-xs text-gray-500">
+                         <div className="text-xs text-gray-500">
                           隊長: {match.team1_id && teamCaptains[match.team1_id.toString()] ? teamCaptains[match.team1_id.toString()] : '無隊長'}
                         </div>
                         <div className="text-sm mt-1 text-gray-600">
@@ -1391,7 +1390,7 @@ const BattleRoomPage: React.FC = () => {
                       {/* 隊伍2 */}
                       <div className="text-center w-2/5">
                         <div className="font-bold text-lg">{match.team2_name}</div>
-                        <div className="text-xs text-gray-400">ID: {match.team2_id}</div>
+                   
                         <div className="text-xs text-gray-500">
                           隊長: {match.team2_id && teamCaptains[match.team2_id.toString()] ? teamCaptains[match.team2_id.toString()] : '無隊長'}
                         </div>
