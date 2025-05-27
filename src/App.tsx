@@ -25,9 +25,82 @@ import LineupEditorPage from './contest/LineupEditorPage';
 import ContestResultsPage from './contest/ContestResultsPage';
 import LineupStatusPage from './contest/LineupStatusPage';
 import ContestTableView from './contest/ContestTableView';
-
+import ScoreEditPage from './contest/ScoreEditPage';
 // 版本信息
 const CURRENT_VERSION = "a.20";
+
+// ✅ 新增：權限檢查函數
+const isAdmin = (user: any): boolean => {
+  return user && (user.role?.trim() === 'admin' || user.role?.trim() === 'team_admin');
+};
+
+const isMember = (user: any): boolean => {
+  return user && user.role?.trim() === 'member';
+};
+
+// ✅ 新增：權限保護組件
+const ProtectedRoute: React.FC<{
+  children: React.ReactNode;
+  requiredRole: 'admin' | 'member' | 'any';
+  currentUser: any;
+  fallbackMessage?: string;
+}> = ({ children, requiredRole, currentUser, fallbackMessage }) => {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!currentUser) {
+      navigate('/', { replace: true });
+      return;
+    }
+
+    if (requiredRole === 'admin' && !isAdmin(currentUser)) {
+      alert('您沒有權限訪問此頁面！');
+      navigate('/', { replace: true });
+      return;
+    }
+  }, [currentUser, requiredRole, navigate]);
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-md text-center">
+          <h2 className="text-xl font-bold mb-4">需要登入</h2>
+          <p className="mb-4">請先登入後再訪問此頁面。</p>
+          <button
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            返回主頁
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (requiredRole === 'admin' && !isAdmin(currentUser)) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-md text-center">
+          <h2 className="text-xl font-bold mb-4 text-red-600">權限不足</h2>
+          <p className="mb-4">
+            {fallbackMessage || '您沒有權限訪問管理員專區。'}
+          </p>
+          <div className="text-sm text-gray-600 mb-4">
+            當前角色：{currentUser.role || '未知'}
+          </div>
+          <button
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            返回主頁
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+};
 
 // 創建會員資料表的函數
 async function createMembersTable() {
@@ -72,9 +145,194 @@ async function createMembersTable() {
   }
 }
 
+// 團隊成員列表組件（唯讀）
+function TeamMembersList({ currentLoggedInUser }) {
+  const navigate = useNavigate();
+  const [members, setMembers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [teamName, setTeamName] = useState('');
+
+  // 檢查登入狀態
+  useEffect(() => {
+    if (!currentLoggedInUser) {
+      navigate('/', { replace: true });
+    }
+  }, [currentLoggedInUser, navigate]);
+
+  // 獲取團隊名稱
+  useEffect(() => {
+    const fetchTeamName = async () => {
+      if (currentLoggedInUser?.team_id) {
+        const { data, error } = await supabase
+          .from('courts')
+          .select('name')
+          .eq('team_id', currentLoggedInUser.team_id)
+          .maybeSingle();
+        
+        if (!error && data) {
+          setTeamName(data.name);
+        } else {
+          setTeamName(currentLoggedInUser.team_id);
+        }
+      }
+    };
+    fetchTeamName();
+  }, [currentLoggedInUser?.team_id]);
+
+  // 獲取團隊成員（只能看到同一個 team_id 的成員）
+  useEffect(() => {
+    const fetchMembers = async () => {
+      if (!currentLoggedInUser || !currentLoggedInUser.team_id) {
+        console.log('無登入用戶或缺少 team_id');
+        setLoading(false);
+        return;
+      }
+      
+      setLoading(true);
+      console.log('查詢 team_id:', currentLoggedInUser.team_id, '的成員');
+      
+      // 只查詢與登入用戶相同 team_id 的成員
+      const { data, error } = await supabase
+        .from('members')
+        .select('member_id, name')
+        .eq('team_id', currentLoggedInUser.team_id)  // 關鍵：只查詢相同團隊
+        .order('member_id', { ascending: true });
+        
+      if (!error) {
+        console.log(`找到 ${data?.length || 0} 位同團隊成員`);
+        setMembers(data || []);
+      } else {
+        console.error('獲取團隊成員失敗:', error);
+        alert('載入團隊成員失敗，請稍後再試！');
+      }
+      setLoading(false);
+    };
+    
+    fetchMembers();
+  }, [currentLoggedInUser?.team_id]); // 依賴 team_id 變化
+
+  if (!currentLoggedInUser) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-lg shadow-md text-center">
+          <h2 className="text-xl font-bold mb-4">需要登入</h2>
+          <p className="mb-4">請先登入後再查看團隊成員。</p>
+          <button 
+            onClick={() => navigate('/')}
+            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+          >
+            返回主選單
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-6">
+      <div className="w-full max-w-4xl mx-auto">
+        {/* 頁面標題 */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-2">
+          <h1 className="text-2xl font-bold">團隊成員</h1>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <span className="text-sm text-gray-600">
+              團隊：{teamName} | 查看者：{currentLoggedInUser.name}
+            </span>
+            <button 
+              onClick={() => navigate('/')}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+            >
+              返回主選單
+            </button>
+          </div>
+        </div>
+
+        {/* 成員統計 */}
+        <div className="mb-4 p-4 bg-white rounded-lg shadow-md">
+          <div className="text-lg font-semibold text-gray-700">
+            團隊成員總數：{members.length} 人
+          </div>
+        </div>
+
+        {/* 成員列表 */}
+        {loading ? (
+          <div className="text-center py-8">載入中...</div>
+        ) : (
+          <div className="bg-white shadow-md rounded-lg overflow-hidden">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    編號
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    會員編號
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    姓名
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {members.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-4 text-center text-gray-500">
+                      目前沒有團隊成員資料
+                    </td>
+                  </tr>
+                ) : (
+                  members.map((member, index) => (
+                    <tr key={member.member_id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {index + 1}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                        {member.member_id}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {member.name}
+                        {member.member_id === currentLoggedInUser.member_id && (
+                          <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                            (我)
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* 說明文字 */}
+        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-700">
+            💡 這裡顯示您所屬團隊的所有成員基本資訊。如需管理功能，請聯絡團隊管理員。
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // 新增管理員專區頁面
 function AdminArea({ currentLoggedInUser }) {
   const [teamName, setTeamName] = useState('');
+  const navigate = useNavigate();
+
+  // ✅ 新增：雙重檢查權限
+  useEffect(() => {
+    if (!currentLoggedInUser || !isAdmin(currentLoggedInUser)) {
+      alert('權限驗證失敗，將返回主頁。');
+      navigate('/', { replace: true });
+    }
+  }, [currentLoggedInUser, navigate]);
+
+  // ✅ 新增：如果權限不足，不渲染任何內容
+  if (!currentLoggedInUser || !isAdmin(currentLoggedInUser)) {
+    return null;
+  }
 
   // 根據 team_id 查詢團隊名稱
   useEffect(() => {
@@ -124,7 +382,7 @@ function AdminArea({ currentLoggedInUser }) {
           <button className="w-full py-3 bg-purple-500 text-white rounded hover:bg-purple-600">會員管理</button>
         </Link>
         <Link to="/admin/court">
-          <button className="w-full py-3 bg-indigo-500 text-white rounded hover:bg-indigo-600">球場管理</button>
+          <button className="w-full py-3 bg-indigo-500 text-white rounded hover:bg-indigo-600">團隊資訊</button>
         </Link>
         <Link to="/admin/usage">
           <button className="w-full py-3 bg-blue-500 text-white rounded hover:bg-blue-600">球場使用分析</button>
@@ -410,43 +668,82 @@ function App() {
         <Router>
           <Routes>
             <Route path="/" element={
-              <>
-                <Menu 
-                  currentLoggedInUser={currentLoggedInUser} 
-                  setCurrentLoggedInUser={setCurrentLoggedInUser} 
-                  unreadCount={unreadCount}
-                  invitationCount={invitationCount}
-                  teamName={teamName}
-                />
-              </>
+              <Menu
+                currentLoggedInUser={currentLoggedInUser}
+                setCurrentLoggedInUser={setCurrentLoggedInUser}
+                unreadCount={unreadCount}
+                invitationCount={invitationCount}
+                teamName={teamName}
+              />
             } />
             <Route path="/game" element={<DoubleGame />} />
             <Route path="/double_game" element={<DoubleGame />} />
             <Route path="/single" element={<SingleGame currentLoggedInUser={currentLoggedInUser} />} />
             <Route path="/single_game" element={<SingleGame currentLoggedInUser={currentLoggedInUser} />} />
-            <Route path="/members" element={<MemberManagement loginUser={currentLoggedInUser} />} />
+            <Route path="/members" element={
+              <ProtectedRoute requiredRole="any" currentUser={currentLoggedInUser}>
+                <MemberManagement loginUser={currentLoggedInUser} />
+              </ProtectedRoute>
+            } />
             <Route path="/records" element={<BattleRecords />} />
-            {/* 移除舊版個人資訊路由 */}
-            <Route path="/admin" element={<AdminArea currentLoggedInUser={currentLoggedInUser} />} />
-            <Route path="/admin/court" element={<CourtManagement />} />
-            <Route path="/admin/usage" element={<CourtUsagePage />} />
+            <Route path="/admin" element={
+              <ProtectedRoute requiredRole="admin" currentUser={currentLoggedInUser}>
+                <AdminArea currentLoggedInUser={currentLoggedInUser} />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/court" element={
+              <ProtectedRoute requiredRole="admin" currentUser={currentLoggedInUser}>
+                <CourtManagement />
+              </ProtectedRoute>
+            } />
+            <Route path="/admin/usage" element={
+              <ProtectedRoute requiredRole="admin" currentUser={currentLoggedInUser}>
+                <CourtUsagePage />
+              </ProtectedRoute>
+            } />
             <Route path="/court-intro" element={<CourtIntroPage />} />
             <Route path="/challenges" element={<ChallengeListPage fetchUnreadCount={() => fetchUnreadCount(currentLoggedInUser?.name, teamName)} />} />
             <Route path="/create-challenge" element={<ChallengeCreatePage />} />
-            <Route path="/contest/create" element={<CreateContestPage />} />
-            <Route path="/contests" element={<ContestListPage />} />
-            <Route path="/contest/:contest_id/join" element={<ContestJoinPage />} />
-            <Route path="/contest/edit/:contest_id" element={<EditContestPage />} />
             <Route path="/contest-invitations" element={<ContestInvitationsPage />} />
-            <Route path="/contest-control" element={<ContestControlPage />} />
+            <Route path="/contest-control" element={
+              <ProtectedRoute requiredRole="admin" currentUser={currentLoggedInUser}>
+                <ContestControlPage />
+              </ProtectedRoute>
+            } />
             <Route path="/contest/lineup-editor" element={<LineupEditorPage />} />
             <Route path="/lineup-editor" element={<LineupEditorPage />} />
+            <Route path="/new-personal-info" element={
+              <ProtectedRoute requiredRole="any" currentUser={currentLoggedInUser}>
+                <NewPersonalInfo />
+              </ProtectedRoute>
+            } />
+            
+            {/* ✅ 新增：團隊成員列表路由 */}
+            <Route path="/team-members" element={
+              <ProtectedRoute requiredRole="any" currentUser={currentLoggedInUser}>
+                <TeamMembersList currentLoggedInUser={currentLoggedInUser} />
+              </ProtectedRoute>
+            } />
+            
+            {/* 🔥 重要：比賽相關路由 - 具體路由必須在通用路由之前 */}
+            <Route path="/contest/create" element={
+              <ProtectedRoute requiredRole="admin" currentUser={currentLoggedInUser}>
+                <CreateContestPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/contest/edit/:contest_id" element={<EditContestPage />} />
+            <Route path="/contest/:contest_id/join" element={<ContestJoinPage />} />
+            <Route path="/contests" element={<ContestListPage />} />
+            
+            {/* contestId 相關的具體路由 - 必須在 /contest/:contestId 之前 */}
+            <Route path="/contest/:contestId/score-edit" element={<ScoreEditPage />} />
             <Route path="/contest/:contestId/battleroom" element={<BattleRoomPage />} />
             <Route path="/contest/:contestId/results" element={<ContestResultsPage />} />
             <Route path="/contest/:contestId/lineup-status" element={<LineupStatusPage />} />
-            <Route path="/new-personal-info" element={<NewPersonalInfo />} />
             <Route path="/contest/:contestId/table-view" element={<ContestTableView />} />
-
+            
+            {/* 通用路由 - 必須放在最後 */}
+            <Route path="/contest/:contestId" element={<BattleRoomPage />} />
           </Routes>
         </Router>
       </div>
@@ -461,6 +758,40 @@ function Menu({ currentLoggedInUser, setCurrentLoggedInUser, unreadCount, invita
   const [showChangePwd, setShowChangePwd] = useState(false);
   const isGuest = !currentLoggedInUser;
  
+  // ✅ 新增：權限檢查變數
+  const userIsAdmin = isAdmin(currentLoggedInUser);
+  const userIsMember = isMember(currentLoggedInUser);
+
+  // ✅ 新增：角色顯示名稱轉換函數
+  const getRoleDisplayName = (role: string) => {
+    switch (role?.trim()) {
+      case 'admin':
+        return '團隊管理員';
+      case 'team_admin':
+        return '團隊管理員';
+      case 'member':
+        return '會員';
+      default:
+        return role || '未知';
+    }
+  };
+
+  // ✅ 新增：管理員專區點擊處理函數
+  const handleAdminAreaClick = () => {
+    if (!currentLoggedInUser) {
+      alert('請先登入！');
+      setShowLogin(true);
+      return;
+    }
+
+    if (!userIsAdmin) {
+      alert('您沒有權限訪問管理員專區！\n只有管理員才能使用此功能。');
+      return;
+    }
+
+    navigate('/admin');
+  };
+
   useEffect(() => {
     if (currentLoggedInUser && currentLoggedInUser.must_change_password) {
       setShowChangePwd(true);
@@ -503,8 +834,29 @@ function Menu({ currentLoggedInUser, setCurrentLoggedInUser, unreadCount, invita
           className="w-full bg-blue-700 hover:bg-blue-800 text-white text-lg py-2 rounded"
           onClick={() => navigate('/court-intro')}
         >
-          球場介紹
+          團隊簡介
         </button>
+        
+        <button
+          className={`w-full text-lg py-2 rounded ${
+            currentLoggedInUser 
+              ? 'bg-teal-500 hover:bg-teal-600 text-white' 
+              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+          }`}
+          onClick={() => {
+            if (currentLoggedInUser) {
+              navigate('/team-members');
+            } else {
+              alert('請先登入！');
+              setShowLogin(true);
+            }
+          }}
+          disabled={!currentLoggedInUser}
+          title={currentLoggedInUser ? '查看團隊成員' : '請先登入'}
+        >
+          團隊成員
+        </button>
+
         <button
           className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-2 rounded"
           onClick={() => navigate('/contests')}
@@ -526,6 +878,7 @@ function Menu({ currentLoggedInUser, setCurrentLoggedInUser, unreadCount, invita
             封神榜
           </button>
         </div>
+        
         <div className="flex flex-row space-x-4">
           <button 
             className="flex-1 px-6 py-3 bg-green-500 text-white text-center rounded-lg text-lg"
@@ -540,13 +893,33 @@ function Menu({ currentLoggedInUser, setCurrentLoggedInUser, unreadCount, invita
             個人資訊
           </button>
         </div>
-        <button 
-          className="px-6 py-3 bg-purple-500 text-white text-center rounded-lg"
-          disabled={isGuest || (currentLoggedInUser && currentLoggedInUser.must_change_password)}
-          onClick={() => navigate('/admin')}
+        
+        <button
+          className={`px-6 py-3 text-center rounded-lg transition-colors ${
+            userIsAdmin
+              ? 'bg-purple-500 text-white hover:bg-purple-600'
+              : userIsMember
+                ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+                : 'bg-gray-400 text-gray-500 cursor-not-allowed'
+          }`}
+          disabled={!userIsAdmin || (currentLoggedInUser && currentLoggedInUser.must_change_password)}
+          onClick={handleAdminAreaClick}
+          title={
+            !currentLoggedInUser
+              ? '請先登入'
+              : !userIsAdmin
+                ? '只有管理員可以使用此功能'
+                : '進入管理員專區'
+          }
         >
           管理員專區
+          {userIsMember && (
+            <div className="text-xs mt-1 opacity-75">
+              (需要管理員權限)
+            </div>
+          )}
         </button>
+        
         {!currentLoggedInUser ? (
           <button 
             className="px-6 py-3 bg-gray-700 text-white rounded-lg"
@@ -555,7 +928,9 @@ function Menu({ currentLoggedInUser, setCurrentLoggedInUser, unreadCount, invita
             登入
           </button>
         ) : (
-          <div className="text-green-700 font-bold">歡迎：{currentLoggedInUser.name}（{currentLoggedInUser.role}）</div>
+          <div className="text-green-700 font-bold">
+            歡迎：{currentLoggedInUser.name}（{getRoleDisplayName(currentLoggedInUser.role)}）
+          </div>
         )}
       </div>
 
@@ -615,7 +990,7 @@ function Menu({ currentLoggedInUser, setCurrentLoggedInUser, unreadCount, invita
         `}</style>
       </div>
 
-{/* 修改: 簡潔的登入者資訊 - 移至登出按鈕下方 */}
+      {/* 修改: 簡潔的登入者資訊 - 移至登出按鈕下方 */}
       {currentLoggedInUser && (
         <div style={{ 
           position: 'absolute', 

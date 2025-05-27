@@ -802,8 +802,8 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
       return;
     }
 
-    // Check if all members are selected
-    if (!redMember || !greenMember) {
+    // 修改驗證條件
+    if (!redMemberName || !greenMemberName) {
       setSubmitStatus('error');
       setSubmitMessage('請選擇所有位置的會員');
       setShowSubmitMessage(true);

@@ -166,7 +166,7 @@ const CourtManagement: React.FC = () => {
       <div className="mb-4">
         <label className="block font-medium mb-1">備註</label>
         <textarea
-          name="remarks"
+          name="remark"
           value={court?.remarks || ''}
           onChange={handleChange}
           className="w-full p-2 border rounded"
