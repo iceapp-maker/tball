@@ -6,15 +6,28 @@ interface TeamResult {
   teamId: number;
   teamName: string;
   wins: number;
-  matchResults: Record<number, string>; // key是對手隊伍ID，value是比分，例如"3:0"
-  gamesWon: number; // 勝場數
-  tableNumber?: number; // 勝場數排名
-  winningGames: number; // 勝局數
+  matchResults: Record<number, string>;
+  gamesWon: number;
+  tableNumber?: number;
+  winningGames: number;
 }
 
 interface ResultsTableData {
   teams: TeamResult[];
-  teamIdToIndex: Record<number, number>; // 用於快速查找隊伍在teams數組中的索引
+  teamIdToIndex: Record<number, number>;
+}
+
+interface DetailedMatch {
+  matchId: number;
+  team1Name: string;
+  team2Name: string;
+  details: {
+    team1Members: string[];
+    team2Members: string[];
+    winnerTeamId: number;
+    sequence: number;
+    score?: string;
+  }[];
 }
 
 const ContestResultsPage: React.FC = () => {
@@ -29,6 +42,10 @@ const ContestResultsPage: React.FC = () => {
   const [allScoresFilled, setAllScoresFilled] = useState(false);
   const [updating, setUpdating] = useState(false);
   const [isContestFinished, setIsContestFinished] = useState(false);
+  const [detailedMatches, setDetailedMatches] = useState<DetailedMatch[]>([]);
+  const [showDetailedMatches, setShowDetailedMatches] = useState(false);
+  const [loadingDetails, setLoadingDetails] = useState(false);
+  const [matchesData, setMatchesData] = useState<any[]>([]);
 
   useEffect(() => {
     if (contestId) {
@@ -94,12 +111,136 @@ const ContestResultsPage: React.FC = () => {
     }
   };
 
+  const fetchDetailedMatches = async () => {
+    if (!isContestFinished) return;
+    
+    setLoadingDetails(true);
+    try {
+      const { data: matchDetails, error: detailsError } = await supabase
+        .from('contest_match_detail')
+        .select(`
+          match_detail_id,
+          match_id,
+          team1_member_ids,
+          team2_member_ids,
+          winner_team_id,
+          sequence,
+          score
+        `)
+        .in('match_id', resultsData.teams.length > 0 ? 
+          await supabase
+            .from('contest_match')
+            .select('match_id')
+            .eq('contest_id', contestId)
+            .then(({ data }) => data?.map(m => m.match_id) || [])
+        : []);
+
+      if (detailsError) throw detailsError;
+
+      const { data: matches, error: matchesError } = await supabase
+        .from('contest_match')
+        .select('match_id, team1_id, team2_id')
+        .eq('contest_id', contestId);
+
+      if (matchesError) throw matchesError;
+
+      const teamIds = Array.from(new Set(
+        matches?.flatMap(match => [match.team1_id, match.team2_id]).filter(Boolean) || []
+      ));
+
+      const { data: teams, error: teamsError } = await supabase
+        .from('contest_team')
+        .select('contest_team_id, team_name')
+        .in('contest_team_id', teamIds);
+
+      if (teamsError) throw teamsError;
+
+      const { data: members, error: membersError } = await supabase
+        .from('contest_team_member')
+        .select('contest_team_id, member_id, member_name')
+        .in('contest_team_id', teamIds);
+
+      if (membersError) throw membersError;
+
+      const processedMatches = processDetailedMatches(matchDetails || [], matches || [], teams || [], members || []);
+      setDetailedMatches(processedMatches);
+      setMatchesData(matches || []);
+      
+    } catch (err: any) {
+      console.error('獲取詳細對戰記錄錯誤:', err);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const processDetailedMatches = (
+    details: any[],
+    matches: any[],
+    teams: any[],
+    members: any[]
+  ): DetailedMatch[] => {
+    const teamMap = new Map(teams.map(team => [team.contest_team_id, team.team_name]));
+    const memberMap = new Map(members.map(member => [member.member_id, member.member_name]));
+    
+    const matchGroups = new Map<number, any[]>();
+    details.forEach(detail => {
+      if (!matchGroups.has(detail.match_id)) {
+        matchGroups.set(detail.match_id, []);
+      }
+      matchGroups.get(detail.match_id)?.push(detail);
+    });
+
+    const result: DetailedMatch[] = [];
+    
+    matchGroups.forEach((matchDetails, matchId) => {
+      const match = matches.find(m => m.match_id === matchId);
+      if (!match) return;
+
+      const team1Name = teamMap.get(match.team1_id) || '未知隊伍';
+      const team2Name = teamMap.get(match.team2_id) || '未知隊伍';
+
+      const processedDetails = matchDetails
+        .sort((a, b) => a.sequence - b.sequence)
+        .map(detail => {
+          const team1Members = (detail.team1_member_ids || []).map((id: string) => 
+            memberMap.get(id) || '未知選手'
+          );
+          const team2Members = (detail.team2_member_ids || []).map((id: string) => 
+            memberMap.get(id) || '未知選手'
+          );
+
+          return {
+            team1Members,
+            team2Members,
+            winnerTeamId: detail.winner_team_id,
+            sequence: detail.sequence,
+            score: detail.score
+          };
+        });
+
+      result.push({
+        matchId,
+        team1Name,
+        team2Name,
+        details: processedDetails
+      });
+    });
+
+    return result.sort((a, b) => a.matchId - b.matchId);
+  };
+
+  const toggleDetailedMatches = () => {
+    if (!showDetailedMatches && detailedMatches.length === 0) {
+      fetchDetailedMatches();
+    }
+    setShowDetailedMatches(!showDetailedMatches);
+  };
+
   const fetchContestResults = async () => {
     setLoading(true);
     setError('');
     
     try {
-      // 1. 獲取所有比賽對戰數據
       const { data: matchData, error: matchError } = await supabase
         .from('contest_match')
         .select('match_id, contest_id, team1_id, team2_id, score, winner_team_id')
@@ -113,7 +254,6 @@ const ContestResultsPage: React.FC = () => {
         return;
       }
 
-      // 2. 獲取所有參與比賽的隊伍信息
       const teamIds = Array.from(new Set(
         matchData.flatMap(match => [match.team1_id, match.team2_id]).filter(Boolean)
       ));
@@ -125,15 +265,13 @@ const ContestResultsPage: React.FC = () => {
 
       if (teamError) throw teamError;
       
-      // 3. 獲取比賽明細數據以統計勝局數
       const { data: detailData, error: detailError } = await supabase
         .from('contest_match_detail')
-        .select('match_detail_id, match_id, winner_team_id')
+        .select('match_detail_id, match_id, winner_team_id, score')
         .in('match_id', matchData.map(match => match.match_id));
         
       if (detailError) throw detailError;
 
-      // 4. 處理數據並生成結果表
       const resultsTableData = processMatchResults(matchData, teamData, detailData);
       setResultsData(resultsTableData);
       setAllScoresFilled(checkAllScoresFilled(matchData));
@@ -150,13 +288,11 @@ const ContestResultsPage: React.FC = () => {
     teams: any[],
     matchDetails: any[]
   ): ResultsTableData => {
-    // 初始化結果數據結構
     const resultsData: ResultsTableData = {
       teams: [],
       teamIdToIndex: {}
     };
 
-    // 首先為每個隊伍創建一個結果對象
     teams.forEach((team, index) => {
       resultsData.teams.push({
         teamId: team.contest_team_id,
@@ -164,60 +300,54 @@ const ContestResultsPage: React.FC = () => {
         wins: 0,
         matchResults: {},
         gamesWon: 0,
-        winningGames: 0 // 初始化勝局數
+        winningGames: 0
       });
       resultsData.teamIdToIndex[team.contest_team_id] = index;
     });
 
-    // 處理每場比賽結果
     matches.forEach(match => {
-      if (!match.score) return; // 跳過沒有比分的比賽
-      
       const team1Id = match.team1_id;
       const team2Id = match.team2_id;
-      const score = match.score;
-      const winnerId = match.winner_team_id;
       
-      if (!team1Id || !team2Id) return; // 跳過沒有隊伍ID的比賽
+      if (!team1Id || !team2Id) return;
       
       const team1Index = resultsData.teamIdToIndex[team1Id];
       const team2Index = resultsData.teamIdToIndex[team2Id];
       
-      if (team1Index === undefined || team2Index === undefined) return; // 跳過找不到隊伍索引的比賽
+      if (team1Index === undefined || team2Index === undefined) return;
       
-      // 記錄比分 - 這裡直接使用原始比分
-      resultsData.teams[team1Index].matchResults[team2Id] = score;
+      const matchDetailRecords = matchDetails.filter(detail => detail.match_id === match.match_id);
+      let team1Wins = 0;
+      let team2Wins = 0;
       
-      // 自動生成反向比分 - 解析原始比分並反轉
-      if (score && score.includes(':')) {
-        const [team1Score, team2Score] = score.split(':');
-        const reverseScore = `${team2Score}:${team1Score}`;
-        resultsData.teams[team2Index].matchResults[team1Id] = reverseScore;
-      }
+      matchDetailRecords.forEach(detail => {
+        if (detail.winner_team_id === team1Id) {
+          team1Wins++;
+        } else if (detail.winner_team_id === team2Id) {
+          team2Wins++;
+        }
+      });
       
-      // 更新勝場數
-      if (winnerId === team1Id) {
+      const scoreStr = `${team1Wins}:${team2Wins}`;
+      resultsData.teams[team1Index].matchResults[team2Id] = scoreStr;
+      
+      const reverseScore = `${team2Wins}:${team1Wins}`;
+      resultsData.teams[team2Index].matchResults[team1Id] = reverseScore;
+      
+      if (team1Wins > team2Wins) {
         resultsData.teams[team1Index].wins += 1;
-      } else if (winnerId === team2Id) {
+      } else if (team2Wins > team1Wins) {
         resultsData.teams[team2Index].wins += 1;
       }
+      
+      resultsData.teams[team1Index].winningGames += team1Wins;
+      resultsData.teams[team2Index].winningGames += team2Wins;
     });
 
-    // 統計勝局數 - 從match_detail表中計算每個隊伍贏得的局數總和
-    matchDetails.forEach(detail => {
-      const winnerId = detail.winner_team_id;
-      if (winnerId && resultsData.teamIdToIndex[winnerId] !== undefined) {
-        const winnerIndex = resultsData.teamIdToIndex[winnerId];
-        resultsData.teams[winnerIndex].winningGames += 1;
-      }
-    });
-
-    // 計算總勝場數並排序
     resultsData.teams.forEach(team => {
       team.gamesWon = team.wins;
     });
 
-    // 按勝場數分組，相同勝場數的隊伍放在同一組
     const teamsByWins: Record<number, TeamResult[]> = {};
     resultsData.teams.forEach(team => {
       if (!teamsByWins[team.gamesWon]) {
@@ -226,35 +356,29 @@ const ContestResultsPage: React.FC = () => {
       teamsByWins[team.gamesWon].push(team);
     });
 
-    // 處理每個勝場數分組
     const sortedTeams: TeamResult[] = [];
     Object.keys(teamsByWins)
       .map(Number)
-      .sort((a, b) => b - a) // 按勝場數降序排列
+      .sort((a, b) => b - a)
       .forEach(wins => {
         const teamsWithSameWins = teamsByWins[wins];
         
-        // 如果該分組只有一支隊伍，直接加入結果
         if (teamsWithSameWins.length === 1) {
           sortedTeams.push(teamsWithSameWins[0]);
           return;
         }
         
-        // 檢查分組中隊伍間的直接對戰關係
         const sortedGroup = sortTeamsByHeadToHead(teamsWithSameWins, resultsData.teamIdToIndex);
         sortedTeams.push(...sortedGroup);
       });
 
-    // 將排序後的結果更新到resultsData
     resultsData.teams = sortedTeams;
     
-    // 重建teamIdToIndex映射關係
     resultsData.teamIdToIndex = {};
     resultsData.teams.forEach((team, index) => {
       resultsData.teamIdToIndex[team.teamId] = index;
     });
     
-    // 分配排名
     let currentRank = 1;
     resultsData.teams.forEach((team, index) => {
       team.tableNumber = currentRank++;
@@ -263,46 +387,35 @@ const ContestResultsPage: React.FC = () => {
     return resultsData;
   };
 
-  // 新增函數：根據直接對戰結果對同一勝場數的隊伍進行排序
   const sortTeamsByHeadToHead = (teams: TeamResult[], teamIdToIndex: Record<number, number>) => {
-    // 如果只有兩支隊伍，直接比較對戰結果
     if (teams.length === 2) {
       const team1 = teams[0];
       const team2 = teams[1];
       
-      // 檢查兩隊之間的直接對戰結果
       const matchResult = team1.matchResults[team2.teamId];
       if (matchResult) {
         const [team1Score, team2Score] = matchResult.split(':').map(Number);
         if (team1Score > team2Score) {
-          return [team1, team2]; // team1勝出
+          return [team1, team2];
         } else if (team1Score < team2Score) {
-          return [team2, team1]; // team2勝出
+          return [team2, team1];
         }
       }
       
-      // 如果沒有直接對戰結果或平局，則按勝局數排序
       return [...teams].sort((a, b) => b.winningGames - a.winningGames);
     }
     
-    // 處理三隊或更多隊伍的情況
-    
-    // 1. 檢查是否存在循環勝負關係（A勝B，B勝C，C勝A）
     const hasCircularWinning = checkCircularWinning(teams);
     
-    // 2. 如果存在循環勝負，直接按勝局數排序
     if (hasCircularWinning) {
       return [...teams].sort((a, b) => b.winningGames - a.winningGames);
     }
     
-    // 3. 否則，使用直接對戰勝負關係來排序
-    // 創建一個勝負矩陣，記錄隊伍間的勝負關係
     const winMatrix: Record<number, Set<number>> = {};
     teams.forEach(team => {
       winMatrix[team.teamId] = new Set();
     });
     
-    // 填充勝負矩陣
     teams.forEach(team => {
       teams.forEach(opponent => {
         if (team.teamId === opponent.teamId) return;
@@ -317,35 +430,29 @@ const ContestResultsPage: React.FC = () => {
       });
     });
     
-    // 計算每個隊伍的直接對戰勝利數
     const directWins: Record<number, number> = {};
     teams.forEach(team => {
       directWins[team.teamId] = winMatrix[team.teamId].size;
     });
     
-    // 按直接對戰勝利數和勝局數排序
     return [...teams].sort((a, b) => {
       const aWins = directWins[a.teamId];
       const bWins = directWins[b.teamId];
       
       if (aWins !== bWins) {
-        return bWins - aWins; // 按直接對戰勝利數降序排列
+        return bWins - aWins;
       }
       
-      // 如果直接對戰勝利數相同，則按勝局數排序
       return b.winningGames - a.winningGames;
     });
   };
   
-  // 新增函數：檢查一組隊伍是否存在循環勝負關係
   const checkCircularWinning = (teams: TeamResult[]) => {
-    // 創建一個有向圖表示勝負關係
     const winGraph: Record<number, number[]> = {};
     teams.forEach(team => {
       winGraph[team.teamId] = [];
     });
     
-    // 填充有向圖
     teams.forEach(team => {
       teams.forEach(opponent => {
         if (team.teamId === opponent.teamId) return;
@@ -360,7 +467,6 @@ const ContestResultsPage: React.FC = () => {
       });
     });
     
-    // 檢查圖中是否存在環（循環）
     const visited = new Set<number>();
     const recursionStack = new Set<number>();
     
@@ -474,6 +580,82 @@ const ContestResultsPage: React.FC = () => {
             </div>
           )}
           
+          {isContestFinished && (
+            <div className="mt-8 mb-6">
+              <button
+                onClick={toggleDetailedMatches}
+                className="flex items-center justify-between w-full bg-blue-50 hover:bg-blue-100 border border-blue-200 rounded-lg px-4 py-3 text-left transition-colors"
+              >
+                <span className="text-lg font-semibold text-blue-800">詳細個人對戰記錄</span>
+                <span className="text-blue-600 text-xl">
+                  {showDetailedMatches ? '▲' : '▼'}
+                </span>
+              </button>
+              
+              {showDetailedMatches && (
+                <div className="mt-4 border border-gray-200 rounded-lg bg-white">
+                  {loadingDetails ? (
+                    <div className="p-6 text-center text-gray-500">載入詳細記錄中...</div>
+                  ) : detailedMatches.length === 0 ? (
+                    <div className="p-6 text-center text-gray-500">沒有找到詳細對戰記錄</div>
+                  ) : (
+                    <div className="p-4">
+                      {detailedMatches.map((match) => (
+                        <div key={match.matchId} className="mb-6 last:mb-0">
+                          <div className="bg-gray-100 px-4 py-2 rounded-t-lg">
+                            <h3 className="font-bold text-lg text-gray-800">
+                              {match.team1Name} vs {match.team2Name}
+                            </h3>
+                          </div>
+                          <div className="border border-t-0 border-gray-200 rounded-b-lg">
+                            {match.details.length === 0 ? (
+                              <div className="p-4 text-gray-500 text-center">沒有詳細對戰數據</div>
+                            ) : (
+                              <div className="divide-y divide-gray-200">
+                                {match.details.map((detail, index) => {
+                                  const matchInfo = matchesData?.find(m => m.match_id === match.matchId);
+                                  const isTeam1Winner = detail.winnerTeamId === matchInfo?.team1_id;
+                                  const isTeam2Winner = detail.winnerTeamId === matchInfo?.team2_id;
+                                  
+                                  return (
+                                    <div key={index} className="p-3 hover:bg-gray-50">
+                                      <div className="flex items-center justify-between">
+                                        <div className="flex-1">
+                                          <span className="text-sm text-gray-600">第 {detail.sequence} 局：</span>
+                                        </div>
+                                      </div>
+                                      <div className="mt-2 flex items-center justify-between">
+                                        <div className="flex items-center">
+                                          {isTeam1Winner && (
+                                            <span className="mr-2 text-green-600">🏆</span>
+                                          )}
+                                          <span>{detail.team1Members.join(', ')}</span>
+                                        </div>
+                                        <div className="mx-4 font-bold">
+                                          {detail.score || 'vs'}
+                                        </div>
+                                        <div className="flex items-center">
+                                          <span>{detail.team2Members.join(', ')}</span>
+                                          {isTeam2Winner && (
+                                            <span className="ml-2 text-green-600">🏆</span>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+          
           {isAdmin && (allScoresFilled || isContestFinished) && (
             <div className="mt-4 mb-6">
               <button
@@ -487,6 +669,7 @@ const ContestResultsPage: React.FC = () => {
               </button>
             </div>
           )}
+          
           <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
             <h3 className="font-bold text-yellow-800 mb-2">說明</h3>
             <ul className="list-disc pl-5 text-sm text-yellow-700">
@@ -498,6 +681,9 @@ const ContestResultsPage: React.FC = () => {
               <li>當三隊或更多隊勝場(隊)數相同且存在循環勝負關係時(例如A勝B、B勝C、C勝A)，則按勝局(點)數排序。</li>
               <li>勝局(點)數統計每個隊伍在所有比賽中獲勝的局(點)數總和。</li>
               <li>隊伍名稱顯示在表格的行和列頭部。</li>
+              {isContestFinished && (
+                <li className="text-blue-700 font-medium">比賽結束後可展開查看詳細個人對戰記錄，包含每局選手對戰情況。</li>
+              )}
             </ul>
           </div>
         </div>

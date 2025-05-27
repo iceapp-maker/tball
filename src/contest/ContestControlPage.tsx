@@ -154,13 +154,10 @@ const ContestControlPage: React.FC = () => {
       // 3. 根據賽制類型產生對戰組合
       let matches;
       if (contestData.match_mode === 'round_robin') {
-        // 使用改進的循環賽算法
         matches = generateImprovedRoundRobinMatches(teamsData, contestData.table_count || 1);
       } else if (contestData.match_mode === 'elimination') {
-        // 淘汰賽邏輯（此處為示例，可根據需求實現）
         matches = generateEliminationMatches(teamsData, contestData.table_count || 1);
       } else {
-        // 默認使用改進的循環賽算法
         matches = generateImprovedRoundRobinMatches(teamsData, contestData.table_count || 1);
       }
 
@@ -168,29 +165,27 @@ const ContestControlPage: React.FC = () => {
       const { data: matchesData, error: matchesError } = await supabase
         .from('contest_match')
         .insert(matches)
-        .select(); // 添加 select() 確保返回插入後的完整資料，包含 match_id
+        .select();
 
       if (matchesError) throw matchesError;
 
-      // 5. 為每場比賽產生對戰詳情（每點）
+      // 5. 為每場比賽產生對戰詳情
       if (matchesData) {
         for (const match of matchesData) {
-          // 為每場比賽的每個點位創建詳情記錄
           for (let i = 0; i < contestData.total_points; i++) {
             const matchDetail = {
-              // match_detail_id 是 serial，由資料庫自動生成
               match_id: match.match_id,
-              contest_id: contestData.contest_id, // 添加必要的 contest_id 欄位
-              team1_member_ids: [], // 直接傳遞陣列，Supabase 會自動處理 jsonb 類型
-              team2_member_ids: [], // 直接傳遞陣列，Supabase 會自動處理 jsonb 類型
+              contest_id: contestData.contest_id,
+              team1_member_ids: [],
+              team2_member_ids: [],
               winner_team_id: null,
               score: null,
               sequence: i + 1,
               match_type: contestData.points_config && contestData.points_config[i] 
                 ? contestData.points_config[i].type 
                 : '雙打',
-              table_no: null, // 使用正確的欄位名稱，替換 played_at
-              judge_id: null // 只保留 SQL 定義中存在的欄位
+              table_no: null,
+              judge_id: null
             };
 
             const { error: detailError } = await supabase
@@ -205,14 +200,31 @@ const ContestControlPage: React.FC = () => {
         }
       }
 
-      // 6. 確保比賽狀態更新為「名單安排中」
-      await supabase
-        .from('contest')
-        .update({ contest_status: 'lineup_arrangement' })
-        .eq('contest_id', contestId);
+      // 🎯 簡易成功判定：檢查 contest_match 是否有該 contest_id 的資料
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('contest_match')
+        .select('contest_id')
+        .eq('contest_id', contestId)
+        .limit(1);
 
-      alert('對戰表產生成功！');
-      fetchContests(); // 重新載入比賽列表
+      if (verifyError) throw verifyError;
+
+      // ✅ 如果找到資料，表示成功
+      if (verifyData && verifyData.length > 0) {
+        // 6. 更新比賽狀態為「人員安排中」
+        const { error: updateError } = await supabase
+          .from('contest')
+          .update({ contest_status: 'lineup_arrangement' })
+          .eq('contest_id', contestId);
+
+        if (updateError) throw updateError;
+
+        alert('對戰表產生成功！');
+        fetchContests(); // 重新載入比賽列表
+      } else {
+        throw new Error('對戰表資料未成功寫入');
+      }
+
     } catch (err: any) {
       console.error('產生對戰表失敗:', err);
       alert(`產生對戰表失敗: ${err.message}`);
@@ -362,11 +374,10 @@ const ContestControlPage: React.FC = () => {
           team1_id: match.team1Id,
           team2_id: match.team2Id,
           winner_team_id: null,
-          match_date: new Date().toISOString().split('T')[0], // 可以根據需要設定日期
+          match_date: new Date().toISOString().split('T')[0],
           score: null,
           sequence: sequence++, // 遞增序號
-          round: r + 1, // 記錄輪次（從1開始）
-          table_no: ((m % tableCount) + 1) // 循環分配桌次
+          round: r + 1 // 保留輪次資訊
         });
       }
     }
@@ -374,7 +385,7 @@ const ContestControlPage: React.FC = () => {
     return matches;
   };
 
-  // 淘汰賽對戰生成函數（僅作示範，可根據需求修改）
+  // 淘汰賽對戰生成函數
   const generateEliminationMatches = (teams: any[], tableCount: number) => {
     // 計算完整淘汰賽所需的隊伍數量（2的冪次）
     const teamCount = teams.length;
@@ -412,42 +423,33 @@ const ContestControlPage: React.FC = () => {
         team1_id: team1Id,
         team2_id: team2Id,
         winner_team_id: null,
-        match_date: new Date().toISOString().split('T')[0], // 可以根據需要設定日期
+        match_date: new Date().toISOString().split('T')[0],
         score: null,
         sequence: sequence++, // 遞增序號
-        round: 1, // 第一輪
-        table_no: ((i % tableCount) + 1) // 循環分配桌次
+        round: 1 // 保留第一輪標示
       });
     }
-    
-    // 注意：對於淘汰賽，後續輪次的比賽需要等前一輪結果出來後才能產生
-    // 這裡我們只產生第一輪的比賽，後續輪次可以在比賽進行中動態產生
     
     return matches;
   };
 
   // 渲染比賽狀態標籤
-  const renderStatusBadge = (status: string) => {
+  const renderStatusBadge = (status: string, contestId: string) => {
     let color = '';
     let text = '';
     
     switch (status) {
       case 'recruiting':
         color = 'bg-blue-500';
-        // 檢查是否達到預期隊伍數
-        const contest = contests.find((c: { contest_status: string, contest_id: string, expected_teams: number }) => c.contest_status === status);
-        const teamCount = contest ? teamCounts[contest.contest_id] || 0 : 0;
-        const expectedTeams = contest ? contest.expected_teams : 0;
-        
-        if (teamCount === expectedTeams) {
-          text = '人員招募完成';
-        } else {
-          text = '人員招募中';
-        }
+        text = '人員招募中';
         break;
-      case 'lineup_arrangement':
+      case 'WaitMatchForm':  // 所有隊長都確認名單後的狀態
+        color = 'bg-orange-500';
+        text = '待管理員產生對戰表';
+        break;
+      case 'lineup_arrangement':  // 對戰表產生後的狀態
         color = 'bg-yellow-500';
-        text = '名單安排中';
+        text = '人員安排中';
         break;
       case 'ongoing':
         color = 'bg-green-500';
@@ -473,7 +475,15 @@ const ContestControlPage: React.FC = () => {
     <div className="max-w-6xl mx-auto mt-8 p-6 bg-white rounded shadow">
       <div className="flex justify-between items-center mb-6">
         <div>
-          <h2 className="text-2xl font-bold">賽程控制區</h2>
+          <div className="flex items-center space-x-4">
+            <h2 className="text-2xl font-bold">賽程控制區</h2>
+            <button
+              onClick={() => navigate('/')}
+              className="bg-gray-500 hover:bg-gray-600 text-white px-3 py-1 rounded text-sm"
+            >
+              回首頁
+            </button>
+          </div>
           {currentUserTeamName && (
             <p className="text-sm text-gray-600 mt-1">
               目前顯示：{currentUserTeamName} 團隊主辦的比賽
@@ -512,7 +522,7 @@ const ContestControlPage: React.FC = () => {
                   <td className="py-3 px-4 border">
                     {contest.contest_name}
                   </td>
-                  <td className="py-3 px-4 border">{renderStatusBadge(contest.contest_status)}</td>
+                  <td className="py-3 px-4 border">{renderStatusBadge(contest.contest_status, contest.contest_id)}</td>
                   <td className="py-3 px-4 border">{(() => { const d = new Date(contest.signup_end_date); return `${d.getMonth() + 1}/${d.getDate()}`; })()}</td>
                   <td className="py-3 px-4 border sticky right-0 bg-white shadow-md z-10">
                     <div className="flex space-x-2">
@@ -523,8 +533,7 @@ const ContestControlPage: React.FC = () => {
                         編輯
                       </button>
 
-                      {contest.contest_status === 'recruiting' && 
-                        teamCounts[contest.contest_id] === contest.expected_teams && (
+                      {contest.contest_status === 'WaitMatchForm' && (
                         <button
                           className="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-sm"
                           onClick={() => handleGenerateSchedule(contest.contest_id)}
@@ -546,6 +555,10 @@ const ContestControlPage: React.FC = () => {
                             navigate(`/contest/${contest.contest_id}/join`);
                           } else if (contest.contest_status === 'lineup_arrangement') {
                             navigate(`/contest/${contest.contest_id}/lineup-status`);
+                          } else if (contest.contest_status === 'WaitMatchForm') {
+                            navigate(`/contest/${contest.contest_id}/join`);
+                          } else {
+                            navigate(`/contest/${contest.contest_id}/join`);
                           }
                         }}
                         className="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-sm"
@@ -556,7 +569,11 @@ const ContestControlPage: React.FC = () => {
                             ? '查看賽程'
                             : contest.contest_status === 'recruiting'
                               ? '查看報名'
-                              : '查看名單'}
+                              : contest.contest_status === 'lineup_arrangement'
+                                ? '查看名單'
+                                : contest.contest_status === 'WaitMatchForm'
+                                  ? '查看隊伍'
+                                  : '查看詳情'}
                       </button>
 
                       {contest.contest_status === 'ongoing' && contestsWithScores[contest.contest_id] && (
@@ -579,7 +596,7 @@ const ContestControlPage: React.FC = () => {
       <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
         <h3 className="font-bold text-yellow-800 mb-2">說明</h3>
         <ul className="list-disc pl-5 text-sm text-yellow-700">
-          <li>當比賽狀態為「招募完成」時，可以產生對戰表。</li>
+          <li>當比賽狀態為「待管理員執行產生對戰表」時，可以產生對戰表。</li>
           <li>循環賽：每隊都會與其他所有隊伍對戰一次。</li>
           <li>淘汰賽：輸一場就淘汰，優勝者晉級下一輪。</li>
           <li>產生對戰表後，將由隊長編排出賽名單。</li>

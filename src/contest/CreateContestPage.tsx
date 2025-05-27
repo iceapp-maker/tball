@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const CreateContestPage: React.FC = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [contestName, setContestName] = useState('');
   const [teamName, setTeamName] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
-  const [courtList, setCourtList] = useState<{ name: string; team_id: string }[]>([]);
   const [signupEndDate, setSignupEndDate] = useState(getDefaultSignupEndDate());
   const [expectedTeams, setExpectedTeams] = useState(0);
   const [playersPerTeam, setPlayersPerTeam] = useState(0);
@@ -24,8 +26,6 @@ const CreateContestPage: React.FC = () => {
 
   // 假設有user context
   const user = JSON.parse(localStorage.getItem('loginUser') || '{}');
-  const memberId = user?.member_id || '';
-  const defaultTeamId = memberId ? memberId[0] : '';
 
   // 預設比賽規則內容
   const defaultRuleText = `參賽對象: 不限\n賽制: 5點雙打`;
@@ -49,33 +49,28 @@ const CreateContestPage: React.FC = () => {
     setPointsConfig(newConfig);
   }, [totalPoints]);
 
-  // 取得 courts 資料並設定預設球場
-  useEffect(() => {
-    const fetchCourts = async () => {
-      const { data, error } = await supabase.from('courts').select('name, team_id');
-      if (error) {
-        setErrorMsg('無法取得球場資料');
-        return;
-      }
-      setCourtList(data || []);
-      // 找到預設 team_id 對應的球場
-      if (data && defaultTeamId) {
-        const found = data.find((c: any) => c.team_id === defaultTeamId);
-        if (found) setTeamName(found.name);
-      }
-    };
-    fetchCourts();
-  }, [defaultTeamId]);
-
+  // 根據登入者的team_id自動設定球場名稱
   useEffect(() => {
     const fetchTeamName = async () => {
       if (user?.team_id) {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('courts')
           .select('name')
           .eq('team_id', user.team_id)
           .maybeSingle();
-        setUserTeamName(data?.name || user.team_id);
+        
+        if (error) {
+          console.error('無法取得球場資料:', error);
+          setErrorMsg('無法取得球場資料');
+          return;
+        }
+        
+        if (data) {
+          setUserTeamName(data.name);
+          setTeamName(data.name); // 自動設定球場名稱
+        } else {
+          setErrorMsg('找不到對應的球場資料');
+        }
       }
     };
     fetchTeamName();
@@ -100,30 +95,43 @@ const CreateContestPage: React.FC = () => {
     setLoading(true);
     setErrorMsg('');
     setSuccess(false);
-    const { error } = await supabase.from('contest').insert({
-      contest_name: contestName,
-      created_by: user.name,
-      team_name: teamName,
-      rule_text: ruleText,
-      signup_end_date: signupEndDate,
-      expected_teams: expectedTeams,
-      players_per_team: playersPerTeam,
-      contest_status: 'recruiting',
-      // 新增總點數和賽制設定
-      total_points: totalPoints,
-      points_config: pointsConfig,
-      // 新增賽制類型
-      match_mode: matchMode,
-      // 新增球桌數
-      table_count: tableCount
-    });
-    setLoading(false);
-    if (error) {
-      setErrorMsg(error.message);
-    } else {
+    
+    try {
+      // 確保不包含主鍵欄位，讓資料庫自動產生
+      const { data, error } = await supabase.from('contest').insert({
+        contest_name: contestName,
+        created_by: user.name,
+        team_name: teamName,
+        rule_text: ruleText,
+        signup_end_date: signupEndDate,
+        expected_teams: Number(expectedTeams), // 確保是數字
+        players_per_team: Number(playersPerTeam), // 確保是數字
+        contest_status: 'recruiting',
+        // 新增總點數和賽制設定
+        total_points: Number(totalPoints), // 確保是數字
+        points_config: pointsConfig, // 這應該是 jsonb 類型
+        // 新增賽制類型
+        match_mode: matchMode,
+        // 新增球桌數
+        table_count: Number(tableCount), // 確保是數字
+        // 確保有建立時間
+        created_at: new Date().toISOString()
+      }).select(); // 加入 select() 來取得插入的資料
+      
+      if (error) {
+        throw error;
+      }
+      
+      console.log('Contest created successfully:', data);
       setSuccess(true);
+      
+      // 顯示成功訊息後跳轉到賽程控制區
+      setTimeout(() => {
+        navigate('/contest-control'); // 跳轉到賽程控制區頁面
+      }, 1500); // 1.5秒後跳轉
+      
       setContestName('');
-      setTeamName('');
+      // 不重置 teamName，保持顯示用戶的球場
       setRuleText(defaultRuleText);
       setSignupEndDate(getDefaultSignupEndDate());
       setExpectedTeams(0);
@@ -135,6 +143,18 @@ const CreateContestPage: React.FC = () => {
       setMatchMode('round_robin');
       // 重置球桌數
       setTableCount(1);
+      
+    } catch (err: any) {
+      console.error('Database error:', err);
+      if (err.message.includes('duplicate key')) {
+        setErrorMsg('系統錯誤：資料重複，請稍後再試或聯絡管理員');
+      } else if (err.message.includes('invalid input syntax')) {
+        setErrorMsg(`資料格式錯誤：${err.message}`);
+      } else {
+        setErrorMsg(`建立失敗：${err.message}`);
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -160,20 +180,16 @@ const CreateContestPage: React.FC = () => {
             required
           />
         </div>
+        
+        {/* 修改為只顯示球場名稱，不可編輯 */}
         <div className="mb-4">
           <label className="block font-medium mb-1">球場名稱</label>
-          <select
-            className="w-full border rounded px-3 py-2"
-            value={teamName}
-            onChange={e => setTeamName(e.target.value)}
-            required
-          >
-            <option value="">請選擇球場</option>
-            {courtList.map(court => (
-              <option key={court.team_id} value={court.name}>{court.name}</option>
-            ))}
-          </select>
+          <div className="w-full border rounded px-3 py-2 bg-gray-100 text-gray-700">
+            {teamName || '載入中...'}
+          </div>
+          <p className="text-sm text-gray-500 mt-1">根據您的團隊自動設定</p>
         </div>
+        
         <div className="mb-4">
           <label className="block font-medium mb-1">比賽規則</label>
           <textarea
@@ -216,10 +232,10 @@ const CreateContestPage: React.FC = () => {
           />
         </div>
         
-        {/* 新增賽制選擇 */}
+        {/* 修改賽制選擇 */}
         <div className="mb-4">
           <label className="block font-medium mb-1">賽制類型</label>
-          <div className="flex gap-4">
+          <div className="flex flex-col gap-3">
             <label className="inline-flex items-center">
               <input
                 type="radio"
@@ -232,17 +248,19 @@ const CreateContestPage: React.FC = () => {
               <span className="ml-2">循環賽</span>
               <span className="ml-1 text-xs text-gray-500">(每隊都與其他隊伍對戰)</span>
             </label>
-            <label className="inline-flex items-center">
+            <label className="inline-flex items-center opacity-50 cursor-not-allowed">
               <input
                 type="radio"
-                className="form-radio h-5 w-5 text-blue-600"
+                className="form-radio h-5 w-5 text-gray-400"
                 name="matchMode"
                 value="elimination"
                 checked={matchMode === 'elimination'}
                 onChange={() => setMatchMode('elimination')}
+                disabled
               />
-              <span className="ml-2">淘汰賽</span>
-              <span className="ml-1 text-xs text-gray-500">(輸了就淘汰)</span>
+              <span className="ml-2 text-gray-500">淘汰賽</span>
+              <span className="ml-1 text-xs text-gray-400">(輸了就淘汰)</span>
+              <span className="ml-2 text-xs text-red-500 font-medium">- 尚未完工</span>
             </label>
           </div>
           <p className="text-sm text-gray-500 mt-1">
@@ -318,7 +336,7 @@ const CreateContestPage: React.FC = () => {
         >
           {loading ? '建立中...' : '建立比賽'}
         </button>
-        {success && <div className="text-green-600 mt-3">比賽建立成功！</div>}
+        {success && <div className="text-green-600 mt-3 font-semibold">🎉 比賽建立成功！正在跳轉到賽程控制區...</div>}
         {errorMsg && <div className="text-red-600 mt-3">{errorMsg}</div>}
       </form>
     </div>

@@ -293,7 +293,7 @@ const ContestJoinPage: React.FC = () => {
         contest_id: contest_id,
         team_name: teamName.trim(),
         created_by: user.name,
-        team_member_status: 'pending',
+        team_member_status: 'recruiting',
         team_id: user.team_id
       })
       .select();

@@ -40,6 +40,18 @@ const BattleRoomPage: React.FC = () => {
   const [localStorageUser, setLocalStorageUser] = useState<any>(null); // localStorage 中的用戶資訊
   const [teamCaptains, setTeamCaptains] = useState<{[teamId: string]: string}>({})
   
+  // 新增：檢查用戶是否可以操作比賽的函數
+  const canUserOperateMatch = (match: MatchDetail): boolean => {
+    // 管理員可以操作任何比賽
+    if (isAdmin) {
+      return true;
+    }
+    
+    // 只要用戶參與此比賽（currentContestTeamId 不為 null），就可以操作任何場次
+    // 不需要檢查是否為該場比賽的直接參與者，因為參賽者可以互相當裁判
+    return currentContestTeamId !== null;
+  };
+
   // 搜尋和過濾相關狀態
   const [searchKeyword, setSearchKeyword] = useState<string>(''); // 搜尋關鍵字
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null); // 選中的隊伍ID
@@ -1168,7 +1180,17 @@ const BattleRoomPage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* 使用者資訊區塊 - 修改樣式 */}
-      <div className="p-4 bg-gray-100 flex justify-end items-center">
+      <div className="p-4 bg-gray-100 flex justify-between items-center">
+        <div className="text-sm text-gray-600">
+          <div>比賽：{contestName}</div>
+          {currentContestTeamId && (
+            <div className="text-green-600">✅ 您已參與此比賽</div>
+          )}
+          {!currentContestTeamId && !isAdmin && (
+            <div className="text-orange-600">ℹ️ 您未參與此比賽</div>
+          )}
+        </div>
+        
         <span className="text-gray-600">
           登入者：{localStorageUser?.userName || currentUserName || '訪客'}
           {localStorageUser?.team_name ? `（${localStorageUser.team_name}隊）` : ''}
@@ -1397,21 +1419,93 @@ const BattleRoomPage: React.FC = () => {
                     {/* 底部區域：操作按鈕 */}
                     <div className="border-t pt-2 text-center">
                       {match.score && match.winner_team_id ? (
-                        <span className="text-green-600 font-bold">{match.winner_team_name ? `${match.winner_team_name}獲勝` : '等待結果...'}</span>
+                        <div className="flex justify-center items-center space-x-2">
+                          <span className="text-green-600 font-bold">
+                            {match.winner_team_name ? `${match.winner_team_name}獲勝` : '等待結果...'}
+                          </span>
+                          {/* 新增：比分編輯按鈕 - 僅管理員可見 */}
+                          {isAdmin && (
+                            <button
+                              className="bg-red-500 hover:bg-red-600 text-white text-xs px-2 py-1 rounded"
+                              onClick={() => {
+                                // 添加詳細的調試信息
+                                console.log('=== 編輯按鈕點擊調試 ===');
+                                console.log('contestId:', contestId);
+                                console.log('完整的 match 對象:', match);
+                                console.log('match.match_detail_id:', match.match_detail_id);
+                                console.log('match.team1_name:', match.team1_name);
+                                console.log('match.team2_name:', match.team2_name);
+                                console.log('match.score:', match.score);
+                                console.log('match.winner_team_id:', match.winner_team_id);
+                                
+                                const stateData = {
+                                  matchDetailId: match.match_detail_id,
+                                  team1Name: match.team1_name,
+                                  team2Name: match.team2_name,
+                                  currentScore: match.score,
+                                  winnerTeamId: match.winner_team_id,
+                                  match: match,
+                                  team1Id: match.team1_id,
+                                  team2Id: match.team2_id,
+                                  matchType: match.match_type
+                                };
+                                
+                                console.log('將要傳遞的 state 數據:', stateData);
+                                console.log('導航路徑:', `/contest/${contestId}/score-edit`);
+                                
+                                navigate(`/contest/${contestId}/score-edit`, { 
+                                  state: stateData
+                                });
+                              }}
+                              title="編輯比分"
+                            >
+                              編輯
+                            </button>
+                          )}
+                        </div>
                       ) : (
                         shouldShowArrow(match) ? (
                           <div className="flex justify-center items-center space-x-2">
+                            {/* 修正：前往比賽按鈕 - 根據權限控制 */}
                             <button
-                              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded"
-                              onClick={() => navigateToGame(match)}
+                              className={`px-4 py-1 rounded transition-colors ${
+                                canUserOperateMatch(match)
+                                  ? 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
+                                  : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                              }`}
+                              onClick={() => canUserOperateMatch(match) && navigateToGame(match)}
+                              disabled={!canUserOperateMatch(match)}
+                              title={
+                                canUserOperateMatch(match) 
+                                  ? '前往比賽' 
+                                  : '您不是此場比賽的參賽者，無法操作'
+                              }
                             >
                               前往比賽
                             </button>
+                            
+                            {/* 修正：約戰按鈕 - 根據權限控制 */}
                             <button
-                              className={`${shouldDisableChallengeButton(match) ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-500 hover:bg-green-600'} text-white w-8 h-8 rounded-full flex items-center justify-center`}
-                              onClick={() => !shouldDisableChallengeButton(match) && navigateToChallenge(match)}
-                              title={shouldDisableChallengeButton(match) ? '邀請已發送，等待回應中' : '直接發起約戰'}
-                              disabled={shouldDisableChallengeButton(match)}
+                              className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                                !canUserOperateMatch(match)
+                                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                  : shouldDisableChallengeButton(match) 
+                                    ? 'bg-gray-400 cursor-not-allowed text-white' 
+                                    : 'bg-green-500 hover:bg-green-600 text-white'
+                              }`}
+                              onClick={() => {
+                                if (canUserOperateMatch(match) && !shouldDisableChallengeButton(match)) {
+                                  navigateToChallenge(match);
+                                }
+                              }}
+                              title={
+                                !canUserOperateMatch(match)
+                                  ? '您不是此場比賽的參賽者，無法發起約戰'
+                                  : shouldDisableChallengeButton(match) 
+                                    ? '邀請已發送，等待回應中' 
+                                    : '直接發起約戰'
+                              }
+                              disabled={!canUserOperateMatch(match) || shouldDisableChallengeButton(match)}
                             >
                               約
                             </button>
@@ -1420,6 +1514,16 @@ const BattleRoomPage: React.FC = () => {
                           <span className="text-gray-400 italic text-sm">等待雙方提交名單</span>
                         )
                       )}
+                      
+                      {/* 可選：在開發模式下顯示權限檢查資訊 */}
+                      {/* process.env.NODE_ENV === 'development' && (
+                        <div className="mt-2 p-2 bg-gray-50 text-xs text-gray-600 rounded border">
+                          <div>權限檢查: {canUserOperateMatch(match) ? '✅ 可操作' : '❌ 無權限'}</div>
+                          <div>管理員: {isAdmin ? '是' : '否'}</div>
+                          <div>用戶隊伍ID: {currentContestTeamId || currentUserTeamId || '無'}</div>
+                          <div>比賽隊伍: {match.team1_id} vs {match.team2_id}</div>
+                        </div>
+                      ) */} {/* 移除 debug 視窗 */}
                     </div>
                   </div>
                 );

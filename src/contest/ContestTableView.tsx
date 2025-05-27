@@ -34,6 +34,12 @@ const ContestTableView: React.FC = () => {
   const [totalPoints, setTotalPoints] = useState<number>(1);
   const [teamCaptains, setTeamCaptains] = useState<{[teamId: string]: string}>({});
 
+  // 新增：權限控制相關狀態
+  const [isAdmin, setIsAdmin] = useState(false); // 是否為管理員
+  const [currentContestTeamId, setCurrentContestTeamId] = useState<number | null>(null); // 目前使用者在本比賽中的contest_team_id
+  const [currentUserName, setCurrentUserName] = useState<string>(''); // 目前使用者的名稱
+  const [localStorageUser, setLocalStorageUser] = useState<any>(null); // localStorage 中的用戶資訊
+
   // Debug 資訊相關狀態
   const [debugAssignedMatches, setDebugAssignedMatches] = useState<MatchDetail[]>([]);
   const [debugNextMatches, setDebugNextMatches] = useState<MatchDetail[]>([]);
@@ -49,13 +55,115 @@ const ContestTableView: React.FC = () => {
   const [selectedMatchToRelocate, setSelectedMatchToRelocate] = useState<MatchDetail | null>(null);
   const [eligibleMatchesForRelocation, setEligibleMatchesForRelocation] = useState<MatchDetail[]>([]);
 
+  // 新增：檢查用戶是否可以操作比賽的函數
+  const canUserOperateMatch = (): boolean => {
+    // 管理員可以操作任何比賽
+    if (isAdmin) {
+      return true;
+    }
+    
+    // 只要用戶參與此比賽（currentContestTeamId 不為 null），就可以操作任何場次
+    // 不需要檢查是否為該場比賽的直接參與者，因為參賽者可以互相當裁判
+    return currentContestTeamId !== null;
+  };
+
   useEffect(() => {
     const fetchData = async () => {
+      // 檢查用戶角色和權限
+      await checkUserRole();
+      
       await fetchContestDetails();
       await fetchMatches();
     };
+    
+    // 從 localStorage 獲取用戶資訊
+    try {
+      const storedUser = JSON.parse(localStorage.getItem('loginUser') || '{}');
+      setLocalStorageUser(storedUser);
+      
+      // 如果 localStorage 中有用戶名稱但狀態中沒有，則設置之
+      if (storedUser.userName && !currentUserName) {
+        setCurrentUserName(storedUser.userName);
+      }
+      
+      console.log('從 localStorage 獲取的用戶資訊:', storedUser);
+    } catch (err) {
+      console.error('解析 localStorage 用戶資訊錯誤:', err);
+    }
+    
     fetchData();
   }, [contestId]);
+
+  // 檢查用戶角色和在比賽中的隊伍
+  const checkUserRole = async () => {
+    try {
+      // 優先從 localStorage 獲取用戶信息
+      const storedUser = JSON.parse(localStorage.getItem('loginUser') || '{}');
+      console.log('從 localStorage 獲取的用戶信息:', storedUser);
+      
+      // 如果從 localStorage 獲取到用戶信息
+      if (storedUser && Object.keys(storedUser).length > 0) {
+        const isUserAdmin = storedUser.role === 'admin' || storedUser.is_admin === true;
+        setIsAdmin(isUserAdmin);
+        
+        // 設置用戶名
+        const username = storedUser.userName || storedUser.username || storedUser.name || '';
+        setCurrentUserName(username);
+        
+        setLocalStorageUser(storedUser);
+        
+        // 查詢在此比賽中的 contest_team_id
+        await fetchUserContestTeamId();
+        return;
+      }
+    } catch (err) {
+      console.error('檢查用戶角色時出錯:', err);
+    }
+  };
+  
+  // 查詢用戶在當前比賽中的contest_team_id
+  const fetchUserContestTeamId = async () => {
+    try {
+      if (!contestId) {
+        console.log('缺少contestId參數，無法查詢contest_team_id');
+        return;
+      }
+      // 從 localStorage 取得 member_id
+      const storedUser = JSON.parse(localStorage.getItem('loginUser') || '{}');
+      const memberId = storedUser.member_id;
+      if (!memberId) {
+        console.log('localStorage 無 member_id，無法查詢 contest_team_member');
+        setCurrentContestTeamId(null);
+        return;
+      }
+      
+      console.log(`嘗試通過 member_id=${memberId} 查詢 contest_id=${contestId} 的 contest_team_id...`);
+      
+      // 查詢 contest_team_member
+      const { data: memberData, error: memberError } = await supabase
+        .from('contest_team_member')
+        .select('contest_team_id')
+        .eq('member_id', memberId)
+        .eq('contest_id', parseInt(contestId as string));
+        
+      if (memberError) {
+        console.log('查詢 contest_team_member 表錯誤:', memberError);
+        setCurrentContestTeamId(null);
+        return;
+      }
+      
+      if (memberData && memberData.length > 0) {
+        console.log('找到 contest_team_id:', memberData[0].contest_team_id);
+        setCurrentContestTeamId(memberData[0].contest_team_id);
+      } else {
+        console.log('未找到用戶在此比賽中的 contest_team_id');
+        setCurrentContestTeamId(null);
+      }
+    } catch (err) {
+      console.error('查詢contest_team_id錯誤:', err);
+      setCurrentContestTeamId(null);
+    }
+  };
 
   const fetchContestDetails = async () => {
     try {
@@ -438,10 +546,12 @@ const ContestTableView: React.FC = () => {
           <div className="font-bold text-blue-800">出賽點 <span className="text-xl ml-1">{point}</span></div> 
         </div>
 
-        {match.table_no !== null && match.table_no !== undefined && match.table_no !== '--' && !isNextMatch && (
+        {/* 重配桌次按鈕 - 僅管理員可見 */}
+        {isAdmin && match.table_no !== null && match.table_no !== undefined && match.table_no !== '--' && !isNextMatch && (
           <button
             onClick={() => { setSelectedMatchToRelocate(match); setShowRelocateModal(true); }}
             className="mb-2 px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-white text-sm rounded-md"
+            title="僅管理員可使用此功能"
           >
             重配桌次
           </button>
@@ -476,9 +586,20 @@ const ContestTableView: React.FC = () => {
            {match.score && match.winner_team_id ? (
              <span className="text-green-600 font-bold">{match.winner_team_name ? `${match.winner_team_name}獲勝` : '等待結果...'}</span>
            ) : showActionButton ? (
+             /* 修正：前往比賽按鈕 - 根據權限控制 */
              <button
-               className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-1 rounded"
-               onClick={() => navigateToGame(match)} 
+               className={`px-4 py-1 rounded transition-colors ${
+                 canUserOperateMatch()
+                   ? 'bg-blue-500 hover:bg-blue-600 text-white cursor-pointer'
+                   : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+               }`}
+               onClick={() => canUserOperateMatch() && navigateToGame(match)}
+               disabled={!canUserOperateMatch()}
+               title={
+                 canUserOperateMatch() 
+                   ? '前往比賽' 
+                   : '您不是此場比賽的參賽者，無法操作'
+               }
              >
                前往比賽
              </button>
@@ -506,6 +627,25 @@ const ContestTableView: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* 使用者資訊區塊 */}
+      <div className="p-4 bg-gray-100 flex justify-between items-center mb-6">
+        <div className="text-sm text-gray-600">
+          <div>比賽：{contestName}</div>
+          {currentContestTeamId && (
+            <div className="text-green-600">✅ 您已參與此比賽</div>
+          )}
+          {!currentContestTeamId && !isAdmin && (
+            <div className="text-orange-600">ℹ️ 您未參與此比賽</div>
+          )}
+        </div>
+        
+        <span className="text-gray-600">
+          登入者：{localStorageUser?.userName || currentUserName || '訪客'}
+          {localStorageUser?.team_name ? `（${localStorageUser.team_name}隊）` : ''}
+          {isAdmin && <span className="ml-2 text-blue-600 font-semibold">[管理員]</span>}
+        </span>
+      </div>
+
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center">
           <button 
