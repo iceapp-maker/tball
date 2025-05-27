@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TBall - 桌球比賽管理系統</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-hover:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        .feature-card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        @keyframes bounce-slow {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+        .bounce-slow {
+            animation: bounce-slow 2s infinite;
+        }
+        .ping-pong-icon {
+            background: radial-gradient(circle, #ff6b6b, #4ecdc4);
+            border-radius: 50%;
+            display: inline-block;
+            width: 60px;
+            height: 60px;
+            position: relative;
+        }
+        .ping-pong-icon::after {
+            content: '🏓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- 導航欄 -->
+    <nav class="bg-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex items-center space-x-3">
+                    <div class="ping-pong-icon bounce-slow"></div>
+                    <span class="text-2xl font-bold text-gray-800">TBall</span>
+                </div>
+                <div class="hidden md:flex space-x-6">
+                    <a href="#features" class="text-gray-600 hover:text-blue-600 transition-colors">功能特色</a>
+                    <a href="#guide" class="text-gray-600 hover:text-blue-600 transition-colors">操作說明</a>
+                    <a href="#demo" class="text-gray-600 hover:text-blue-600 transition-colors">線上體驗</a>
+                    <a href="#tech" class="text-gray-600 hover:text-blue-600 transition-colors">技術架構</a>
+                </div>
+                <a href="https://tball.netlify.app/" target="_blank" 
+                   class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors">
+                    立即使用
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="gradient-bg text-white py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <div class="mb-8">
+                <svg viewBox="0 0 180 120" width="200" height="140" class="mx-auto rounded-lg shadow-2xl bg-white">
+                    <rect x="30" y="20" width="120" height="80" rx="8" fill="#4c9eeb" stroke="#4c9eeb" stroke-width="4"/>
+                    <line x1="90" y1="20" x2="90" y2="100" stroke="#fff" stroke-width="2"/>
+                    <line x1="30" y1="60" x2="150" y2="60" stroke="#fff" stroke-width="2"/>
+                    <ellipse cx="55" cy="60" rx="18" ry="24" fill="#ff6b6b" transform="rotate(-20 55 60)" />
+                    <ellipse cx="125" cy="60" rx="18" ry="24" fill="#222" transform="rotate(20 125 60)" />
+                    <circle cx="90" cy="42" r="8" fill="#fff" stroke="#fbbf24" stroke-width="2"/>
+                    <rect x="60" y="70" width="60" height="28" rx="6" fill="#62d962" stroke="#fff" stroke-width="2"/>
+                    <text x="78" y="90" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold">10</text>
+                    <text x="90" y="90" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold">:</text>
+                    <text x="102" y="90" text-anchor="middle" fill="#fff" font-size="20" font-weight="bold">10</text>
+                    <text x="90" y="16" text-anchor="middle" fill="#333" font-size="14" font-weight="bold">乒乓風雲</text>
+                </svg>
+            </div>
+            <h1 class="text-5xl md:text-6xl font-bold mb-6">賽乒乓</h1>
+            <p class="text-xl md:text-2xl mb-8 opacity-90">現代化桌球比賽管理系統</p>
+            <p class="text-lg mb-10 opacity-80 max-w-3xl mx-auto">
+                專為桌球愛好者打造的全方位比賽管理平台，提供計分、選手管理、賽程安排等完整功能
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="https://tball.netlify.app/" target="_blank" 
+                   class="bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-semibold hover:bg-gray-100 transition-colors shadow-lg">
+                    🚀 立即體驗
+                </a>
+                <a href="#guide" 
+                   class="bg-transparent border-2 border-white text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors">
+                    📖 查看教學
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 功能特色 -->
+    <section id="features" class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-800 mb-4">功能特色</h2>
+                <p class="text-gray-600 text-lg">完整的桌球比賽管理解決方案</p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div class="bg-white rounded-xl p-8 shadow-lg card-hover transition-all duration-300">
+                    <div class="text-4xl mb-4">🏓</div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">智能計分系統</h3>
+                    <p class="text-gray-600">支援單打與雙打計分，即時記錄比賽成績，自動統計戰績</p>
+                </div>
+                
+                <div class="bg-white rounded-xl p-8 shadow-lg card-hover transition-all duration-300">
+                    <div class="text-4xl mb-4">👥</div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">團隊管理</h3>
+                    <p class="text-gray-600">完整的會員管理系統，支援多團隊組織架構</p>
+                </div>
+                
+                <div class="bg-white rounded-xl p-8 shadow-lg card-hover transition-all duration-300">
+                    <div class="text-4xl mb-4">🏆</div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">比賽管理</h3>
+                    <p class="text-gray-600">建立比賽、管理賽程、自動配對對戰選手</p>
+                </div>
+                
+                <div class="bg-white rounded-xl p-8 shadow-lg card-hover transition-all duration-300">
+                    <div class="text-4xl mb-4">📊</div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">數據統計</h3>
+                    <p class="text-gray-600">詳細的戰績分析與封神榜排名系統</p>
+                </div>
+                
+                <div class="bg-white rounded-xl p-8 shadow-lg card-hover transition-all duration-300">
+                    <div class="text-4xl mb-4">🔔</div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">即時通知</h3>
+                    <p class="text-gray-600">挑戰邀約、比賽通知，不錯過任何重要訊息</p>
+                </div>
+                
+                <div class="bg-white rounded-xl p-8 shadow-lg card-hover transition-all duration-300">
+                    <div class="text-4xl mb-4">📱</div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-800">響應式設計</h3>
+                    <p class="text-gray-600">完美支援手機、平板與桌面設備</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 操作說明 -->
+    <section id="guide" class="py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-800 mb-4">操作說明</h2>
+                <p class="text-gray-600 text-lg">快速上手指南</p>
+            </div>
+            
+            <div class="grid lg:grid-cols-2 gap-12">
+                <!-- 基本操作 -->
+                <div class="space-y-6">
+                    <h3 class="text-2xl font-bold text-gray-800 border-l-4 border-blue-500 pl-4">基本操作</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="flex items-start space-x-4 p-4 bg-blue-50 rounded-lg">
+                            <div class="bg-blue-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">1</div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800">登入系統</h4>
+                                <p class="text-gray-600 text-sm">使用會員帳號登入，初次使用請聯繫管理員開通帳號</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-4 p-4 bg-green-50 rounded-lg">
+                            <div class="bg-green-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">2</div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800">選擇功能</h4>
+                                <p class="text-gray-600 text-sm">主選單提供雙打計分、單打計分、參賽區等功能選項</p>
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-start space-x-4 p-4 bg-orange-50 rounded-lg">
+                            <div class="bg-orange-500 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold">3</div>
+                            <div>
+                                <h4 class="font-semibold text-gray-800">開始比賽</h4>
+                                <p class="text-gray-600 text-sm">選擇參賽選手，設定比賽規則，開始精彩對戰</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 進階功能 -->
+                <div class="space-y-6">
+                    <h3 class="text-2xl font-bold text-gray-800 border-l-4 border-purple-500 pl-4">進階功能</h3>
+                    
+                    <div class="space-y-4">
+                        <div class="p-4 bg-purple-50 rounded-lg">
+                            <h4 class="font-semibold text-gray-800 mb-2">🏆 參賽區</h4>
+                            <p class="text-gray-600 text-sm">建立正式比賽、邀請選手組隊、管理賽程進度</p>
+                        </div>
+                        
+                        <div class="p-4 bg-indigo-50 rounded-lg">
+                            <h4 class="font-semibold text-gray-800 mb-2">👑 封神榜</h4>
+                            <p class="text-gray-600 text-sm">查看選手排名、戰績統計、歷史對戰記錄</p>
+                        </div>
+                        
+                        <div class="p-4 bg-pink-50 rounded-lg">
+                            <h4 class="font-semibold text-gray-800 mb-2">⚙️ 管理功能</h4>
+                            <p class="text-gray-600 text-sm">管理員可進行會員管理、團隊設定、比賽控制等操作</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 快捷鍵說明 -->
+            <div class="mt-16 p-8 bg-gray-50 rounded-xl">
+                <h3 class="text-xl font-bold text-gray-800 mb-4">⌨️ 快捷鍵</h3>
+                <div class="grid sm:grid-cols-3 gap-4">
+                    <div class="text-center">
+                        <kbd class="bg-gray-800 text-white px-3 py-1 rounded text-sm">空白鍵</kbd>
+                        <p class="text-gray-600 text-sm mt-2">暫停/繼續計時</p>
+                    </div>
+                    <div class="text-center">
+                        <kbd class="bg-gray-800 text-white px-3 py-1 rounded text-sm">R</kbd>
+                        <p class="text-gray-600 text-sm mt-2">重設當前局</p>
+                    </div>
+                    <div class="text-center">
+                        <kbd class="bg-gray-800 text-white px-3 py-1 rounded text-sm">Esc</kbd>
+                        <p class="text-gray-600 text-sm mt-2">返回主選單</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 線上體驗 -->
+    <section id="demo" class="py-20 gradient-bg text-white">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-4xl font-bold mb-8">立即體驗</h2>
+            <p class="text-xl mb-12 opacity-90">無需安裝，開啟瀏覽器即可使用</p>
+            
+            <div class="bg-white rounded-xl p-8 text-gray-800 max-w-2xl mx-auto shadow-2xl">
+                <h3 class="text-2xl font-bold mb-4">🌐 線上版本</h3>
+                <p class="text-gray-600 mb-6">系統已部署至 Netlify，提供穩定的線上服務</p>
+                <div class="bg-gray-100 rounded-lg p-4 mb-6 font-mono text-sm">
+                    https://tball.netlify.app/
+                </div>
+                <a href="https://tball.netlify.app/" target="_blank" 
+                   class="inline-block bg-blue-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-blue-700 transition-colors">
+                    🚀 開始使用
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- 技術架構 -->
+    <section id="tech" class="py-20 bg-gray-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold text-gray-800 mb-4">技術架構</h2>
+                <p class="text-gray-600 text-lg">採用現代化技術棧構建</p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <div class="bg-white rounded-xl p-6 text-center shadow-lg">
+                    <div class="text-4xl mb-4">⚛️</div>
+                    <h3 class="font-bold text-gray-800 mb-2">React</h3>
+                    <p class="text-gray-600 text-sm">前端框架</p>
+                </div>
+                
+                <div class="bg-white rounded-xl p-6 text-center shadow-lg">
+                    <div class="text-4xl mb-4">🎨</div>
+                    <h3 class="font-bold text-gray-800 mb-2">Tailwind CSS</h3>
+                    <p class="text-gray-600 text-sm">樣式框架</p>
+                </div>
+                
+                <div class="bg-white rounded-xl p-6 text-center shadow-lg">
+                    <div class="text-4xl mb-4">🗄️</div>
+                    <h3 class="font-bold text-gray-800 mb-2">Supabase</h3>
+                    <p class="text-gray-600 text-sm">後端服務</p>
+                </div>
+                
+                <div class="bg-white rounded-xl p-6 text-center shadow-lg">
+                    <div class="text-4xl mb-4">🚀</div>
+                    <h3 class="font-bold text-gray-800 mb-2">Netlify</h3>
+                    <p class="text-gray-600 text-sm">部署平台</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-3 gap-8">
+                <div>
+                    <div class="flex items-center space-x-3 mb-4">
+                        <div class="ping-pong-icon"></div>
+                        <span class="text-2xl font-bold">TBall</span>
+                    </div>
+                    <p class="text-gray-300">專業的桌球比賽管理系統，讓每場比賽都精彩非凡。</p>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-bold mb-4">快速連結</h3>
+                    <ul class="space-y-2">
+                        <li><a href="https://tball.netlify.app/" class="text-gray-300 hover:text-white transition-colors">線上使用</a></li>
+                        <li><a href="https://github.com/iceapp-maker/tball" class="text-gray-300 hover:text-white transition-colors">GitHub 專案</a></li>
+                        <li><a href="#guide" class="text-gray-300 hover:text-white transition-colors">操作說明</a></li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="text-lg font-bold mb-4">聯絡資訊</h3>
+                    <div class="space-y-2 text-gray-300">
+                        <p>開發者：Ice App Maker</p>
+                        <p>GitHub: @iceapp-maker</p>
+                        <p>版本：a.20</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-700 mt-8 pt-8 text-center text-gray-300">
+                <p>&copy; 2024 TBall 桌球比賽管理系統. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // 平滑滾動
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        // 滾動動畫
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.style.opacity = '1';
+                    entry.target.style.transform = 'translateY(0)';
+                }
+            });
+        }, observerOptions);
+
+        // 觀察所有卡片
+        document.querySelectorAll('.card-hover').forEach(card => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(30px)';
+            card.style.transition = 'all 0.6s ease-out';
+            observer.observe(card);
+        });
+    </script>
+</body>
+</html>
