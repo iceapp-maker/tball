@@ -8,6 +8,12 @@ const NewTodoBlock: React.FC = () => {
   const navigate = useNavigate();
   const [unreadChallenge, setUnreadChallenge] = useState(0);
   const [unreadInvites, setUnreadInvites] = useState(0);
+  // 管理員待產生對戰表的比賽
+  const [pendingMatchGeneration, setPendingMatchGeneration] = useState<{
+    contest_id: number;
+    contest_name: string;
+  }[]>([]);
+  
   // 待編排對戰名單的比賽資訊
   const [pendingLineups, setPendingLineups] = useState<{
     count: number;
@@ -32,6 +38,34 @@ const NewTodoBlock: React.FC = () => {
     contest_status?: string; // 比賽狀態
     readyStatus?: 'not_ready' | 'ready' | 'both_ready'; // 名單狀態: not_ready=未安排，ready=已安排，both_ready=雙方已安排
   }[]>([]);
+
+  // 查詢管理員待產生對戰表的比賽
+  const fetchPendingMatchGeneration = async () => {
+    // 只有管理員才需要查詢
+    if (!user?.role || user.role !== 'admin') {
+      setPendingMatchGeneration([]);
+      return;
+    }
+
+    try {
+      const { data: waitingContests, error } = await supabase
+        .from('contest')
+        .select('contest_id, contest_name')
+        .eq('contest_status', 'WaitMatchForm')
+        .order('contest_id', { ascending: false });
+
+      if (error) {
+        console.error('查詢待產生對戰表的比賽失敗:', error);
+        setPendingMatchGeneration([]);
+        return;
+      }
+
+      setPendingMatchGeneration(waitingContests || []);
+    } catch (err) {
+      console.error('查詢待產生對戰表錯誤:', err);
+      setPendingMatchGeneration([]);
+    }
+  };
 
   // 查詢未讀挑戰數
   useEffect(() => {
@@ -202,7 +236,7 @@ const NewTodoBlock: React.FC = () => {
       const pendingMatchMap = new Map<string, boolean>();
       if (!pendingError && pendingMatches && pendingMatches.length > 0) {
         pendingMatches.forEach((match: any) => {
-          // 將match_id作為鍜，加入映射中
+          // 將match_id作為鍵，加入映射中
           pendingMatchMap.set(match.match_id.toString(), true);
           console.log('加入未安排名單:', match.match_id);
         });
@@ -324,7 +358,7 @@ const NewTodoBlock: React.FC = () => {
             // 只有隊長隊伍已安排
             readyStatus = 'ready';
           } else {
-            // 隊長隊伍未安排（應該不會發生，因為在待處理列表中服應已被捕獲）
+            // 隊長隊伍未安排（應該不會發生，因為在待處理列表中應該已被捕獲）
             readyStatus = 'not_ready';
           }
         }
@@ -455,22 +489,30 @@ const NewTodoBlock: React.FC = () => {
     // 首次載入及用戶變更時獲取資料
     fetchPendingMatches();
     fetchCaptainPendingLineups(); // 獲取隊長待處理名單
+    fetchPendingMatchGeneration(); // 獲取管理員待產生對戰表的比賽
     
     // 設定定期檢查，每分鐘檢查一次
     const intervalId = setInterval(() => {
       fetchPendingMatches();
       fetchCaptainPendingLineups(); // 定期獲取隊長待處理名單
+      fetchPendingMatchGeneration(); // 定期獲取管理員待產生對戰表的比賽
     }, 60000);
     
     // 組件卸載時清除定時器
     return () => clearInterval(intervalId);
-  }, [user?.member_id]);
+  }, [user?.member_id, user?.role]);
 
   // 處理點擊前往編排名單 (修正函數，添加contest_team_id參數)
   const handleLineupClick = (matchId: string, teamType: string, contestTeamId: string) => {
     // 導航到編輯出賽名單頁面，帶上match_id和team_id參數 (contest_team_id)
     console.log(`導航到編輯頁面: match_id=${matchId}, team_id=${contestTeamId}`);
     navigate(`/contest/lineup-editor?match_id=${matchId}&team_id=${contestTeamId}`);
+  };
+
+  // 處理點擊前往賽程控制區
+  const handleMatchGenerationClick = (contestId: number) => {
+    console.log(`導航到賽程控制區: contest_id=${contestId}`);
+    navigate(`/contest-control`);
   };
 
   // 設置實時訂閱，當有新比賽建立時更新通知
@@ -494,11 +536,28 @@ const NewTodoBlock: React.FC = () => {
       )
       .subscribe();
 
+    // 訂閱 contest 表的更新（監聽狀態變化）
+    const contestSubscription = supabase
+      .channel('contest_status_changes')
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'contest'
+        },
+        () => {
+          // 當比賽狀態更新時，重新獲取待產生對戰表的比賽
+          fetchPendingMatchGeneration();
+        }
+      )
+      .subscribe();
+
     // 組件卸載時取消訂閱
     return () => {
       supabase.removeChannel(matchSubscription);
+      supabase.removeChannel(contestSubscription);
     };
-  }, [user?.member_id]);
+  }, [user?.member_id, user?.role]);
 
   return (
     <div className="mb-6 p-4 bg-yellow-50 rounded shadow">
@@ -522,6 +581,17 @@ const NewTodoBlock: React.FC = () => {
         >
           賽程邀約：{unreadInvites} 筆待處理
         </li>
+        
+        {/* 管理員：顯示待產生對戰表的比賽 */}
+        {user?.role === 'admin' && pendingMatchGeneration.map((contest) => (
+          <li 
+            key={`pending-match-gen-${contest.contest_id}`}
+            style={{cursor:'pointer', color: '#dc2626', fontWeight: 'bold'}} 
+            onClick={() => handleMatchGenerationClick(contest.contest_id)}
+          >
+            請前往產生「{contest.contest_name}」的對戰表
+          </li>
+        ))}
         
         {/* 顯示需要填入出賽名單的比賽 (修改onClick以傳遞contest_team_id) */}
         {pendingLineups.matches.map((match) => (
