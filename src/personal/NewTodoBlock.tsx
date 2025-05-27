@@ -14,6 +14,12 @@ const NewTodoBlock: React.FC = () => {
     contest_name: string;
   }[]>([]);
   
+  // 🎯 新增：待確認結束的比賽
+  const [pendingContestFinish, setPendingContestFinish] = useState<{
+    contest_id: string;
+    contest_name: string;
+  }[]>([]);
+  
   // 待編排對戰名單的比賽資訊
   const [pendingLineups, setPendingLineups] = useState<{
     count: number;
@@ -38,6 +44,83 @@ const NewTodoBlock: React.FC = () => {
     contest_status?: string; // 比賽狀態
     readyStatus?: 'not_ready' | 'ready' | 'both_ready'; // 名單狀態: not_ready=未安排，ready=已安排，both_ready=雙方已安排
   }[]>([]);
+
+  // 🎯 新增：檢查所有比分是否已填入的函數
+  const checkAllScoresFilled = async (contestId: string) => {
+    try {
+      const { data: matchDetails, error } = await supabase
+        .from('contest_match_detail')
+        .select('score')
+        .eq('contest_id', contestId);
+
+      if (error) throw error;
+      
+      // 檢查每一點的比分是否都已填入 (格式：a:b，其中a、b為數字)
+      return matchDetails && matchDetails.length > 0 && matchDetails.every(
+        (detail: any) => {
+          // 檢查 score 是否存在且不為空
+          if (!detail.score || detail.score.trim() === '') {
+            return false;
+          }
+          
+          // 檢查是否符合 a:b 格式 (a、b為數字)
+          const scorePattern = /^\d+:\d+$/;
+          return scorePattern.test(detail.score.trim());
+        }
+      );
+    } catch (err) {
+      console.error('檢查比分時出錯:', err);
+      return false;
+    }
+  };
+
+  // 🎯 新增：查詢待確認結束的比賽
+  const fetchPendingContestFinish = async () => {
+    // 只有登入用戶才需要查詢
+    if (!user?.team_name) {
+      setPendingContestFinish([]);
+      return;
+    }
+
+    try {
+      // 1. 先獲取用戶主辦且狀態為 'ongoing' 的比賽
+      const { data: ongoingContests, error: contestsError } = await supabase
+        .from('contest')
+        .select('contest_id, contest_name')
+        .eq('team_name', user.team_name)  // 只查詢用戶主辦的比賽
+        .eq('contest_status', 'ongoing')  // 只查詢進行中的比賽
+        .order('contest_id', { ascending: false });
+
+      if (contestsError) {
+        console.error('查詢進行中比賽失敗:', contestsError);
+        setPendingContestFinish([]);
+        return;
+      }
+
+      if (!ongoingContests || ongoingContests.length === 0) {
+        setPendingContestFinish([]);
+        return;
+      }
+
+      // 2. 檢查每個進行中比賽的比分填寫狀態
+      const contestsNeedingFinish = [];
+      for (const contest of ongoingContests) {
+        const allScoresFilled = await checkAllScoresFilled(contest.contest_id);
+        if (allScoresFilled) {
+          contestsNeedingFinish.push({
+            contest_id: contest.contest_id,
+            contest_name: contest.contest_name
+          });
+        }
+      }
+
+      setPendingContestFinish(contestsNeedingFinish);
+      console.log('待確認結束的比賽:', contestsNeedingFinish);
+    } catch (err) {
+      console.error('查詢待確認結束比賽錯誤:', err);
+      setPendingContestFinish([]);
+    }
+  };
 
   // 查詢管理員待產生對戰表的比賽
   const fetchPendingMatchGeneration = async () => {
@@ -65,6 +148,12 @@ const NewTodoBlock: React.FC = () => {
       console.error('查詢待產生對戰表錯誤:', err);
       setPendingMatchGeneration([]);
     }
+  };
+
+  // 🎯 新增：處理點擊前往賽程控制區
+  const handleContestFinishClick = () => {
+    console.log('導航到賽程控制區');
+    navigate('/contest-control');
   };
 
   // 查詢未讀挑戰數
@@ -490,17 +579,8 @@ const NewTodoBlock: React.FC = () => {
     fetchPendingMatches();
     fetchCaptainPendingLineups(); // 獲取隊長待處理名單
     fetchPendingMatchGeneration(); // 獲取管理員待產生對戰表的比賽
-    
-    // 設定定期檢查，每分鐘檢查一次
-    const intervalId = setInterval(() => {
-      fetchPendingMatches();
-      fetchCaptainPendingLineups(); // 定期獲取隊長待處理名單
-      fetchPendingMatchGeneration(); // 定期獲取管理員待產生對戰表的比賽
-    }, 60000);
-    
-    // 組件卸載時清除定時器
-    return () => clearInterval(intervalId);
-  }, [user?.member_id, user?.role]);
+    fetchPendingContestFinish(); // 🎯 新增：獲取待確認結束的比賽
+  }, [user?.member_id, user?.role, user?.team_name]);
 
   // 處理點擊前往編排名單 (修正函數，添加contest_team_id參數)
   const handleLineupClick = (matchId: string, teamType: string, contestTeamId: string) => {
@@ -546,8 +626,25 @@ const NewTodoBlock: React.FC = () => {
           table: 'contest'
         },
         () => {
-          // 當比賽狀態更新時，重新獲取待產生對戰表的比賽
+          // 當比賽狀態更新時，重新獲取待產生對戰表的比賽和待確認結束的比賽
           fetchPendingMatchGeneration();
+          fetchPendingContestFinish(); // 🎯 新增：重新獲取待確認結束的比賽
+        }
+      )
+      .subscribe();
+
+    // 🎯 新增：訂閱 contest_match_detail 表的更新（監聽比分變化）
+    const matchDetailSubscription = supabase
+      .channel('contest_match_detail_changes')
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'contest_match_detail'
+        },
+        () => {
+          // 當比分更新時，重新檢查待確認結束的比賽
+          fetchPendingContestFinish();
         }
       )
       .subscribe();
@@ -556,8 +653,9 @@ const NewTodoBlock: React.FC = () => {
     return () => {
       supabase.removeChannel(matchSubscription);
       supabase.removeChannel(contestSubscription);
+      supabase.removeChannel(matchDetailSubscription); // 🎯 新增
     };
-  }, [user?.member_id, user?.role]);
+  }, [user?.member_id, user?.role, user?.team_name]);
 
   return (
     <div className="mb-6 p-4 bg-yellow-50 rounded shadow">
@@ -590,6 +688,17 @@ const NewTodoBlock: React.FC = () => {
             onClick={() => handleMatchGenerationClick(contest.contest_id)}
           >
             請前往產生「{contest.contest_name}」的對戰表
+          </li>
+        ))}
+        
+        {/* 🎯 新增：顯示待確認結束的比賽 */}
+        {pendingContestFinish.map((contest) => (
+          <li 
+            key={`pending-contest-finish-${contest.contest_id}`}
+            style={{cursor:'pointer', color: '#dc2626', fontWeight: 'bold'}} 
+            onClick={handleContestFinishClick}
+          >
+            請至賽程控制區確認「{contest.contest_name}」比賽已結束
           </li>
         ))}
         
