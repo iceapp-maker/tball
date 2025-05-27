@@ -46,6 +46,8 @@ const ContestResultsPage: React.FC = () => {
   const [showDetailedMatches, setShowDetailedMatches] = useState(false);
   const [loadingDetails, setLoadingDetails] = useState(false);
   const [matchesData, setMatchesData] = useState<any[]>([]);
+  const [maxSequence, setMaxSequence] = useState<number>(0); // 記錄最大sequence值
+  const [hasIncompleteMatches, setHasIncompleteMatches] = useState(false); // 新增：檢查是否有未完成的比賽
 
   useEffect(() => {
     if (contestId) {
@@ -90,8 +92,28 @@ const ContestResultsPage: React.FC = () => {
     );
   };
 
+  // 新增：檢查是否有未完成的比賽
+  const checkIncompleteMatches = (teams: TeamResult[], maxSeq: number) => {
+    if (maxSeq === 0) return false;
+    
+    for (const rowTeam of teams) {
+      for (const colTeam of teams) {
+        if (rowTeam.teamId === colTeam.teamId) continue;
+        
+        const scoreString = rowTeam.matchResults[colTeam.teamId];
+        if (scoreString && scoreString !== '-') {
+          const [scoreA, scoreB] = scoreString.split(':').map(Number);
+          if (!isNaN(scoreA) && !isNaN(scoreB) && (scoreA + scoreB) < maxSeq) {
+            return true;
+          }
+        }
+      }
+    }
+    return false;
+  };
+
   const handleFinishContest = async () => {
-    if (!isAdmin || !allScoresFilled) return;
+    if (!isAdmin || !allScoresFilled || hasIncompleteMatches) return;
     
     try {
       setUpdating(true);
@@ -236,6 +258,43 @@ const ContestResultsPage: React.FC = () => {
     setShowDetailedMatches(!showDetailedMatches);
   };
 
+  // 獲取最大sequence值的函數（修改為返回值而不是設置狀態）
+  const getMaxSequenceValue = async (): Promise<number> => {
+    try {
+      // 先獲取該比賽的所有match_id
+      const { data: matchData, error: matchError } = await supabase
+        .from('contest_match')
+        .select('match_id')
+        .eq('contest_id', contestId);
+
+      if (matchError) throw matchError;
+      
+      if (!matchData || matchData.length === 0) {
+        return 0;
+      }
+
+      const matchIds = matchData.map(match => match.match_id);
+      
+      // 獲取這些match的所有detail記錄，找出最大sequence
+      const { data: detailData, error: detailError } = await supabase
+        .from('contest_match_detail')
+        .select('sequence')
+        .in('match_id', matchIds);
+
+      if (detailError) throw detailError;
+      
+      if (detailData && detailData.length > 0) {
+        const maxSeq = Math.max(...detailData.map(detail => detail.sequence || 0));
+        return maxSeq;
+      } else {
+        return 0;
+      }
+    } catch (err: any) {
+      console.error('獲取最大sequence值錯誤:', err);
+      return 0;
+    }
+  };
+
   const fetchContestResults = async () => {
     setLoading(true);
     setError('');
@@ -272,9 +331,18 @@ const ContestResultsPage: React.FC = () => {
         
       if (detailError) throw detailError;
 
+      // 先獲取最大sequence值
+      const maxSeq = await getMaxSequenceValue();
+      setMaxSequence(maxSeq);
+
       const resultsTableData = processMatchResults(matchData, teamData, detailData);
       setResultsData(resultsTableData);
       setAllScoresFilled(checkAllScoresFilled(matchData));
+      
+      // 直接檢查未完成比賽
+      const incomplete = checkIncompleteMatches(resultsTableData.teams, maxSeq);
+      setHasIncompleteMatches(incomplete);
+      
     } catch (err: any) {
       console.error('獲取比賽結果錯誤:', err);
       setError(err.message);
@@ -494,6 +562,28 @@ const ContestResultsPage: React.FC = () => {
     return false;
   };
 
+  // 檢查比分是否需要粉紅色背景的函數
+  const shouldHighlightCell = (scoreString: string): boolean => {
+    if (!scoreString || scoreString === '-' || maxSequence === 0) {
+      return false;
+    }
+    
+    const [scoreA, scoreB] = scoreString.split(':').map(Number);
+    if (isNaN(scoreA) || isNaN(scoreB)) {
+      return false;
+    }
+    
+    return (scoreA + scoreB) < maxSequence;
+  };
+
+  // 修正useEffect，當maxSequence更新時重新檢查未完成比賽
+  useEffect(() => {
+    if (resultsData.teams.length > 0 && maxSequence > 0) {
+      const incomplete = checkIncompleteMatches(resultsData.teams, maxSequence);
+      setHasIncompleteMatches(incomplete);
+    }
+  }, [maxSequence, resultsData]);
+
   return (
     <div className="container mx-auto px-4 py-8">
       {loading ? (
@@ -537,7 +627,14 @@ const ContestResultsPage: React.FC = () => {
                         {rowTeam.teamName}
                       </td>
                       {resultsData.teams.map(colTeam => (
-                        <td key={`cell-${rowTeam.teamId}-${colTeam.teamId}`} className="py-3 px-4 border text-center">
+                        <td key={`cell-${rowTeam.teamId}-${colTeam.teamId}`} 
+                            className={`py-3 px-4 border text-center ${
+                              rowTeam.teamId === colTeam.teamId 
+                                ? '' 
+                                : shouldHighlightCell(rowTeam.matchResults[colTeam.teamId]) 
+                                  ? 'bg-pink-200' 
+                                  : ''
+                            }`}>
                           {rowTeam.teamId === colTeam.teamId ? (
                             '—'
                           ) : (
@@ -656,17 +753,25 @@ const ContestResultsPage: React.FC = () => {
             </div>
           )}
           
-          {isAdmin && (allScoresFilled || isContestFinished) && (
+          {/* 修正：只有當管理員、所有比分已填寫、且沒有未完成比賽時才顯示結束比賽按鈕 */}
+          {isAdmin && allScoresFilled && !hasIncompleteMatches && !isContestFinished && (
             <div className="mt-4 mb-6">
               <button
                 onClick={handleFinishContest}
-                disabled={updating || isContestFinished}
-                className={`px-6 py-2 rounded ${isContestFinished 
-                  ? 'bg-gray-500 cursor-not-allowed' 
-                  : 'bg-green-600 hover:bg-green-700'} text-white`}
+                disabled={updating}
+                className="px-6 py-2 rounded bg-green-600 hover:bg-green-700 text-white"
               >
-                {updating ? '處理中...' : isContestFinished ? '比賽已結束' : '結束比賽'}
+                {updating ? '處理中...' : '結束比賽'}
               </button>
+            </div>
+          )}
+          
+          {/* 當有未完成比賽時顯示提示訊息 */}
+          {isAdmin && allScoresFilled && hasIncompleteMatches && !isContestFinished && (
+            <div className="mt-4 mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded">
+              <p className="text-yellow-800 font-medium">
+                ⚠️ 比賽尚未完全結束，仍有未完成的對戰（粉紅色背景的比分）。
+              </p>
             </div>
           )}
           
@@ -676,6 +781,7 @@ const ContestResultsPage: React.FC = () => {
               <li>表格中顯示了每個隊伍間的比賽結果。</li>
               <li>行隊伍對戰列隊伍的比分直接顯示，格式為 "行隊伍得分:列隊伍得分"。</li>
               <li>勝利的比分以橘色顯示。</li>
+              <li>當比分格子的兩隊得分總和小於比賽最大局數時，該格子會以粉紅色背景顯示。</li>
               <li>名次首先根據勝場(隊)數排序。</li>
               <li>當兩隊勝場(隊)數相同時，直接對戰獲勝者排名較前。</li>
               <li>當三隊或更多隊勝場(隊)數相同且存在循環勝負關係時(例如A勝B、B勝C、C勝A)，則按勝局(點)數排序。</li>
