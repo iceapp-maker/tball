@@ -31,17 +31,31 @@ const ContestControlPage: React.FC = () => {
     score: string | null;
   }
 
+  interface ContestMatchDetail {
+    score: string | null;
+  }
+
   const checkAllScoresFilled = async (contestId: string) => {
     try {
-      const { data: matches, error } = await supabase
-        .from('contest_match')
-        .select('score')
-        .eq('contest_id', contestId);
+      const { data: matchDetails, error } = await supabase
+        .from('contest_match_detail')  // 改為檢查 contest_match_detail 資料表
+        .select('score')               // 選取 score 欄位
+        .eq('contest_id', contestId);  // 篩選指定的比賽 ID
 
       if (error) throw error;
       
-      return matches && matches.length > 0 && matches.every(
-        (match: ContestMatch) => match.score !== null && match.score !== undefined && match.score !== ''
+      // 檢查每一點的比分是否都已填入 (格式：a:b，其中a、b為數字)
+      return matchDetails && matchDetails.length > 0 && matchDetails.every(
+        (detail: ContestMatchDetail) => {
+          // 檢查 score 是否存在且不為空
+          if (!detail.score || detail.score.trim() === '') {
+            return false;
+          }
+          
+          // 檢查是否符合 a:b 格式 (a、b為數字)
+          const scorePattern = /^\d+:\d+$/;
+          return scorePattern.test(detail.score.trim());
+        }
       );
     } catch (err) {
       console.error('檢查比分時出錯:', err);
