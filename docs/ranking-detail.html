@@ -1,162 +1,399 @@
-# 桌球比賽積分系統使用說明書
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>桌球比賽積分系統使用說明書</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .main-content {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+        
+        .section h3 {
+            color: #1e293b;
+            font-size: 1.3rem;
+            margin: 20px 0 10px 0;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 5px;
+        }
+        
+        .section p, .section li {
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        
+        .section ul {
+            margin-left: 20px;
+            margin-bottom: 20px;
+        }
+        
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            margin: 20px 0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        table th {
+            background: #3b82f6;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-size: 1.1rem;
+        }
+        
+        table td {
+            padding: 15px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        table tr:hover {
+            background: #f8fafc;
+        }
+        
+        .highlight-box {
+            background: #f0f9ff;
+            border: 2px solid #0ea5e9;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .nav-buttons {
+            text-align: center;
+            margin-top: 40px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .nav-btn {
+            background: #6b7280;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+        }
+        
+        .nav-btn:hover {
+            background: #4b5563;
+            transform: translateY(-2px);
+        }
+        
+        .nav-btn.primary {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        }
+        
+        .nav-btn.primary:hover {
+            background: linear-gradient(135deg, #1d4ed8, #1e40af);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px 10px;
+            }
+            
+            .main-content {
+                padding: 30px 20px;
+            }
+            
+            .header h1 {
+                font-size: 2.2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏓 桌球比賽積分系統使用說明書</h1>
+        </div>
+        
+        <div class="main-content">
+            <div class="section">
+                <h2>系統概述</h2>
+                <p>本系統是一個全自動化的桌球比賽積分統計與排名系統，支援<strong>挑戰賽</strong>和<strong>正式比賽</strong>兩種比賽類型，能夠即時統計每位選手的積分、勝率和排名情況。</p>
+            </div>
 
-## 系統概述
+            <div class="section">
+                <h2>比賽類型說明</h2>
+                
+                <h3>🏆 正式比賽</h3>
+                <ul>
+                    <li>較為正式的團體或個人競賽</li>
+                    <li>積分權重較高</li>
+                    <li>影響整體排名</li>
+                </ul>
 
-本系統是一個全自動化的桌球比賽積分統計與排名系統，支援**挑戰賽**和**正式比賽**兩種比賽類型，能夠即時統計每位選手的積分、勝率和排名情況。
+                <h3>⚡ 挑戰賽</h3>
+                <ul>
+                    <li>日常練習或友誼賽性質</li>
+                    <li>積分權重相對較低</li>
+                    <li>提供更多練習機會</li>
+                </ul>
+            </div>
 
----
+            <div class="section">
+                <h2>積分統計方法</h2>
+                
+                <h3>積分計算原則</h3>
+                <ol>
+                    <li><strong>勝場積分</strong>：每勝一場獲得基礎積分</li>
+                    <li><strong>比賽類型加權</strong>：正式比賽積分權重高於挑戰賽</li>
+                    <li><strong>對手實力調整</strong>：擊敗排名較高的對手可獲得額外積分</li>
+                    <li><strong>月度累計</strong>：以月為單位統計總積分</li>
+                </ol>
 
-## 比賽類型說明
+                <h3>排名規則</h3>
+                <ul>
+                    <li><strong>主要依據</strong>：當月總積分</li>
+                    <li><strong>次要依據</strong>：勝率百分比</li>
+                    <li><strong>參考數據</strong>：總比賽場次</li>
+                </ul>
+            </div>
 
-### 🏆 正式比賽
-- 較為正式的團體或個人競賽
-- 積分權重較高
-- 影響整體排名
+            <div class="section">
+                <h2>功能頁面介紹</h2>
 
-### ⚡ 挑戰賽  
-- 日常練習或友誼賽性質
-- 積分權重相對較低
-- 提供更多練習機會
+                <h3>1. 個人資訊頁 - 近期對戰記錄</h3>
+                <img src="https://github.com/iceapp-maker/tball/blob/main/docs/images/personal_point_summary.png?raw=true" alt="個人對戰記錄">
+                
+                <h4>功能說明</h4>
+                <ul>
+                    <li><strong>月份選擇</strong>：點擊上方月份按鈕查看不同月份的對戰記錄</li>
+                    <li><strong>場次統計</strong>：每個月份按鈕右上角的數字代表該月比賽場次</li>
+                    <li><strong>對戰詳情</strong>：顯示具體的比賽日期、對手、搭檔、比分和勝負結果</li>
+                </ul>
 
----
+                <h4>欄位說明</h4>
+                <ul>
+                    <li><strong>日期</strong>：比賽進行的具體日期</li>
+                    <li><strong>類型</strong>：單打或雙打</li>
+                    <li><strong>搭檔</strong>：雙打比賽中的配對夥伴（單打顯示"--"）</li>
+                    <li><strong>對手</strong>：比賽對手姓名</li>
+                    <li><strong>比分</strong>：具體比賽結果（如 3:0、2:1等）</li>
+                    <li><strong>勝負</strong>：比賽結果（勝/負）</li>
+                    <li><strong>類型符號</strong>：⚡代表挑戰賽，🏆代表正式比賽</li>
+                </ul>
 
-## 積分統計方法
+                <h3>2. 封神榜 - 月度積分排行</h3>
+                <img src="https://github.com/iceapp-maker/tball/blob/main/docs/images/monthly_rank_chart.png?raw=true" alt="月度排行圖表">
+                
+                <h4>圖表功能</h4>
+                <ul>
+                    <li><strong>積分柱狀圖</strong>：直觀顯示各選手當月積分</li>
+                    <li><strong>勝率顯示</strong>：每根柱子內的百分比代表該選手的勝率</li>
+                    <li><strong>互動功能</strong>：點擊任一柱子可查看該選手的詳細對戰記錄</li>
+                    <li><strong>分頁瀏覽</strong>：下方數字按鈕可切換不同頁面</li>
+                </ul>
 
-### 積分計算原則
-1. **勝場積分**：每勝一場獲得基礎積分
-2. **比賽類型加權**：正式比賽積分權重高於挑戰賽
-3. **對手實力調整**：擊敗排名較高的對手可獲得額外積分
-4. **月度累計**：以月為單位統計總積分
+                <h4>操作方法</h4>
+                <ol>
+                    <li>選擇年份和月份進行查詢</li>
+                    <li>選擇比賽類型（全部比賽/挑戰賽/正式比賽）</li>
+                    <li>點擊「搜尋自己」快速定位到自己的排名</li>
+                    <li>點擊圖表中的選手姓名查看詳細記錄</li>
+                </ol>
 
-### 排名規則
-- **主要依據**：當月總積分
-- **次要依據**：勝率百分比
-- **參考數據**：總比賽場次
+                <h3>3. 積分統計總覽</h3>
+                <img src="https://github.com/iceapp-maker/tball/blob/main/docs/images/statistics_all_players.png?raw=true" alt="統計總覽">
+                
+                <h4>圖例說明</h4>
+                <p>系統使用不同符號區分比賽類型：</p>
+                <ul>
+                    <li><strong>⚡ 挑戰賽</strong>：日常練習賽，綠色標示</li>
+                    <li><strong>🏆 正式比賽</strong>：正式競賽，紅色標示</li>
+                </ul>
 
----
+                <h4>篩選功能</h4>
+                <ul>
+                    <li><strong>年份選擇</strong>：可查詢不同年度的數據</li>
+                    <li><strong>月份選擇</strong>：精確到月份的統計</li>
+                    <li><strong>比賽類型</strong>：可單獨查看挑戰賽或正式比賽的成績</li>
+                </ul>
 
-## 功能頁面介紹
+                <h3>4. 詳細排名表</h3>
+                <img src="https://github.com/iceapp-maker/tball/blob/main/docs/images/monthly_rank_list.png?raw=true" alt="詳細排名">
+                
+                <h4>排名表欄位說明</h4>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>欄位</th>
+                            <th>說明</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>#</strong></td>
+                            <td>當前排名順序</td>
+                        </tr>
+                        <tr>
+                            <td><strong>名稱</strong></td>
+                            <td>選手姓名</td>
+                        </tr>
+                        <tr>
+                            <td><strong>積分</strong></td>
+                            <td>當月累計總積分</td>
+                        </tr>
+                        <tr>
+                            <td><strong>勝率</strong></td>
+                            <td>勝場數÷總場數的百分比</td>
+                        </tr>
+                        <tr>
+                            <td><strong>總場次</strong></td>
+                            <td>當月參與的比賽總數</td>
+                        </tr>
+                        <tr>
+                            <td><strong>類型</strong></td>
+                            <td>比賽類型符號（⚡/🏆）</td>
+                        </tr>
+                    </tbody>
+                </table>
 
-## 1. 個人資訊頁 - 近期對戰記錄
+                <h4>排名示例解讀</h4>
+                <p>以表格第一名「徐知公」為例：</p>
+                <ul>
+                    <li><strong>積分</strong>：700分（當月最高）</li>
+                    <li><strong>勝率</strong>：100%（全勝記錄）</li>
+                    <li><strong>總場次</strong>：3場比賽</li>
+                    <li><strong>類型</strong>：🏆（主要參與正式比賽）</li>
+                </ul>
+            </div>
 
-![個人對戰記錄](https://github.com/iceapp-maker/tball/blob/main/docs/images/personal_point_summary.png?raw=true)
+            <div class="section">
+                <h2>使用技巧</h2>
 
-### 功能說明
-- **月份選擇**：點擊上方月份按鈕查看不同月份的對戰記錄
-- **場次統計**：每個月份按鈕右上角的數字代表該月比賽場次
-- **對戰詳情**：顯示具體的比賽日期、對手、搭檔、比分和勝負結果
+                <h3>快速查詢自己的排名</h3>
+                <ol>
+                    <li>點擊「搜尋自己」按鈕</li>
+                    <li>系統自動跳轉到包含您排名的頁面</li>
+                    <li>您的記錄會以藍色背景高亮顯示</li>
+                </ol>
 
-### 欄位說明
-- **日期**：比賽進行的具體日期
-- **類型**：單打或雙打
-- **搭檔**：雙打比賽中的配對夥伴（單打顯示"--"）
-- **對手**：比賽對手姓名
-- **比分**：具體比賽結果（如 3:0、2:1等）
-- **勝負**：比賽結果（勝/負）
-- **類型符號**：⚡代表挑戰賽，🏆代表正式比賽
+                <h3>查看選手詳細記錄</h3>
+                <ol>
+                    <li>在圖表中點擊任一選手的柱狀圖</li>
+                    <li>下方會自動顯示該選手的月度對戰記錄</li>
+                    <li>點擊「顯示全部」返回總覽模式</li>
+                </ol>
 
----
+                <h3>數據篩選</h3>
+                <ul>
+                    <li>使用年份和月份下拉選單精確查詢</li>
+                    <li>透過比賽類型篩選器查看特定類型的成績</li>
+                    <li>利用月份按鈕的場次標記快速找到活躍月份</li>
+                </ul>
+            </div>
 
-## 2. 封神榜 - 月度積分排行
+            <div class="section">
+                <h2>數據更新說明</h2>
+                <ul>
+                    <li><strong>即時更新</strong>：比賽結束後立即更新積分和排名</li>
+                    <li><strong>月度結算</strong>：每月初重新計算排名</li>
+                    <li><strong>歷史保存</strong>：往期數據完整保留，可隨時查詢</li>
+                </ul>
+            </div>
 
-![月度排行圖表](https://github.com/iceapp-maker/tball/blob/main/docs/images/monthly_rank_chart.png?raw=true)
+            <div class="section">
+                <h2>常見問題</h2>
+                
+                <div class="highlight-box">
+                    <p><strong>Q: 為什麼我的積分和排名沒有即時更新？</strong><br>
+                    A: 系統需要比賽正式記錄後才會更新，請確認比賽結果已被正確登記。</p>
+                </div>
 
-### 圖表功能
-- **積分柱狀圖**：直觀顯示各選手當月積分
-- **勝率顯示**：每根柱子內的百分比代表該選手的勝率
-- **互動功能**：點擊任一柱子可查看該選手的詳細對戰記錄
-- **分頁瀏覽**：下方數字按鈕可切換不同頁面
+                <div class="highlight-box">
+                    <p><strong>Q: 挑戰賽和正式比賽的積分差異多大？</strong><br>
+                    A: 正式比賽的積分權重較高，具體比例由系統管理員設定。</p>
+                </div>
 
-### 操作方法
-1. 選擇年份和月份進行查詢
-2. 選擇比賽類型（全部比賽/挑戰賽/正式比賽）
-3. 點擊「搜尋自己」快速定位到自己的排名
-4. 點擊圖表中的選手姓名查看詳細記錄
+                <div class="highlight-box">
+                    <p><strong>Q: 如何查看歷史月份的排名？</strong><br>
+                    A: 使用頁面上方的年份和月份選擇器，可查詢任意歷史期間的數據。</p>
+                </div>
 
----
+                <div class="highlight-box">
+                    <p><strong>Q: 勝率是如何計算的？</strong><br>
+                    A: 勝率 = 勝場數 ÷ 總場數 × 100%，四捨五入至小數點後一位。</p>
+                </div>
+            </div>
 
-## 3. 積分統計總覽
+            <div class="nav-buttons">
+                <a href="index.html" class="nav-btn">🏠 返回專案首頁</a>
+                <a href="quick-guide.html" class="nav-btn">📖 快速上手指南</a>
+                <a href="https://tball.netlify.app/" class="nav-btn primary">🚀 立即使用系統</a>
+            </div>
 
-![統計總覽](https://github.com/iceapp-maker/tball/blob/main/docs/images/statistics_all_players.png?raw=true)
-
-### 圖例說明
-系統使用不同符號區分比賽類型：
-- **⚡ 挑戰賽**：日常練習賽，綠色標示
-- **🏆 正式比賽**：正式競賽，紅色標示
-
-### 篩選功能
-- **年份選擇**：可查詢不同年度的數據
-- **月份選擇**：精確到月份的統計
-- **比賽類型**：可單獨查看挑戰賽或正式比賽的成績
-
----
-
-## 4. 詳細排名表
-
-![詳細排名](https://github.com/iceapp-maker/tball/blob/main/docs/images/monthly_rank_list.png?raw=true)
-
-### 排名表欄位說明
-
-| 欄位 | 說明 |
-|------|------|
-| **#** | 當前排名順序 |
-| **名稱** | 選手姓名 |
-| **積分** | 當月累計總積分 |
-| **勝率** | 勝場數÷總場數的百分比 |
-| **總場次** | 當月參與的比賽總數 |
-| **類型** | 比賽類型符號（⚡/🏆） |
-
-### 排名示例解讀
-以表格第一名「徐知公」為例：
-- **積分**：700分（當月最高）
-- **勝率**：100%（全勝記錄）
-- **總場次**：3場比賽
-- **類型**：🏆（主要參與正式比賽）
-
----
-
-## 使用技巧
-
-### 快速查詢自己的排名
-1. 點擊「搜尋自己」按鈕
-2. 系統自動跳轉到包含您排名的頁面
-3. 您的記錄會以藍色背景高亮顯示
-
-### 查看選手詳細記錄
-1. 在圖表中點擊任一選手的柱狀圖
-2. 下方會自動顯示該選手的月度對戰記錄
-3. 點擊「顯示全部」返回總覽模式
-
-### 數據篩選
-- 使用年份和月份下拉選單精確查詢
-- 透過比賽類型篩選器查看特定類型的成績
-- 利用月份按鈕的場次標記快速找到活躍月份
-
----
-
-## 數據更新說明
-
-- **即時更新**：比賽結束後立即更新積分和排名
-- **月度結算**：每月初重新計算排名
-- **歷史保存**：往期數據完整保留，可隨時查詢
-
----
-
-## 常見問題
-
-**Q: 為什麼我的積分和排名沒有即時更新？**
-A: 系統需要比賽正式記錄後才會更新，請確認比賽結果已被正確登記。
-
-**Q: 挑戰賽和正式比賽的積分差異多大？**
-A: 正式比賽的積分權重較高，具體比例由系統管理員設定。
-
-**Q: 如何查看歷史月份的排名？**
-A: 使用頁面上方的年份和月份選擇器，可查詢任意歷史期間的數據。
-
-**Q: 勝率是如何計算的？**
-A: 勝率 = 勝場數 ÷ 總場數 × 100%，四捨五入至小數點後一位。
-
----
-
-*本說明書版本：v1.0*  
-*最後更新日期：2025年5月*
+            <div style="text-align: center; margin-top: 40px; color: #6b7280; font-size: 0.9rem;">
+                <p><em>本說明書版本：v1.0</em></p>
+                <p><em>最後更新日期：2025年5月</em></p>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
