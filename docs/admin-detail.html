@@ -379,72 +379,108 @@
                 <span>3️⃣</span> 會員管理系統
             </div>
             <div class="step-content">
-                <div class="text-content">
-                    <h3>👥 進入會員管理</h3>
-                    <ul class="instruction-list">
-                        <li>在管理員專區點擊「會員管理」按鈕</li>
-                        <li>系統會顯示當前團隊的所有會員</li>
-                        <li class="highlight">您可以看到會員編號、姓名、聯絡方式等資訊</li>
-                        <li>右側有操作按鈕可以編輯或刪除會員</li>
-                    </ul>
-                </div>
-                
-                <div class="interface-demo">
-                    <h4 style="color: #374151; margin-bottom: 15px;">會員管理主頁面</h4>
-                    <div style="background: white; border: 2px solid #e5e7eb; border-radius: 8px; padding: 15px;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid #e5e7eb;">
-                            <h3 style="margin: 0; color: #374151;">批量新增會員</h3>
-                            <div style="font-size: 0.9rem; color: #6b7280;">團隊ID: S | 準備新增：4位會員</div>
-                        </div>
-                        <div style="background: #dbeafe; padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 0.9rem; color: #1e40af;">
-                            💡 提示：在姓名欄位可以貼上多個姓名（換行一個），系統會自動展開為多列
-                        </div>
-                        <div style="display: grid; grid-template-columns: 80px 100px 80px 60px 90px 80px 60px; gap: 5px; font-size: 0.85rem; font-weight: bold; color: #6b7280; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">
-                            <div>會員編號</div>
-                            <div>姓名 *</div>
-                            <div>電話</div>
-                            <div>級數</div>
-                            <div>加入日期</div>
-                            <div>備註</div>
-                            <div>操作</div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 80px 100px 80px 60px 90px 80px 60px; gap: 5px; font-size: 0.85rem; padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
-                            <div>S0002</div>
-                            <div>不要素</div>
-                            <div style="color: #6b7280;">數字</div>
-                            <div></div>
-                            <div>2025/05/26</div>
-                            <div></div>
-                            <div style="color: #ef4444;">刪除</div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 80px 100px 80px 60px 90px 80px 60px; gap: 5px; font-size: 0.85rem; padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
-                            <div>S0003</div>
-                            <div>薄紗美</div>
-                            <div style="color: #6b7280;">數字</div>
-                            <div></div>
-                            <div>2025/05/26</div>
-                            <div></div>
-                            <div style="color: #ef4444;">刪除</div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 80px 100px 80px 60px 90px 80px 60px; gap: 5px; font-size: 0.85rem; padding: 8px 0; border-bottom: 1px solid #f3f4f6;">
-                            <div>S0004</div>
-                            <div>何必呢</div>
-                            <div style="color: #6b7280;">數字</div>
-                            <div></div>
-                            <div>2025/05/26</div>
-                            <div></div>
-                            <div style="color: #ef4444;">刪除</div>
-                        </div>
-                        <div style="display: grid; grid-template-columns: 80px 100px 80px 60px 90px 80px 60px; gap: 5px; font-size: 0.85rem; padding: 8px 0;">
-                            <div>S0005</div>
-                            <div>最很大</div>
-                            <div style="color: #6b7280;">數字</div>
-                            <div></div>
-                            <div>2025/05/26</div>
-                            <div></div>
-                            <div style="color: #ef4444;">刪除</div>
+                <div class="two-column">
+                    <div class="text-content">
+                        <h3>👥 進入會員管理</h3>
+                        <ul class="instruction-list">
+                            <li>在管理員專區點擊「會員管理」按鈕</li>
+                            <li>系統會顯示當前團隊的所有會員</li>
+                            <li class="highlight">您可以看到會員編號、姓名、聯絡方式等資訊</li>
+                            <li>右側有操作按鈕可以編輯或刪除會員</li>
+                        </ul>
+                        
+                        <h3>🔧 主要功能</h3>
+                        <ul class="instruction-list">
+                            <li><strong>會員總數統計</strong> - 顯示當前團隊的所有會員數量</li>
+                            <li><strong>查看會員編號、姓名、聯絡方式等資訊</strong></li>
+                            <li><strong>右側有操作按鈕</strong> - 可以編輯或刪除會員</li>
+                            <li class="warning"><strong>重複名字檢查</strong> - 系統會提醒重複的會員姓名</li>
+                        </ul>
+                    </div>
+                    <div class="interface-demo">
+                        <h4 style="color: #374151; margin-bottom: 15px;">會員管理主頁面</h4>
+                        <div style="background: white; border: 2px solid #e5e7eb; border-radius: 8px; padding: 15px;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #3b82f6;">
+                                <h3 style="margin: 0; color: #374151;">會員管理系統</h3>
+                                <div style="font-size: 0.9rem; color: #6b7280;">當前用戶：紅茶 | 團隊ID：T</div>
+                            </div>
+                            <div style="background: #3b82f6; color: white; padding: 10px; border-radius: 6px; margin-bottom: 15px; text-align: center; font-weight: bold;">
+                                返回主選單
+                            </div>
+                            <div style="background: #f3f4f6; padding: 10px; border-radius: 6px; margin-bottom: 15px;">
+                                <strong>現有會員：205 人</strong>
+                            </div>
+                            <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 15px;">
+                                <div style="background: #10b981; color: white; padding: 10px; border-radius: 6px; text-align: center; font-weight: bold;">新增會員</div>
+                                <div style="background: #8b5cf6; color: white; padding: 10px; border-radius: 6px; text-align: center; font-weight: bold;">批量新增會員</div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 60px 120px 80px 100px; gap: 8px; font-size: 0.85rem; font-weight: bold; color: #6b7280; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">
+                                <div>會員編號</div>
+                                <div>姓名</div>
+                                <div>密碼狀態</div>
+                                <div>操作</div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 60px 120px 80px 100px; gap: 8px; font-size: 0.85rem; padding: 8px 0; border-bottom: 1px solid #f3f4f6; align-items: center;">
+                                <div>T0001</div>
+                                <div>
+                                    <div>紅茶</div>
+                                    <div style="font-size: 0.75rem; color: #8b5cf6; font-weight: bold;">管理員</div>
+                                </div>
+                                <div style="color: #10b981;">已設定</div>
+                                <div style="display: flex; gap: 5px;">
+                                    <span style="background: #3b82f6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">編輯</span>
+                                    <span style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">刪除</span>
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 60px 120px 80px 100px; gap: 8px; font-size: 0.85rem; padding: 8px 0; border-bottom: 1px solid #f3f4f6; align-items: center;">
+                                <div>T0002</div>
+                                <div>
+                                    <div>吉午</div>
+                                    <div style="font-size: 0.75rem; color: #10b981; font-weight: bold;">會員</div>
+                                </div>
+                                <div style="color: #10b981;">已設定</div>
+                                <div style="display: flex; gap: 5px;">
+                                    <span style="background: #3b82f6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">編輯</span>
+                                    <span style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">刪除</span>
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 60px 120px 80px 100px; gap: 8px; font-size: 0.85rem; padding: 8px 0; border-bottom: 1px solid #f3f4f6; align-items: center;">
+                                <div>T0003</div>
+                                <div>
+                                    <div>劉造益</div>
+                                    <div style="font-size: 0.75rem; color: #10b981; font-weight: bold;">會員</div>
+                                </div>
+                                <div style="color: #10b981;">已設定</div>
+                                <div style="display: flex; gap: 5px;">
+                                    <span style="background: #3b82f6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">編輯</span>
+                                    <span style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">刪除</span>
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 60px 120px 80px 100px; gap: 8px; font-size: 0.85rem; padding: 8px 0; align-items: center;">
+                                <div>T0004</div>
+                                <div>
+                                    <div>林琦龍</div>
+                                    <div style="font-size: 0.75rem; color: #10b981; font-weight: bold;">會員</div>
+                                </div>
+                                <div style="color: #10b981;">已設定</div>
+                                <div style="display: flex; gap: 5px;">
+                                    <span style="background: #3b82f6; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">編輯</span>
+                                    <span style="background: #ef4444; color: white; padding: 2px 8px; border-radius: 4px; font-size: 0.75rem;">刪除</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
+                </div>
+                
+                <div class="feature-box">
+                    <h4>⚠️ 重複名字檢查功能</h4>
+                    <ul class="instruction-list">
+                        <li class="warning">當新增會員時，系統會自動檢查同團隊中是否有相同姓名</li>
+                        <li>如果發現重複姓名，系統會顯示警告訊息</li>
+                        <li class="highlight">建議在重複的姓名後加上識別資訊，如「張三(北)」、「張三(南)」</li>
+                        <li>或使用全名避免重複，如「張三豐」vs「張三峰」</li>
+                        <li class="success">確保每位會員都有唯一的識別名稱，避免混淆</li>
+                    </ul>
                 </div>
             </div>
         </div>
