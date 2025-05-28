@@ -349,6 +349,13 @@ export default function ChallengeListPage() {
     return challengeDate < today;
   }
 
+  // 在 renderStatus 函數之前添加新的函數
+  function getStatusSymbol_v4(status?: string) {
+    if (status === '已接受') return '✅'; // 綠色勾勾
+    if (status === '已拒絕') return '❌'; // 紅色叉叉
+    return '⏳'; // 沙漏
+  }
+
   // 狀態 badge 樣式
   function renderStatus(status?: string) {
     const style = {
@@ -587,10 +594,82 @@ export default function ChallengeListPage() {
                           <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>
                             {ch.initiator}
                            </td>
-                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player1 || '-'}</td>
-                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player2 || '-'}</td>
-                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player3 || '-'}</td>
-                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player4 || '-'}</td>
+                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>
+                            {ch.player1 ? (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span 
+                                  style={{ 
+                                    color: ch.status_log?.player1_status === '已接受' ? '#22b573' : 
+                                           ch.status_log?.player1_status === '已拒絕' ? '#d7263d' : '#888',
+                                    fontWeight: 'bold',
+                                    marginRight: 3,
+                                    fontSize: 12
+                                  }}
+                                  title={ch.status_log?.player1_status || '未讀取'}
+                                >
+                                  {getStatusSymbol_v4(ch.status_log?.player1_status)}
+                                </span>
+                                <span>{ch.player1}</span>
+                              </div>
+                            ) : '-'}
+                          </td>
+                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>
+                            {ch.player2 ? (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span 
+                                  style={{ 
+                                    color: ch.status_log?.player2_status === '已接受' ? '#22b573' : 
+                                           ch.status_log?.player2_status === '已拒絕' ? '#d7263d' : '#888',
+                                    fontWeight: 'bold',
+                                    marginRight: 3,
+                                    fontSize: 12
+                                  }}
+                                  title={ch.status_log?.player2_status || '未讀取'}
+                                >
+                                  {getStatusSymbol_v4(ch.status_log?.player2_status)}
+                                </span>
+                                <span>{ch.player2}</span>
+                              </div>
+                            ) : '-'}
+                          </td>
+                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>
+                            {ch.player3 ? (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span 
+                                  style={{ 
+                                    color: ch.status_log?.player3_status === '已接受' ? '#22b573' : 
+                                           ch.status_log?.player3_status === '已拒絕' ? '#d7263d' : '#888',
+                                    fontWeight: 'bold',
+                                    marginRight: 3,
+                                    fontSize: 12
+                                  }}
+                                  title={ch.status_log?.player3_status || '未讀取'}
+                                >
+                                  {getStatusSymbol_v4(ch.status_log?.player3_status)}
+                                </span>
+                                <span>{ch.player3}</span>
+                              </div>
+                            ) : '-'}
+                          </td>
+                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>
+                            {ch.player4 ? (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span 
+                                  style={{ 
+                                    color: ch.status_log?.player4_status === '已接受' ? '#22b573' : 
+                                           ch.status_log?.player4_status === '已拒絕' ? '#d7263d' : '#888',
+                                    fontWeight: 'bold',
+                                    marginRight: 3,
+                                    fontSize: 12
+                                  }}
+                                  title={ch.status_log?.player4_status || '未讀取'}
+                                >
+                                  {getStatusSymbol_v4(ch.status_log?.player4_status)}
+                                </span>
+                                <span>{ch.player4}</span>
+                              </div>
+                            ) : '-'}
+                          </td>
                           <td style={{ width: 70, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.game_type === 'single' ? '單打' : '雙打'}</td>
                           <td style={{ width: 80, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{(ch as any).challenge_date ? new Date((ch as any).challenge_date).toISOString().slice(0,10) : (ch.created_at ? new Date(ch.created_at).toISOString().slice(0,10) : '-')}</td>
                           <td style={{ width: 70, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.time_slot}</td>
@@ -865,10 +944,82 @@ export default function ChallengeListPage() {
                             {ch.initiator}
                          
                           </td>
-                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player1 || '-'}</td>
-                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player2 || '-'}</td>
-                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player3 || '-'}</td>
-                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.player4 || '-'}</td>
+                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>
+                            {ch.player1 ? (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span 
+                                  style={{ 
+                                    color: ch.status_log?.player1_status === '已接受' ? '#22b573' : 
+                                           ch.status_log?.player1_status === '已拒絕' ? '#d7263d' : '#888',
+                                    fontWeight: 'bold',
+                                    marginRight: 3,
+                                    fontSize: 12
+                                  }}
+                                  title={ch.status_log?.player1_status || '未讀取'}
+                                >
+                                  {getStatusSymbol_v4(ch.status_log?.player1_status)}
+                                </span>
+                                <span>{ch.player1}</span>
+                              </div>
+                            ) : '-'}
+                          </td>
+                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>
+                            {ch.player2 ? (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span 
+                                  style={{ 
+                                    color: ch.status_log?.player2_status === '已接受' ? '#22b573' : 
+                                           ch.status_log?.player2_status === '已拒絕' ? '#d7263d' : '#888',
+                                    fontWeight: 'bold',
+                                    marginRight: 3,
+                                    fontSize: 12
+                                  }}
+                                  title={ch.status_log?.player2_status || '未讀取'}
+                                >
+                                  {getStatusSymbol_v4(ch.status_log?.player2_status)}
+                                </span>
+                                <span>{ch.player2}</span>
+                              </div>
+                            ) : '-'}
+                          </td>
+                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>
+                            {ch.player3 ? (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span 
+                                  style={{ 
+                                    color: ch.status_log?.player3_status === '已接受' ? '#22b573' : 
+                                           ch.status_log?.player3_status === '已拒絕' ? '#d7263d' : '#888',
+                                    fontWeight: 'bold',
+                                    marginRight: 3,
+                                    fontSize: 12
+                                  }}
+                                  title={ch.status_log?.player3_status || '未讀取'}
+                                >
+                                  {getStatusSymbol_v4(ch.status_log?.player3_status)}
+                                </span>
+                                <span>{ch.player3}</span>
+                              </div>
+                            ) : '-'}
+                          </td>
+                          <td style={{ width: 60, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>
+                            {ch.player4 ? (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <span 
+                                  style={{ 
+                                    color: ch.status_log?.player4_status === '已接受' ? '#22b573' : 
+                                           ch.status_log?.player4_status === '已拒絕' ? '#d7263d' : '#888',
+                                    fontWeight: 'bold',
+                                    marginRight: 3,
+                                    fontSize: 12
+                                  }}
+                                  title={ch.status_log?.player4_status || '未讀取'}
+                                >
+                                  {getStatusSymbol_v4(ch.status_log?.player4_status)}
+                                </span>
+                                <span>{ch.player4}</span>
+                              </div>
+                            ) : '-'}
+                          </td>
                           <td style={{ width: 70, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.game_type === 'single' ? '單打' : '雙打'}</td>
                           <td style={{ width: 80, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{(ch as any).challenge_date ? new Date((ch as any).challenge_date).toISOString().slice(0,10) : (ch.created_at ? new Date(ch.created_at).toISOString().slice(0,10) : '-')}</td>
                           <td style={{ width: 70, padding: 4, textAlign: 'center', border: '1px solid #d5dbe0' }}>{ch.time_slot}</td>
