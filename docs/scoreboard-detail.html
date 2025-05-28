@@ -1,1 +1,448 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>比分表功能說明書</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', '微軟正黑體', Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #2c3e50;
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #34495e;
+            background: linear-gradient(90deg, #3498db, #74b9ff);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-top: 30px;
+            margin-bottom: 20px;
+        }
+        h3 {
+            color: #2980b9;
+            border-left: 4px solid #3498db;
+            padding-left: 15px;
+            margin-top: 25px;
+        }
+        .feature-box {
+            background: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            border-left: 5px solid #3498db;
+        }
+        .warning-box {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            color: #856404;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .info-box {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        .success-box {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+        ul, ol {
+            padding-left: 25px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .highlight {
+            background: #fff3cd;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .code {
+            background: #f8f9fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #e83e8c;
+        }
+        .image-container {
+            text-align: center;
+            margin: 25px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 2px dashed #dee2e6;
+        }
+        .image-placeholder {
+            width: 100%;
+            max-width: 600px;
+            height: 300px;
+            background: #e9ecef;
+            border: 2px dashed #adb5bd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto;
+            border-radius: 8px;
+            color: #6c757d;
+            font-size: 16px;
+        }
+        .caption {
+            margin-top: 10px;
+            font-style: italic;
+            color: #6c757d;
+            font-size: 14px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+        }
+        th, td {
+            border: 1px solid #dee2e6;
+            padding: 12px;
+            text-align: left;
+        }
+        th {
+            background: #f8f9fa;
+            font-weight: bold;
+            color: #495057;
+        }
+        .step-number {
+            background: #3498db;
+            color: white;
+            border-radius: 50%;
+            width: 25px;
+            height: 25px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 10px;
+            font-weight: bold;
+        }
+        .toc {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .toc ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .toc li {
+            margin-bottom: 5px;
+        }
+        .toc a {
+            text-decoration: none;
+            color: #3498db;
+            padding: 5px 10px;
+            display: block;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+        .toc a:hover {
+            background: #e3f2fd;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 桌球比賽系統 - 比分表功能說明書</h1>
+        
+        <div class="info-box">
+            <strong>📋 文件資訊</strong><br>
+            文件名稱：scoring-detail.html<br>
+            版本：1.0<br>
+            更新日期：2025年5月<br>
+            適用對象：系統管理員、比賽參與者、觀賽者
+        </div>
 
+        <!-- 目錄 -->
+        <div class="toc">
+            <h3>📑 目錄</h3>
+            <ul>
+                <li><a href="#overview">🎯 功能概述</a></li>
+                <li><a href="#interface">🖥️ 介面說明</a></li>
+                <li><a href="#scoring-logic">📈 比分計算邏輯</a></li>
+                <li><a href="#ranking-rules">🏆 排名規則</a></li>
+                <li><a href="#real-time">⚡ 即時更新機制</a></li>
+                <li><a href="#detailed-records">📝 詳細對戰記錄</a></li>
+                <li><a href="#admin-functions">🔧 管理員功能</a></li>
+            </ul>
+        </div>
+
+        <section id="overview">
+            <h2>🎯 功能概述</h2>
+            <div class="feature-box">
+                <p>比分表是桌球比賽系統的核心顯示模組，提供<strong>即時、動態</strong>的比賽結果展示。此功能具備以下特色：</p>
+                <ul>
+                    <li><strong>即時更新：</strong>當任何一場對戰完成單局比賽時，表格立即反映最新比分</li>
+                    <li><strong>智能排名：</strong>根據勝場數、直接對戰結果及勝局數進行多層級排名</li>
+                    <li><strong>視覺提示：</strong>透過顏色標示區分比賽狀態和勝負結果</li>
+                    <li><strong>詳細記錄：</strong>比賽結束後可查看完整的個人對戰歷程</li>
+                </ul>
+            </div>
+        </section>
+
+        <section id="interface">
+            <h2>🖥️ 介面說明</h2>
+            
+            <h3>主要顯示區域</h3>
+            <div class="feature-box">
+                <p>比分表採用<strong>矩陣式設計</strong>，行列分別代表對戰的兩支隊伍：</p>
+                <ul>
+                    <li><strong>橫列（Row）：</strong>主隊伍</li>
+                    <li><strong>直行（Column）：</strong>對戰隊伍</li>
+                    <li><strong>交叉格：</strong>顯示主隊伍對戰隊伍的比分結果</li>
+                    <li><strong>名次欄：</strong>右側顯示各隊伍的最終排名</li>
+                </ul>
+            </div>
+
+            <h3>比分格式說明</h3>
+            <table>
+                <tr>
+                    <th>格式</th>
+                    <th>說明</th>
+                    <th>範例</th>
+                </tr>
+                <tr>
+                    <td><span class="code">A:B</span></td>
+                    <td>主隊伍得分：對戰隊伍得分</td>
+                    <td>3:1（主隊伍勝3局，對戰隊伍勝1局）</td>
+                </tr>
+                <tr>
+                    <td><span class="code">—</span></td>
+                    <td>同一隊伍（對角線位置）</td>
+                    <td>隊伍不與自己對戰</td>
+                </tr>
+                <tr>
+                    <td><span class="code">-</span></td>
+                    <td>尚未開始或無比賽數據</td>
+                    <td>比賽尚未安排或進行</td>
+                </tr>
+            </table>
+
+            <h3>顏色標示系統</h3>
+            <div class="feature-box">
+                <ul>
+                    <li><span class="highlight" style="background: #ffd5b4;">🟠 橘色字體：</span>勝利的比分（該格主隊伍獲勝）</li>
+                    <li><span class="highlight" style="background: #ffcdd2;">🩷 粉紅色背景：</span>比賽進行中，尚未完成所有局數</li>
+                    <li><span class="highlight" style="background: #c8e6c9;">🟢 綠色統計：</span>勝局數統計行</li>
+                    <li><span class="highlight" style="background: #bbdefb;">🔵 藍色統計：</span>勝場數統計行</li>
+                </ul>
+            </div>
+
+            <div class="image-container">
+                <div class="image-placeholder">
+                    <img src="images/not_flished.png" alt="未完成比賽的粉紅色顯示" style="max-width: 100%; height: auto;">
+                </div>
+                <div class="caption">圖1：比賽進行中的粉紅色背景提示（not_flished.png）</div>
+            </div>
+        </section>
+
+        <section id="scoring-logic">
+            <h2>📈 比分計算邏輯</h2>
+            
+            <h3>即時計分機制</h3>
+            <div class="info-box">
+                <p><strong>⏱️ 動態更新時機：</strong>比分表會在以下時刻自動更新</p>
+                <ul>
+                    <li>任何一局比賽結束時</li>
+                    <li>比賽結果被記錄到系統時</li>
+                    <li>管理員修正比分時</li>
+                    <li>用戶重新載入頁面時</li>
+                </ul>
+            </div>
+
+            <div class="warning-box">
+                <strong>⚠️ 重要提醒：</strong>粉紅色背景的格子表示該對戰尚未完成所有局數，比分可能還會變動。
+            </div>
+        </section>
+
+        <section id="ranking-rules">
+            <h2>🏆 排名規則</h2>
+            
+            <h3>多層級排名邏輯</h3>
+            <div class="feature-box">
+                <p>系統採用<strong>三層級排名機制</strong>，確保排名的公平性與準確性：</p>
+                
+                <h4>🥇 第一優先：勝場(隊)數</h4>
+                <ul>
+                    <li>統計每支隊伍獲勝的場次數量</li>
+                    <li>勝場數多者排名靠前</li>
+                </ul>
+
+                <h4>🥈 第二優先：直接對戰結果</h4>
+                <ul>
+                    <li>當兩支隊伍勝場數相同時</li>
+                    <li>直接比較兩隊間的對戰結果</li>
+                    <li>直接對戰獲勝者排名較前</li>
+                </ul>
+
+                <h4>🥉 第三優先：勝局(點)數</h4>
+                <ul>
+                    <li>當存在循環勝負關係時使用</li>
+                    <li>例如：A勝B、B勝C、C勝A</li>
+                    <li>統計所有比賽中獲勝的局數總和</li>
+                    <li>勝局數多者排名靠前</li>
+                </ul>
+            </div>
+
+            <h3>排名計算範例</h3>
+            <table>
+                <tr>
+                    <th>情況</th>
+                    <th>判斷方式</th>
+                    <th>範例</th>
+                </tr>
+                <tr>
+                    <td>勝場數不同</td>
+                    <td>直接按勝場數排序</td>
+                    <td>A隊3勝 > B隊2勝 > C隊1勝</td>
+                </tr>
+                <tr>
+                    <td>兩隊勝場數相同</td>
+                    <td>比較直接對戰結果</td>
+                    <td>A、B隊同為2勝，A擊敗B，則A > B</td>
+                </tr>
+                <tr>
+                    <td>循環勝負</td>
+                    <td>比較勝局數</td>
+                    <td>A勝B、B勝C、C勝A，按勝局數排序</td>
+                </tr>
+            </table>
+
+            <div class="success-box">
+                <strong>✅ 排名更新：</strong>排名會隨著比賽進行即時更新，確保參賽者和觀眾能掌握最新的競爭態勢。
+            </div>
+        </section>
+
+        <section id="real-time">
+            <h2>⚡ 即時更新機制</h2>
+            
+            <div class="warning-box">
+                <strong>📱 使用者操作：</strong>如果比分沒有即時更新，建議重新載入頁面以確保顯示最新資料。
+            </div>
+        </section>
+
+        <section id="detailed-records">
+            <h2>📝 詳細對戰記錄</h2>
+            
+            <h3>功能啟用條件</h3>
+            <div class="info-box">
+                <p><strong>🔐 詳細對戰記錄僅在以下條件滿足時顯示：</strong></p>
+                <ul>
+                    <li>比賽狀態為「已結束」</li>
+                    <li>管理員已確認所有比賽完成</li>
+                    <li>所有隊伍間的對戰都已記錄完整比分</li>
+                </ul>
+            </div>
+
+            <h3>記錄內容說明</h3>
+            <div class="feature-box">
+                <p><strong>📊 詳細記錄包含以下資訊：</strong></p>
+                <ul>
+                    <li><strong>對戰組合：</strong>具體的隊伍對戰配對</li>
+                    <li><strong>局次資訊：</strong>第幾局的比賽</li>
+                    <li><strong>選手組合：</strong>每局的具體出場選手</li>
+                    <li><strong>局分結果：</strong>該局的詳細得分</li>
+                    <li><strong>勝負標示：</strong>🏆 標示每局的獲勝方</li>
+                </ul>
+            </div>
+
+            <div class="image-container">
+                <div class="image-placeholder">
+                    <img src="images/detail_battle_record.png" alt="詳細對戰記錄介面" style="max-width: 100%; height: auto;">
+                </div>
+                <div class="caption">圖2：詳細對戰記錄展示介面（detail_battle_record.png）</div>
+            </div>
+
+            <h3>查看方式</h3>
+            <div class="success-box">
+                <p><strong>👆 操作步驟：</strong></p>
+                <ol>
+                    <li>等待管理員結束比賽</li>
+                    <li>在比分表下方找到「詳細個人對戰記錄」區塊</li>
+                    <li>點擊該區塊展開/收合詳細記錄</li>
+                    <li>瀏覽各場比賽的具體對戰情況</li>
+                </ol>
+            </div>
+        </section>
+
+        <section id="admin-functions">
+            <h2>🔧 管理員功能</h2>
+            
+            <h3>比賽結束控制</h3>
+            <div class="feature-box">
+                <p><strong>🎯 管理員可執行的操作：</strong></p>
+                <ul>
+                    <li><strong>監控比賽進度：</strong>查看哪些對戰尚未完成</li>
+                    <li><strong>結束比賽：</strong>確認所有比賽完成後標記比賽結束</li>
+                    <li><strong>解鎖詳細記錄：</strong>比賽結束後開放詳細對戰記錄查看</li>
+                </ul>
+            </div>
+
+            <h3>狀態提示訊息</h3>
+            <table>
+                <tr>
+                    <th>情況</th>
+                    <th>顯示訊息</th>
+                    <th>可執行動作</th>
+                </tr>
+                <tr>
+                    <td>可以結束比賽</td>
+                    <td>顯示「結束比賽」按鈕</td>
+                    <td>點擊結束比賽</td>
+                </tr>
+                <tr>
+                    <td>有未完成對戰</td>
+                    <td>黃色警告：⚠️ 比賽尚未完全結束</td>
+                    <td>等待所有對戰完成</td>
+                </tr>
+                <tr>
+                    <td>比賽已結束</td>
+                    <td>顯示詳細對戰記錄按鈕</td>
+                    <td>查看詳細記錄</td>
+                </tr>
+            </table>
+
+            <div class="success-box">
+                <strong>🎉 比賽結束後：</strong>系統會自動更新比賽狀態，並開放詳細對戰記錄的查看功能。
+            </div>
+        </section>
+
+        <div style="margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 8px; text-align: center; color: #6c757d;">
+            <p><strong>📞 技術支援</strong></p>
+            <p>如有任何問題或建議，請聯繫系統管理員</p>
+            <p><em>© 2025 桌球比賽管理系統 - 比分表功能說明書</em></p>
+        </div>
+    </div>
+</body>
+</html>
