@@ -97,20 +97,29 @@
             background: #f8f9fa;
             border-radius: 8px;
             border: 2px dashed #dee2e6;
+            clear: both;
+            overflow: hidden;
         }
         .image-placeholder {
             width: 100%;
             max-width: 600px;
-            height: 300px;
+            height: auto;
+            min-height: 200px;
             background: #e9ecef;
             border: 2px dashed #adb5bd;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: block;
             margin: 0 auto;
             border-radius: 8px;
             color: #6c757d;
             font-size: 16px;
+            object-fit: contain;
+        }
+        .image-placeholder img {
+            width: 100%;
+            height: auto;
+            max-width: 100%;
+            display: block;
+            margin: 0 auto;
         }
         .caption {
             margin-top: 10px;
@@ -179,7 +188,7 @@
         <div class="info-box">
             <strong>📋 文件資訊</strong><br>
             文件名稱：scoring-detail.html<br>
-            版本：1.1<br>
+            版本：1.2<br>
             更新日期：2025年5月<br>
             適用對象：系統管理員、比賽參與者、觀賽者
         </div>
