@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>約定時間功能使用說明</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft JhengHei', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #e67e22, #f39c12);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            color: #666;
+        }
+        
+        .content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            color: #2c3e50;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #e67e22;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section h2::before {
+            content: "📅";
+            margin-right: 10px;
+            font-size: 1.2em;
+        }
+        
+        .section h3 {
+            color: #34495e;
+            font-size: 1.4em;
+            margin: 25px 0 15px 0;
+            padding-left: 15px;
+            border-left: 4px solid #f39c12;
+        }
+        
+        .screenshot {
+            max-width: 100%;
+            height: auto;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            margin: 20px 0;
+            border: 3px solid #ecf0f1;
+        }
+        
+        .screenshot-container {
+            text-align: center;
+            margin: 30px 0;
+            padding: 20px;
+            background: linear-gradient(120deg, #f8f9fa 0%, #e9ecef 100%);
+            border-radius: 15px;
+        }
+        
+        .screenshot-caption {
+            color: #555;
+            font-weight: bold;
+            margin-top: 15px;
+            font-size: 1.1em;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 10px;
+            border-radius: 8px;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+        
+        .feature-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 15px;
+            padding: 25px;
+            border-left: 5px solid #e67e22;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .feature-card h4 {
+            color: #2c3e50;
+            font-size: 1.2em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .feature-card h4::before {
+            content: "▶";
+            color: #e67e22;
+            margin-right: 8px;
+            font-size: 0.9em;
+        }
+        
+        .feature-card p, .feature-card li {
+            color: #555;
+            margin-bottom: 8px;
+        }
+        
+        .feature-card ul {
+            padding-left: 20px;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(120deg, #fff3cd 0%, #ffeaa7 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border-left: 5px solid #f39c12;
+            border: 2px solid #f1c40f;
+        }
+        
+        .highlight-box h4 {
+            color: #d68910;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+        
+        .warning-box {
+            background: linear-gradient(120deg, #ffeaea 0%, #ffcdd2 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border-left: 5px solid #e74c3c;
+            border: 2px solid #ff6b6b;
+        }
+        
+        .warning-box h4 {
+            color: #c0392b;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+        
+        .info-box {
+            background: linear-gradient(120deg, #e3f2fd 0%, #bbdefb 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border-left: 5px solid #3498db;
+            border: 2px solid #74b9ff;
+        }
+        
+        .info-box h4 {
+            color: #2980b9;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+        
+        .process-flow {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .flow-step {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 10px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        
+        .flow-step::before {
+            content: counter(flow-counter);
+            counter-increment: flow-counter;
+            position: absolute;
+            left: -10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #e67e22;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        .flow-step-content {
+            margin-left: 30px;
+        }
+        
+        .flow-steps {
+            counter-reset: flow-counter;
+        }
+        
+        .status-comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .status-box {
+            padding: 20px;
+            border-radius: 15px;
+            text-align: center;
+        }
+        
+        .status-available {
+            background: linear-gradient(120deg, #d4edda 0%, #c3e6cb 100%);
+            border: 2px solid #28a745;
+        }
+        
+        .status-unavailable {
+            background: linear-gradient(120deg, #f8d7da 0%, #e2c3c7 100%);
+            border: 2px solid #dc3545;
+        }
+        
+        .operation-steps {
+            counter-reset: step-counter;
+        }
+        
+        .operation-steps li {
+            counter-increment: step-counter;
+            margin-bottom: 15px;
+            padding-left: 40px;
+            position: relative;
+        }
+        
+        .operation-steps li::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            background: #e67e22;
+            color: white;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .status-comparison {
+                grid-template-columns: 1fr;
+            }
+            
+            .screenshot {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⏰ 約定時間功能使用說明</h1>
+            <p>桌球比賽時間協調與邀約系統</p>
+        </div>
+
+        <div class="content">
+            <!-- 功能概述 -->
+            <div class="section">
+                <h2>功能概述</h2>
+                <p>約定時間功能是桌球管理系統的核心協調工具，讓使用者能夠靈活安排比賽時間、發送邀約通知，並與其他選手進行時間協調。系統提供多種時段選擇和自動通知機制，確保所有參與者都能及時收到約戰資訊。</p>
+                
+                <div class="highlight-box">
+                    <h4>🎯 主要功能</h4>
+                    <ul>
+                        <li><strong>時段選擇</strong>：可選早中晚或自訂時段</li>
+                        <li><strong>對戰邀約</strong>：與其他選手預約比賽時間</li>
+                        <li><strong>系統通知</strong>：自動提醒約定的比賽時間</li>
+                        <li><strong>靈活安排</strong>：支援彈性的時間協調機制</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 使用管道 -->
+            <div class="section">
+                <h2>約戰功能使用管道</h2>
+                
+                <h3>🏓 管道一：從計分頁面發起約戰</h3>
+                <div class="screenshot-container">
+                    <img src="https://github.com/iceapp-maker/tball/blob/main/docs/images/appoint_from_score.png?raw=true" alt="計分頁面約戰按鈕" class="screenshot">
+                    <div class="screenshot-caption">圖：計分頁面右上角的約戰按鈕（📣按鈕）</div>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>使用時機與優勢</h4>
+                    <ul>
+                        <li><strong>任何時候</strong>：只要想到有想要約戰的對象，都可選定選手後執行邀約</li>
+                        <li><strong>比賽完成</strong>：四位選手資訊已在系統中，可進行下次約戰</li>
+                    </ul>
+                </div>
+
+                <h3>🏟️ 管道二：戰況室比賽列表</h3>
+                <div class="screenshot-container">
+                    <img src="https://github.com/iceapp-maker/tball/blob/main/docs/images/contest_appoint.png?raw=true" alt="戰況室約戰按鈕" class="screenshot">
+                    <div class="screenshot-caption">圖：戰況室比賽列表中的約戰按鈕狀態與成員回覆顯示</div>
+                </div>
+
+                <div class="status-comparison">
+                    <div class="status-box status-available">
+                        <h4>🟢 可用狀態</h4>
+                        <p><strong>出賽點1：師師隊 vs 劉董隊</strong></p>
+                        <p>綠色「約」按鈕，可以點擊發起約戰</p>
+                    </div>
+                    <div class="status-box status-unavailable">
+                        <h4>⚪ 不可用狀態</h4>
+                        <p><strong>出賽點5：紅茶隊 vs 言午許</strong></p>
+                        <p>灰色「約」按鈕，已有約戰記錄處理中</p>
+                    </div>
+                </div>
+
+                <div class="info-box">
+                    <h4>💡 戰況室回覆狀態顯示</h4>
+                    <p>在戰況室的對戰名片中，每位選手名稱底下會直接用<strong>文字顯示</strong>相約的回覆狀況，方便快速了解約戰進度：</p>
+                    <ul>
+                        <li><strong>已接受</strong>：該選手同意約戰</li>
+                        <li><strong>考慮中</strong>：該選手尚未決定</li>
+                        <li><strong>已拒絕</strong>：該選手拒絕約戰</li>
+                    </ul>
+                </div>
+
+                <div class="warning-box">
+                    <h4>⚠️ 重要：約戰按鈕狀態說明</h4>
+                    <p><strong>「約」按鈕變灰色的原因：已有約戰記錄且在處理中</strong></p>
+                    <p>必須等其中一方拒絕約戰後，按鈕才會重新變為可用狀態。這個設計避免了重複約戰和混亂的時間安排。</p>
+                </div>
+            </div>
+
+            <!-- 被約方通知機制 -->
+            <div class="section">
+                <h2>被約方通知機制</h2>
+                
+                <h3>📋 挑戰通知詳細資訊</h3>
+                <div class="screenshot-container">
+                    <img src="https://github.com/iceapp-maker/tball/blob/main/docs/images/bell-notification.png?raw=true" alt="挑戰通知詳細資訊" class="screenshot">
+                    <div class="screenshot-caption">圖：被約後的挑戰通知詳細資訊頁面</div>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>通知內容說明</h4>
+                    <ul>
+                        <li>顯示「尚未過期」和「已過期」的挑戰</li>
+                        <li>操作欄位顯示不同狀態（考慮中、接受、已接受等）</li>
+                        <li>提供詳細的挑戰資訊和參與者名單</li>
+                        <li>可查看所有相關的約戰記錄</li>
+                        <li><strong>自己發起的約戰</strong>：系統會自動設為接受，也可手動設定</li>
+                    </ul>
+                </div>
+
+                <h3>✅ 成員回覆狀態顯示</h3>
+                <div class="screenshot-container">
+                    <img src="https://github.com/iceapp-maker/tball/blob/main/docs/images/challenge_return.png?raw=true" alt="挑戰成員回覆狀態" class="screenshot">
+                    <div class="screenshot-caption">圖：詳細挑戰列表頁中顯示約戰相關成員的回覆狀態</div>
+                </div>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>回覆狀態圖示</h4>
+                        <ul>
+                            <li><strong>✅ 打勾</strong>：該成員已接受約戰邀請</li>
+                            <li><strong>⏳ 漏斗</strong>：該成員正在考慮中</li>
+                            <li><strong>❌ 打X</strong>：該成員已拒絕約戰邀請</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>狀態查看方式</h4>
+                        <ul>
+                            <li>每位成員名稱旁顯示對應圖示</li>
+                            <li>可一目了然各成員回覆情況</li>
+                            <li>協助發起人了解約戰進度</li>
+                            <li>便於追蹤待回覆的成員</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <h3>📱 個人資訊頁面通知</h3>
+                <div class="screenshot-container">
+                    <img src="https://github.com/iceapp-maker/tball/blob/main/docs/images/inform_appoint.png?raw=true" alt="個人資訊約戰通知" class="screenshot">
+                    <div class="screenshot-caption">圖：登入者被約時，個人資訊頁面的待處理區顯示約戰訊息</div>
+                </div>
+                
+                <div class="feature-card">
+                    <h4>通知內容</h4>
+                    <ul>
+                        <li><strong>挑戰通知</strong>：2筆未讀約戰邀請</li>
+                        <li><strong>賽程邀約</strong>：1筆待處理邀約</li>
+                        <li><strong>詳細資訊</strong>：包含約戰隊伍名稱、比賽類型、時間等</li>
+                        <li><strong>處理狀態</strong>：顯示「雙方已安排」或其他處理狀態</li>
+                    </ul>
+                </div>
+
+                <h3>💌 約戰邀約確認</h3>
+                <div class="screenshot-container">
+                    <img src="https://github.com/iceapp-maker/tball/blob/main/docs/images/invitation-message.png?raw=true" alt="約戰邀約確認頁面" class="screenshot">
+                    <div class="screenshot-caption">圖：約戰邀約確認頁面 - 顯示詳細邀約資訊和回應選項</div>
+                </div>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>邀約資訊</h4>
+                        <ul>
+                            <li>邀約隊伍：成功隊</li>
+                            <li>比賽名稱：功成盃</li>
+                            <li>比賽規則：參賽對象限制</li>
+                            <li>比賽類型：5點雙打</li>
+                            <li>成員：顯示參賽選手</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>回應選項</h4>
+                        <ul>
+                            <li><strong>接受</strong>：綠色按鈕，同意約戰安排</li>
+                            <li><strong>拒絕</strong>：紅色按鈕，拒絕此次約戰</li>
+                            <li><strong>狀態更新</strong>：回應後自動更新約戰狀態</li>
+                            <li><strong>通知機制</strong>：結果會通知發起方</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 時段選擇功能 -->
+            <div class="section">
+                <h2>時段選擇功能</h2>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>🌅 早上時段</h4>
+                        <p><strong>時間：8:00-12:00</strong></p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🌞 中午時段</h4>
+                        <p><strong>時間：13:30-18:00</strong></p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🌙 晚上時段</h4>
+                        <p><strong>時間：18:00-22:00</strong></p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🎯 自訂時段</h4>
+                        <ul>
+                            <li>可輸入具體時間</li>
+                            <li>例如：13:30-15:00</li>
+                            <li>適合特殊需求</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 約戰狀態管理 -->
+            <div class="section">
+                <h2>約戰狀態管理</h2>
+                
+                <div class="info-box">
+                    <h4>🔄 狀態流程</h4>
+                    <p>約戰邀約從發起到完成會經歷以下狀態變化：</p>
+                </div>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>📤 已發起</h4>
+                        <ul>
+                            <li>約戰邀約已發送</li>
+                            <li>等待對方回應</li>
+                            <li>約戰按鈕變灰色</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>⏳ 處理中</h4>
+                        <ul>
+                            <li>對方已收到邀約</li>
+                            <li>正在考慮中</li>
+                            <li>可能需要內部討論</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>✅ 已接受</h4>
+                        <ul>
+                            <li>雙方達成約戰協議</li>
+                            <li>時間地點確認</li>
+                            <li>準備進行比賽</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>❌ 已拒絕</h4>
+                        <ul>
+                            <li>對方拒絕約戰</li>
+                            <li>約戰按鈕重新可用</li>
+                            <li>可重新發起約戰</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 操作步驟 -->
+            <div class="section">
+                <h2>完整操作步驟</h2>
+                
+                <div class="info-box">
+                    <h4>📋 發起約戰步驟</h4>
+                    <ol class="operation-steps">
+                        <li><strong>選擇約戰管道</strong>：從戰況室（你是對戰其中一員）及單/雙打頁面進入（一般挑戰賽）</li>
+                        <li><strong>點擊約戰按鈕</strong>：確認按鈕為綠色可用狀態</li>
+                        <li><strong>設定比賽時間</strong>：選擇日期和時段</li>
+                        <li><strong>確認參賽資訊</strong>：檢查選手名單和比賽詳情</li>
+                        <li><strong>發送約戰邀約</strong>：點擊「戰書傳送」或「發起挑戰」</li>
+                        <li><strong>等待回應</strong>：對方會在個人資訊頁面收到通知</li>
+                        <li><strong>確認結果</strong>：收到接受/拒絕的回應通知</li>
+                    </ol>
+                </div>
+                
+                <div class="info-box">
+                    <h4>📋 回應約戰步驟</h4>
+                    <ol class="operation-steps">
+                        <li><strong>查看通知</strong>：在個人資訊頁面查看約戰通知</li>
+                        <li><strong>點擊詳情</strong>：進入約戰邀約確認頁面</li>
+                        <li><strong>確認資訊</strong>：檢查比賽時間、地點、參與者</li>
+                        <li><strong>內部討論</strong>：與隊友確認出席狀況</li>
+                        <li><strong>做出決定</strong>：點擊「接受」或「拒絕」按鈕</li>
+                        <li><strong>系統通知</strong>：系統自動通知發起方結果</li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- 常見問題 -->
+            <div class="section">
+                <h2>常見問題解答</h2>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>❓ 為什麼約戰按鈕是灰色的？</h4>
+                        <p>因為已有約戰記錄且在處理中。必須等其中一方拒絕約戰後，按鈕才會重新可用。</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>❓ 約戰邀約多久會過期？</h4>
+                        <p>系統會顯示「尚未過期」和「已過期」狀態，建議
