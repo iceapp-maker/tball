@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TBall - 快速上手指南</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 40px;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .header .subtitle {
+            font-size: 1.3rem;
+            opacity: 0.9;
+            margin-bottom: 30px;
+        }
+        
+        .main-content {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .section {
+            margin-bottom: 50px;
+        }
+        
+        .section-title {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            font-size: 2rem;
+            font-weight: bold;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+        }
+        
+        .subsection {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 25px 0;
+            border-left: 5px solid #10b981;
+        }
+        
+        .subsection h3 {
+            color: #1e293b;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 30px;
+            align-items: start;
+        }
+        
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .feature-list li {
+            background: white;
+            padding: 15px 20px;
+            margin: 12px 0;
+            border-radius: 10px;
+            border-left: 4px solid #3b82f6;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            font-size: 1.1rem;
+            transition: transform 0.2s ease;
+        }
+        
+        .feature-list li:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        
+        .detail-button {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            min-width: 140px;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        
+        .detail-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+        
+        .battle-types {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin: 30px 0;
+        }
+        
+        .battle-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-top: 5px solid #3b82f6;
+        }
+        
+        .battle-card h4 {
+            color: #1e293b;
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .battle-card .note {
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 15px 0;
+            color: #1e40af;
+            font-size: 0.95rem;
+        }
+        
+        .flow-chart {
+            background: #f0f9ff;
+            border: 2px solid #0ea5e9;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            font-family: monospace;
+            font-size: 0.95rem;
+            color: #0c4a6e;
+            white-space: pre-line;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 30px 0;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .comparison-table th {
+            background: #3b82f6;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-size: 1.1rem;
+        }
+        
+        .comparison-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .comparison-table tr:hover {
+            background: #f8fafc;
+        }
+        
+        .nav-buttons {
+            text-align: center;
+            margin-top: 50px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .nav-btn {
+            background: #6b7280;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+        }
+        
+        .nav-btn:hover {
+            background: #4b5563;
+            transform: translateY(-2px);
+        }
+        
+        .nav-btn.primary {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+        }
+        
+        .nav-btn.primary:hover {
+            background: linear-gradient(135deg, #1d4ed8, #1e40af);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px 10px;
+            }
+            
+            .main-content {
+                padding: 30px 20px;
+            }
+            
+            .header h1 {
+                font-size: 2.2rem;
+            }
+            
+            .section-title {
+                font-size: 1.5rem;
+                padding: 15px 20px;
+            }
+            
+            .feature-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .battle-types {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏓 TBall 快速上手指南</h1>
+            <div class="subtitle">掌握系統核心功能，輕鬆開始桌球競技之旅</div>
+        </div>
+        
+        <div class="main-content">
+            <!-- 管理員功能 -->
+            <div class="section">
+                <div class="section-title">
+                    <span>⚙️</span> 管理員功能
+                </div>
+                
+                <div class="subsection">
+                    <div class="feature-grid">
+                        <div>
+                            <ul class="feature-list">
+                                <li><strong>團隊資訊建立</strong> - 設定團隊基本資訊和球場資料</li>
+                                <li><strong>團隊成員建立(單一建立)</strong> - 逐一新增單一團隊成員</li>
+                                <li><strong>團隊成員建立(批次建立)</strong> - 一次新增多位團隊成員</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <a href="admin-detail.html" target="_blank" class="detail-button">
+                                📖 詳細操作
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 共用基礎功能 -->
+            <div class="section">
+                <div class="section-title">
+                    <span>📋</span> 共用基礎功能
+                </div>
+                
+                <!-- 系統登入 -->
+                <div class="subsection">
+                    <h3>🔑 系統登入</h3>
+                    <div class="feature-grid">
+                        <div>
+                            <ul class="feature-list">
+                                <li><strong>帳號格式：</strong> 使用會員編號登入（例如：T0002）</li>
+                                <li><strong>密碼設定：</strong> 登入後需自行設定個人密碼</li>
+                                <li><strong>權限查看：</strong> 系統會顯示您的角色權限</li>
+                                <li><strong>首次使用：</strong> 請聯繫管理員開通帳號</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <a href="login-detail.html" target="_blank" class="detail-button">
+                                📖 詳細操作
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 主選單導航 -->
+                <div class="subsection">
+                    <h3>🏠 主選單導航</h3>
+                    <div class="feature-grid">
+                        <div>
+                            <ul class="feature-list">
+                                <li><strong>團隊簡介</strong> - 了解團隊基本資訊和球場介紹</li>
+                                <li><strong>團隊成員</strong> - 查看同團隊所有成員列表</li>
+                                <li><strong>參賽區</strong> - 進入各種比賽功能和賽事管理</li>
+                                <li><strong>個人資訊</strong> - 管理個人資料和偏好設定</li>
+                                <li><strong>封神榜</strong> - 查看排名統計和歷史戰績</li>
+                                <li><strong>管理員專區</strong> - 系統管理功能（需相應權限）</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <a href="menu-detail.html" target="_blank" class="detail-button">
+                                📖 詳細操作
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 計分功能 -->
+                <div class="subsection">
+                    <h3>🏓 計分功能</h3>
+                    <div class="feature-grid">
+                        <div>
+                            <ul class="feature-list">
+                                <li><strong>單打計分</strong> - 一對一比賽即時記分系統</li>
+                                <li><strong>雙打計分</strong> - 二對二比賽協作計分功能</li>
+                                <li><strong>即時記錄</strong> - 比分自動儲存，支援暫停繼續</li>
+                                <li><strong>戰績統計</strong> - 完成比賽後自動更新個人數據</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <a href="scoring-detail.html" target="_blank" class="detail-button">
+                                📖 詳細操作
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 約定時間功能 -->
+                <div class="subsection">
+                    <h3>⏰ 約定時間功能</h3>
+                    <div class="feature-grid">
+                        <div>
+                            <ul class="feature-list">
+                                <li><strong>時段選擇</strong> - 可選早中晚或自訂時段</li>
+                                <li><strong>對戦邀約</strong> - 與其他選手預約比賽時間</li>
+                                <li><strong>系統通知</strong> - 自動提醒約定的比賽時間</li>
+                                <li><strong>靈活安排</strong> - 支援彈性的時間協調機制</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <a href="schedule-detail.html" target="_blank" class="detail-button">
+                                📖 詳細操作
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 比賽類型 -->
+            <div class="section">
+                <div class="section-title">
+                    <span>🎯</span> 比賽類型
+                </div>
+                
+                <!-- 挑戰賽 -->
+                <div class="subsection">
+                    <h3>💪 挑戰賽 (Challenge)</h3>
+                    <div class="feature-grid">
+                        <div>
+                            <p><strong>特色：</strong> 隨時進行，靈活安排的日常對戰模式</p>
+                            
+                            <div style="margin: 20px 0;">
+                                <h4 style="color: #374151; margin-bottom: 10px;">參與方式：</h4>
+                                <ul class="feature-list">
+                                    <li><strong>即時對戰</strong> - 直接使用單打/雙打頁面計分</li>
+                                    <li><strong>預約對戰</strong> - 與其他會員互約時間到球場比賽</li>
+                                </ul>
+                                
+                                <h4 style="color: #374151; margin: 20px 0 10px;">操作流程：</h4>
+                                <div class="flow-chart">選擇對戰選手 → 開始比賽計分 → 完成後系統自動記錄 → 排名統計即時更新</div>
+                            </div>
+                        </div>
+                        <div>
+                            <a href="challenge-detail.html" target="_blank" class="detail-button">
+                                📖 詳細操作
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 組隊比賽 -->
+                <div class="subsection">
+                    <h3>🏆 組隊比賽 (Contest)</h3>
+                    <div class="feature-grid">
+                        <div>
+                            <div class="battle-types">
+                                <!-- 集中式比賽 -->
+                                <div class="battle-card">
+                                    <h4>🎪 集中式比賽</h4>
+                                    <p><strong>特色：</strong> 所有參與者同一天到球場進行比賽，系統自動安排桌次</p>
+                                    <div class="note">
+                                        <strong>註解：</strong> 參賽者須於指定日期時間同時到場比賽
+                                    </div>
+                                </div>
+                                
+                                <!-- 分散式比賽 -->
+                                <div class="battle-card">
+                                    <h4>🗓️ 分散式比賽</h4>
+                                    <p><strong>特色：</strong> 參與者不需同一天到球場，對戰雙方自約時間完成比賽</p>
+                                    <div class="note">
+                                        <strong>註解：</strong> 對戰雙方可彈性安排比賽時間，不受統一時程限制
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <a href="contest-detail.html" target="_blank" class="detail-button">
+                                📖 詳細操作
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 結果分析 -->
+            <div class="section">
+                <div class="section-title">
+                    <span>📊</span> 結果分析
+                </div>
+                
+                <!-- 比分表說明 -->
+                <div class="subsection">
+                    <h3>📊 比分表說明</h3>
+                    <div class="feature-grid">
+                        <div>
+                            <ul class="feature-list">
+                                <li><strong>對戰記錄</strong> - 查看選手間的歷史對戰紀錄</li>
+                                <li><strong>勝負統計</strong> - 顯示勝場數、敗場數和排名</li>
+                                <li><strong>比分分析</strong> - 詳細的局數和得分統計</li>
+                                <li><strong>顏色標示</strong> - 用顏色區分勝負和重要數據</li>
+                                <li><strong>排名系統</strong> - 自動計算選手名次排序</li>
+                            </ul>
+                        </div>
+                        <div>
+                            <a href="scoreboard-detail.html" target="_blank" class="detail-button">
+                                📖 詳細操作
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 選擇適合的比賽方式 -->
+            <div class="section">
+                <div class="section-title">
+                    <span>🎯</span> 選擇適合的比賽方式
+                </div>
+                
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>比賽類型</th>
+                            <th>適用場景</th>
+                            <th>特色</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>挑戰賽</strong></td>
+                            <td>日常練習、隨機對戰</td>
+                            <td>靈活、即時、簡單</td>
+                        </tr>
+                        <tr>
+                            <td><strong>集中式比賽</strong></td>
+                            <td>正式錦標賽、團體活動</td>
+                            <td>公平、集中、正式</td>
+                        </tr>
+                        <tr>
+                            <td><strong>分散式比賽</strong></td>
+                            <td>長期聯賽、跨時段比賽</td>
+                            <td>彈性、持續、便民</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- 導航按鈕 -->
+            <div class="nav-buttons">
+                <a href="index.html" class="nav-btn">🏠 返回專案首頁</a>
+                <a href="https://tball.netlify.app/" class="nav-btn primary">🚀 立即使用系統</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
