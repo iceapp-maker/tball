@@ -331,7 +331,7 @@
                         <ul>
                             <li>積分：該選手的當前積分</li>
                             <li>排名：在團隊中的排名</li>
-                            <li>已選選手會自動從其他選單中禁用</li>
+                            <li>已被選用的選手在下拉式清單中呈現禁止選取狀態</li>
                         </ul>
                     </div>
                     
@@ -429,9 +429,11 @@
                     </div>
                     
                     <div class="feature-card">
-                        <h4>FG模式特殊規則</h4>
+                        <h4>決勝局特殊規則(FG)燈亮起</h4>
                         <ul>
                             <li><strong>比賽中任一方達5分時交換場地</strong></li>
+                            <li><strong>任一方達5分時，若不用交換發球權</strong>：發球權方與隊友不調換位置，接球方與隊友需調換位置</li>
+                            <li><strong>任一方達5分時，若需交換發球權</strong>：發球權方與隊友調換位置，接球方與隊友不需調換位置</li>
                             <li>之後回到一般換邊規則</li>
                             <li>FG按鈕會閃爍提醒特殊模式</li>
                         </ul>
@@ -448,15 +450,6 @@
                     <p><strong>FG (Final Game) 模式為決勝局的意思</strong>，預設為<strong>第5局</strong>自動觸發。使用者可以依賽制需求取消，或者延至第7局使用。</p>
                 </div>
 
-                <div class="warning-box">
-                    <h4>⚠️ 重要區別：第5局 vs 第5分</h4>
-                    <ul>
-                        <li><strong>第5局</strong>：指比賽進行到第五局時（局數概念）</li>
-                        <li><strong>第5分</strong>：指在FG模式啟用後，比賽中任一方達到5分時（分數概念）</li>
-                        <li><strong>觸發時機</strong>：第5局啟用FG模式 → 比賽中達到5分時交換場地</li>
-                    </ul>
-                </div>
-
                 <div class="feature-grid">
                     <div class="feature-card">
                         <h4>FG模式操作</h4>
@@ -465,15 +458,6 @@
                             <li><strong>視覺提醒</strong>：啟用時FG按鈕會閃爍</li>
                             <li><strong>音效提示</strong>：進入FG模式時會播放特殊音效</li>
                             <li><strong>適用時機</strong>：決勝局或關鍵局次</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="feature-card">
-                        <h4>FG模式規則</h4>
-                        <ul>
-                            <li><strong>5分交換</strong>：任一方達到5分時立即交換場地</li>
-                            <li><strong>一次性規則</strong>：交換後回到一般2分換邊</li>
-                            <li><strong>公平競賽</strong>：確保決勝局的公平性</li>
                         </ul>
                     </div>
                 </div>
@@ -583,17 +567,6 @@
                 
                 <h3>🎮 功能按鈕</h3>
                 <div class="feature-grid">
-                    <div class="feature-card">
-                        <h4>FG按鈕 (Final Game)</h4>
-                        <ul>
-                            <li>啟用決勝局特殊規則</li>
-                            <li>預設第5局自動觸發</li>
-                            <li>可手動取消或延至第7局使用</li>
-                            <li>比賽中任一方達5分時交換場地</li>
-                            <li>啟用時會閃爍提醒</li>
-                        </ul>
-                    </div>
-                    
                     <div class="feature-card">
                         <h4>重置按鈕 🔄</h4>
                         <ul>
