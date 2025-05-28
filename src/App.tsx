@@ -830,13 +830,21 @@ function Menu({ currentLoggedInUser, setCurrentLoggedInUser, unreadCount, invita
       <h1 className="text-3xl font-bold mb-4">賽乒乓</h1>
     
       <div className="flex flex-col gap-4 w-64">
+        {/* 🆕 修正：使用說明按鈕移到第一個 */}
+        <button
+          className="w-full bg-amber-600 hover:bg-amber-700 text-white text-lg py-2 rounded"
+          onClick={() => window.open('https://iceapp-maker.github.io/tball/', '_blank')}
+        >
+          📖 使用說明
+        </button>
+
         <button
           className="w-full bg-blue-700 hover:bg-blue-800 text-white text-lg py-2 rounded"
           onClick={() => navigate('/court-intro')}
         >
           團隊簡介
         </button>
-        
+
         <button
           className={`w-full text-lg py-2 rounded ${
             currentLoggedInUser 
