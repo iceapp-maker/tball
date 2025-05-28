@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TBall - 系統登入詳細說明</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: #f8fafc;
+            margin: 0;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 20px;
+        }
+        
+        .header h1 {
+            color: #1e293b;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        .header .breadcrumb {
+            color: #6b7280;
+            font-size: 1rem;
+        }
+        
+        .step-section {
+            margin: 40px 0;
+        }
+        
+        .step-title {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 10px;
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .step-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+        
+        .text-content {
+            padding: 20px;
+        }
+        
+        .text-content h3 {
+            color: #374151;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .instruction-list {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .instruction-list li {
+            background: #f0f9ff;
+            padding: 12px 15px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border-left: 4px solid #3b82f6;
+            font-size: 1rem;
+        }
+        
+        .highlight {
+            background: #fef3c7;
+            border-left-color: #f59e0b;
+            font-weight: bold;
+        }
+        
+        .warning {
+            background: #fee2e2;
+            border-left-color: #ef4444;
+            color: #7f1d1d;
+        }
+        
+        .interface-demo {
+            background: #f8fafc;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .phone-frame {
+            background: #1f2937;
+            border-radius: 25px;
+            padding: 20px;
+            margin: 0 auto;
+            width: fit-content;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        
+        .phone-screen {
+            background: white;
+            border-radius: 15px;
+            padding: 30px 20px;
+            width: 280px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .app-logo {
+            background: #3b82f6;
+            border-radius: 12px;
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: white;
+        }
+        
+        .app-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 30px;
+        }
+        
+        .login-form {
+            text-align: left;
+        }
+        
+        .login-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #374151;
+            margin-bottom: 15px;
+        }
+        
+        .login-info {
+            background: #f3f4f6;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-bottom: 15px;
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 1rem;
+            margin-bottom: 15px;
+            box-sizing: border-box;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .login-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 1rem;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: #9ca3af;
+            color: white;
+        }
+        
+        .other-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .other-btn {
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        .btn-green {
+            background: #10b981;
+            color: white;
+        }
+        
+        .btn-purple {
+            background: #8b5cf6;
+            color: white;
+        }
+        
+        .btn-gray {
+            background: #6b7280;
+            color: white;
+        }
+        
+        .btn-dark {
+            background: #374151;
+            color: white;
+        }
+        
+        .tips-section {
+            background: #ecfdf5;
+            border: 1px solid #10b981;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+        
+        .tips-title {
+            color: #065f46;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .back-button {
+            text-align: center;
+            margin-top: 40px;
+        }
+        
+        .back-btn {
+            background: #6b7280;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-block;
+            transition: all 0.3s ease;
+        }
+        
+        .back-btn:hover {
+            background: #4b5563;
+            transform: translateY(-2px);
+        }
+        
+        @media (max-width: 768px) {
+            .step-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+            
+            .phone-screen {
+                width: 250px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔑 系統登入詳細說明</h1>
+            <div class="breadcrumb">快速上手指南 > 系統登入</div>
+        </div>
+        
+        <!-- 步驟1：開啟系統 -->
+        <div class="step-section">
+            <div class="step-title">
+                <span>1️⃣</span> 開啟賽乒乓系統
+            </div>
+            <div class="step-content">
+                <div class="text-content">
+                    <h3>📱 訪問系統網址</h3>
+                    <ul class="instruction-list">
+                        <li>在瀏覽器輸入：<strong>tball.netlify.app</strong></li>
+                        <li>手機、平板、電腦都可以使用</li>
+                        <li class="highlight">建議使用Chrome、Safari、Edge瀏覽器</li>
+                        <li>系統會自動顯示登入介面</li>
+                    </ul>
+                </div>
+                <div class="interface-demo">
+                    <h4 style="margin-bottom: 15px; color: #374151;">系統主畫面</h4>
+                    <div class="phone-frame">
+                        <div class="phone-screen">
+                            <div class="app-logo">🏓</div>
+                            <div class="app-title">賽乒乓</div>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <button class="other-btn btn-green">團隊簡介</button>
+                                <button class="other-btn btn-purple">個人資訊</button>
+                                <button class="other-btn btn-gray">管理員專區</button>
+                                <button class="other-btn btn-dark">登入</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 步驟2：點擊登入 -->
+        <div class="step-section">
+            <div class="step-title">
+                <span>2️⃣</span> 點擊登入按鈕
+            </div>
+            <div class="step-content">
+                <div class="text-content">
+                    <h3>🖱️ 進入登入頁面</h3>
+                    <ul class="instruction-list">
+                        <li>在主選單找到「登入」按鈕</li>
+                        <li>點擊後會彈出登入視窗</li>
+                        <li>系統會顯示會員編號輸入欄位</li>
+                        <li class="warning">未登入時，部分功能會被限制</li>
+                    </ul>
+                </div>
+                <div class="interface-demo">
+                    <h4 style="margin-bottom: 15px; color: #374151;">登入介面（如您提供的截圖）</h4>
+                    <div class="phone-frame">
+                        <div class="phone-screen">
+                            <div class="app-logo">🏓</div>
+                            <div class="app-title">賽乒乓</div>
+                            
+                            <div class="login-form">
+                                <div class="login-title">輸入密碼</div>
+                                <div class="login-info">
+                                    劉庭俊<br>
+                                    會員編號：T0135
+                                </div>
+                                <input type="password" class="input-field" placeholder="••••" value="••••">
+                                <div class="button-group">
+                                    <button class="login-btn btn-primary">登入</button>
+                                    <button class="login-btn btn-secondary">重新輸入</button>
+                                </div>
+                                <div class="other-buttons">
+                                    <button class="other-btn btn-green">單打計分</button>
+                                    <button class="other-btn btn-purple">個人資訊</button>
+                                    <button class="other-btn btn-gray">管理員專區</button>
+                                    <button class="other-btn btn-dark">登入</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 步驟3：輸入帳號 -->
+        <div class="step-section">
+            <div class="step-title">
+                <span>3️⃣</span> 輸入會員編號
+            </div>
+            <div class="step-content">
+                <div class="text-content">
+                    <h3>🔤 帳號格式說明</h3>
+                    <ul class="instruction-list">
+                        <li class="highlight">帳號格式：英文字母 + 數字（例如：T0002）</li>
+                        <li>英文字母代表團隊代碼</li>
+                        <li>數字為個人編號（通常4位數）</li>
+                        <li class="warning">帳號大小寫敏感，請確實輸入</li>
+                    </ul>
+                    
+                    <h3>📞 如何取得帳號</h3>
+                    <ul class="instruction-list">
+                        <li>聯繫您的團隊管理員</li>
+                        <li>管理員會為您開通專屬帳號</li>
+                        <li>每個會員都有唯一編號</li>
+                        <li>帳號一經設定無法自行更改</li>
+                    </ul>
+                </div>
+                <div class="interface-demo">
+                    <h4 style="margin-bottom: 15px; color: #374151;">帳號輸入範例</h4>
+                    <div style="background: white; padding: 20px; border-radius: 10px; border: 2px dashed #3b82f6;">
+                        <div style="font-size: 1.2rem; margin-bottom: 15px; font-weight: bold;">✅ 正確格式</div>
+                        <div style="background: #ecfdf5; padding: 15px; border-radius: 8px; margin-bottom: 10px;">
+                            <code style="font-size: 1.1rem; color: #065f46;">T0002</code> - 團隊T的2號會員
+                        </div>
+                        <div style="background: #ecfdf5; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <code style="font-size: 1.1rem; color: #065f46;">A0135</code> - 團隊A的135號會員
+                        </div>
+                        
+                        <div style="font-size: 1.2rem; margin-bottom: 15px; font-weight: bold; color: #dc2626;">❌ 錯誤格式</div>
+                        <div style="background: #fef2f2; padding: 15px; border-radius: 8px;">
+                            <code style="font-size: 1.1rem; color: #7f1d1d;">t0002</code> - 小寫字母<br>
+                            <code style="font-size: 1.1rem; color: #7f1d1d;">T002</code> - 數字位數不足<br>
+                            <code style="font-size: 1.1rem; color: #7f1d1d;">0002</code> - 缺少英文字母
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 步驟4：設定密碼 -->
+        <div class="step-section">
+            <div class="step-title">
+                <span>4️⃣</span> 設定個人密碼
+            </div>
+            <div class="step-content">
+                <div class="text-content">
+                    <h3>🔐 首次登入</h3>
+                    <ul class="instruction-list">
+                        <li>首次使用需要設定個人密碼</li>
+                        <li>密碼長度建議6位數以上</li>
+                        <li>可包含英文、數字、符號</li>
+                        <li class="highlight">請妥善保管您的密碼</li>
+                    </ul>
+                    
+                    <h3>🔄 後續登入</h3>
+                    <ul class="instruction-list">
+                        <li>輸入會員編號</li>
+                        <li>輸入您設定的密碼</li>
+                        <li>點擊「登入」按鈕</li>
+                        <li>系統會記住您的登入狀態</li>
+                    </ul>
+                </div>
+                <div class="interface-demo">
+                    <h4 style="margin-bottom: 15px; color: #374151;">密碼設定提示</h4>
+                    <div style="background: #fffbeb; border: 2px solid #f59e0b; border-radius: 10px; padding: 20px;">
+                        <div style="font-weight: bold; color: #92400e; margin-bottom: 10px;">💡 密碼安全建議</div>
+                        <ul style="color: #92400e; margin: 0; padding-left: 20px;">
+                            <li>使用容易記憶但他人難猜的密碼</li>
+                            <li>避免使用生日、電話號碼等個人資訊</li>
+                            <li>定期更換密碼提高安全性</li>
+                            <li>不要與他人分享您的密碼</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 登入成功提示 -->
+        <div class="tips-section">
+            <div class="tips-title">
+                <span>🎉</span> 登入成功後
+            </div>
+            <ul class="instruction-list">
+                <li>系統會顯示您的姓名和角色權限</li>
+                <li>主選單會解鎖更多功能選項</li>
+                <li>可以查看個人戰績和團隊資訊</li>
+                <li>右上角會顯示您的基本資料</li>
+                <li class="highlight">登出時點擊右上角的「登出」按鈕</li>
+            </ul>
+        </div>
+        
+        <!-- 返回按鈕 -->
+        <div class="back-button">
+            <a href="#" onclick="window.close(); return false;" class="back-btn">
+                ← 返回快速上手指南
+            </a>
+        </div>
+    </div>
+</body>
+</html>
