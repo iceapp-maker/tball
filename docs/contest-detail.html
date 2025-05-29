@@ -590,6 +590,7 @@
                 <ul>
                     <li><strong>方式一：</strong>從名單狀況頁面點擊「編輯名單」</li>
                     <li><strong>方式二：</strong>從個人資訊頁面的提醒連結</li>
+                    <li><strong>方式三：</strong>從個人資訊的待處理事項區塊，點擊已安排的名單訊息連結</li>
                 </ul>
             </div>
 
@@ -599,6 +600,10 @@
 
             <div class="mock-interface">
                 <img src="images/leader_recieve_arrange_player_info.png" alt="隊長收到安排名單提醒" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/leader_modify_player.png" alt="隊長變更人員名單" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
             </div>
 
             <h4><span class="step-number">3</span>名單安排要點</h4>
@@ -664,31 +669,7 @@
 
             <h4>主要功能區塊</h4>
             <div class="mock-interface">
-【戰況室介面】
-┌─────────────────────────────────┐
-│ 🏆 2025年春季循環賽 - 戰況室            │
-│ 登入者：張隊長（雷霆戰隊）✅已參與此比賽 │
-├─────────────────────────────────┤
-│ 🔍 搜尋和過濾: [搜尋____] [隊伍▼] [搜尋自己] │
-│                                       │
-│ 📋 出賽點 1        桌次: 1             │
-│ ┌─ 雷霆戰隊 ─────────── 閃電隊 ─┐      │
-│ │  隊長: 張隊長        隊長: 李隊長 │      │
-│ │  李小明, 王大華      人員名單未提 │      │
-│ │        3 : 1                    │      │
-│ │  [前往比賽] [約]                 │      │
-│ └─────────────────────────────┘      │
-│                                       │
-│ 📋 出賽點 2        桌次: Next          │
-│ ┌─ 王者之師 ─────────── 新星隊 ─┐      │
-│ │  隊長: 王隊長        隊長: 新隊長 │      │
-│ │  人員名單已提        人員名單已提 │      │
-│ │        - : -                    │      │
-│ │  等待雙方提交名單                │      │
-│ └─────────────────────────────┘      │
-│                                       │
-│ [比分表] [名單狀況] [依桌次]            │
-└─────────────────────────────────┘
+                <img src="images/all_list_when_finished.png" alt="戰況室主要功能介面" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
             </div>
 
             <h4>戰況室功能說明</h4>
@@ -710,25 +691,32 @@
                 </ul>
             </div>
 
-            <h4>依桌次檢視</h4>
+            <h4>管理員手動指派桌次功能</h4>
+            <div class="warning-box">
+                <strong>⚠️ 管理員專用功能：</strong>當被分配的桌次人員無法上場時，或其他理由需變更桌次時，管理員可手動重新指派桌次。
+            </div>
+
             <div class="mock-interface">
-【桌次檢視介面】
-┌─────────────────────────────────┐
-│ 🏓 2025年春季循環賽 - 桌次列表          │
-├─────────────────────────────────┤
-│ 已分配桌次的比賽                        │
-│                                       │
-│ 🏓 桌次: 1        出賽點 1             │
-│ 雷霆戰隊 vs 閃電隊                      │
-│ 李小明, 王大華 vs 陳小華, 林小美         │
-│ 比分: 3:1 ✅ 雷霆戰隊獲勝               │
-│                                       │
-│  接下來要安排的對戰                     │
-│ 🏓 桌次: 下一場    出賽點 2             │
-│ 王者之師 vs 新星隊                      │
-│ 人員名單已提 vs 人員名單已提             │
-│ [前往比賽]                             │
-└─────────────────────────────────┘
+                <img src="images/assign_table.png" alt="管理員手動指派桌次" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
+            <div class="info-box">
+                <strong>🔧 使用時機：</strong>
+                <ul>
+                    <li>參賽選手臨時無法上場需要調整</li>
+                    <li>桌次安排需要特殊調整</li>
+                    <li>處理突發狀況或緊急變更</li>
+                    <li>優化比賽進行流程</li>
+                </ul>
+            </div>
+
+            <h4>依桌次檢視</h4>
+            <div class="info-box">
+                <strong>🏓 操作方式：</strong>點擊戰況室右上角的「依桌次」按鈕，即可切換到桌次檢視模式。
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/table_arrangement.png" alt="依桌次檢視介面" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
             </div>
 
             <h3>約戰功能整合</h3>
@@ -760,6 +748,12 @@
                 <li>比分自動儲存並同步到戰況室</li>
                 <li>完成後自動更新排名統計</li>
             </ul>
+            
+            <div class="info-box">
+                <strong>📊 計分功能詳細說明：</strong>系統提供完整的即時計分與記錄功能。
+            </div>
+            
+            <a href="scoring-detail.html" class="external-link">📖 查看計分功能詳細說明</a>
 
             <div class="success-box">
                 <strong>✅ 權限控制：</strong>
@@ -815,6 +809,10 @@
             <h4><span class="step-number">3</span>詳細對戰記錄</h4>
             <div class="info-box">
                 <strong>📝 比賽結束後解鎖：</strong>系統提供詳細的個人對戰記錄，包含每局選手配對和結果。
+            </div>
+            
+            <div class="mock-interface">
+                <img src="images/detail_battle_record.png" alt="詳細對戰記錄" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
             </div>
         </section>
 
