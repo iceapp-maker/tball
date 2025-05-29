@@ -214,6 +214,228 @@
             background: #3498db;
             color: white;
         }
+        
+        /* 流程圖樣式 */
+        .flow-process-diagram {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            border: 3px solid #3498db;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px 0;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+        
+        .process-phase {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            border-left: 6px solid #3498db;
+        }
+        
+        .phase-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+        
+        .phase-header h4 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 1.3em;
+        }
+        
+        .phase-duration {
+            background: #3498db;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        
+        .process-step {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #bdc3c7;
+            display: grid;
+            grid-template-columns: 120px 1fr 200px;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .step-actor {
+            font-weight: bold;
+            padding: 8px 12px;
+            border-radius: 20px;
+            text-align: center;
+            color: white;
+            font-size: 0.9em;
+        }
+        
+        .step-actor.admin {
+            background: #e74c3c;
+        }
+        
+        .step-actor.captain {
+            background: #f39c12;
+        }
+        
+        .step-actor.player {
+            background: #27ae60;
+        }
+        
+        .step-actor.system {
+            background: #9b59b6;
+        }
+        
+        .step-action {
+            font-weight: 500;
+            color: #2c3e50;
+            font-size: 1.05em;
+        }
+        
+        .step-output {
+            background: #ecf0f1;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.85em;
+            line-height: 1.4;
+            color: #34495e;
+            border-left: 3px solid #3498db;
+        }
+        
+        .step-status {
+            grid-column: 2 / 4;
+            text-align: center;
+            font-style: italic;
+            color: #7f8c8d;
+            font-size: 0.9em;
+            margin-top: 5px;
+            padding: 5px;
+            background: #ecf0f1;
+            border-radius: 4px;
+        }
+        
+        .multi-path {
+            display: block;
+            grid-template-columns: 1fr;
+            background: #fff5f5;
+            border-left: 4px solid #e74c3c;
+        }
+        
+        .path-option {
+            display: grid;
+            grid-template-columns: 120px 1fr 200px;
+            gap: 15px;
+            align-items: center;
+            margin: 10px 0;
+        }
+        
+        .path-divider {
+            text-align: center;
+            font-weight: bold;
+            color: #e74c3c;
+            margin: 10px 0;
+            font-size: 1.1em;
+        }
+        
+        .process-arrow {
+            text-align: center;
+            font-size: 2em;
+            color: #3498db;
+            margin: 15px 0;
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-10px);
+            }
+            60% {
+                transform: translateY(-5px);
+            }
+        }
+        
+        .process-legend {
+            background: #f8f9fa;
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .process-legend h4 {
+            margin-top: 0;
+            color: #495057;
+        }
+        
+        .legend-items {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        
+        .legend-color.admin {
+            background: #e74c3c;
+        }
+        
+        .legend-color.captain {
+            background: #f39c12;
+        }
+        
+        .legend-color.player {
+            background: #27ae60;
+        }
+        
+        .legend-color.system {
+            background: #9b59b6;
+        }
+        
+        /* 響應式設計 */
+        @media (max-width: 768px) {
+            .process-step {
+                grid-template-columns: 1fr;
+                text-align: center;
+                gap: 10px;
+            }
+            
+            .step-status {
+                grid-column: 1;
+            }
+            
+            .path-option {
+                grid-template-columns: 1fr;
+                text-align: center;
+                gap: 10px;
+            }
+            
+            .legend-items {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -256,6 +478,190 @@
                     <li><strong>完整管理：</strong>從報名到結果分析的全流程管理</li>
                     <li><strong>靈活模式：</strong>支援集中式與分散式兩種比賽模式</li>
                     <li><strong>自動化：</strong>對戰表自動產生、桌次智能分配</li>
+                </ul>
+            </div>
+
+            <h3>🔄 完整比賽流程圖</h3>
+            <div class="flow-process-diagram">
+                <div class="process-phase">
+                    <div class="phase-header phase-1">
+                        <h4>階段一：比賽建立</h4>
+                        <span class="phase-duration">初期設定</span>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-actor admin">管理員</div>
+                        <div class="step-action">建立比賽</div>
+                        <div class="step-output">📋 比賽規則文件<br>📋 賽制參數設定</div>
+                        <div class="step-status">比賽狀態：招募中</div>
+                    </div>
+                </div>
+
+                <div class="process-arrow">⬇️</div>
+
+                <div class="process-phase">
+                    <div class="phase-header phase-2">
+                        <h4>階段二：隊伍組建</h4>
+                        <span class="phase-duration">報名期</span>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-actor captain">隊長</div>
+                        <div class="step-action">建立隊伍 → 邀請隊員</div>
+                        <div class="step-output">📋 隊伍基本資料<br>📋 隊員邀請清單</div>
+                        <div class="step-status">隊伍狀態：招募中</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-actor player">隊員</div>
+                        <div class="step-action">回應邀請 → 確認參加</div>
+                        <div class="step-output">📋 隊員確認名單</div>
+                        <div class="step-status">個人狀態：已接受</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-actor captain">隊長</div>
+                        <div class="step-action">確認人員到位</div>
+                        <div class="step-output">📋 最終隊員清單</div>
+                        <div class="step-status">隊伍狀態：已確認</div>
+                    </div>
+                </div>
+
+                <div class="process-arrow">⬇️</div>
+
+                <div class="process-phase">
+                    <div class="phase-header phase-3">
+                        <h4>階段三：賽程安排</h4>
+                        <span class="phase-duration">排程期</span>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-actor admin">管理員</div>
+                        <div class="step-action">觸發對戰表產生</div>
+                        <div class="step-output">📋 管理員確認觸發</div>
+                        <div class="step-status">觸發狀態：已執行</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-actor system">系統</div>
+                        <div class="step-action">智能產生循環賽對戰表</div>
+                        <div class="step-output">📋 自動循環賽對戰表<br>📋 智能比賽詳情設定<br>📋 平衡輪次分配</div>
+                        <div class="step-status">比賽狀態：人員安排中</div>
+                    </div>
+                </div>
+
+                <div class="process-arrow">⬇️</div>
+
+                <div class="process-phase">
+                    <div class="phase-header phase-4">
+                        <h4>階段四：名單編排</h4>
+                        <span class="phase-duration">戰術期</span>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-actor captain">隊長</div>
+                        <div class="step-action">編排出賽名單</div>
+                        <div class="step-output">📋 各點出賽人員名單<br>📋 單打/雙打配置表</div>
+                        <div class="step-status">名單狀態：已提交</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-actor system">系統</div>
+                        <div class="step-action">自動分配桌次</div>
+                        <div class="step-output">📋 桌次分配表<br>📋 比賽排程表</div>
+                        <div class="step-status">比賽狀態：進行中</div>
+                    </div>
+                </div>
+
+                <div class="process-arrow">⬇️</div>
+
+                <div class="process-phase">
+                    <div class="phase-header phase-5">
+                        <h4>階段五：比賽進行</h4>
+                        <span class="phase-duration">競賽期</span>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-actor player">參賽者</div>
+                        <div class="step-action">進行比賽 → 即時計分</div>
+                        <div class="step-output">📋 即時比分記錄<br>📋 個別對戰結果</div>
+                        <div class="step-status">對戰狀態：進行中</div>
+                    </div>
+                    <div class="process-step multi-path">
+                        <div class="path-option">
+                            <div class="step-actor player">參賽者</div>
+                            <div class="step-action">約戰協調 (分散式)</div>
+                            <div class="step-output">📋 約戰時間表</div>
+                        </div>
+                        <div class="path-divider">或</div>
+                        <div class="path-option">
+                            <div class="step-actor system">系統</div>
+                            <div class="step-action">自動桌次調配 (集中式)</div>
+                            <div class="step-output">📋 即時桌次分配<br>📋 管理員可視需求調整</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="process-arrow">⬇️</div>
+
+                <div class="process-phase">
+                    <div class="phase-header phase-6">
+                        <h4>階段六：結果統計</h4>
+                        <span class="phase-duration">結算期</span>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-actor system">系統</div>
+                        <div class="step-action">自動統計排名</div>
+                        <div class="step-output">📊 比分統計表<br>📊 隊伍排名表<br>📊 勝負記錄表</div>
+                        <div class="step-status">統計狀態：即時更新</div>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-actor admin">管理員</div>
+                        <div class="step-action">確認比賽結束</div>
+                        <div class="step-output">📋 最終排名確認<br>📋 比賽結果公告</div>
+                        <div class="step-status">比賽狀態：已結束</div>
+                    </div>
+                </div>
+
+                <div class="process-arrow">⬇️</div>
+
+                <div class="process-phase">
+                    <div class="phase-header phase-7">
+                        <h4>階段七：記錄歸檔</h4>
+                        <span class="phase-duration">歸檔期</span>
+                    </div>
+                    <div class="process-step">
+                        <div class="step-actor system">系統</div>
+                        <div class="step-action">產生詳細記錄</div>
+                        <div class="step-output">📋 詳細個人對戰記錄<br>📋 完整比賽歷史<br>📋 統計分析報告</div>
+                        <div class="step-status">歸檔狀態：永久保存</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="process-legend">
+                <h4>🏷️ 圖例說明</h4>
+                <div class="legend-items">
+                    <div class="legend-item">
+                        <span class="legend-color admin"></span>
+                        <span>管理員操作</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color captain"></span>
+                        <span>隊長操作</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color player"></span>
+                        <span>參賽者操作</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-color system"></span>
+                        <span>系統自動處理</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-box">
+                <strong>💡 流程圖重點說明：</strong>
+                <ul>
+                    <li><strong>階段性進行：</strong>每個階段都有明確的開始條件和產出結果</li>
+                    <li><strong>角色分工：</strong>不同角色在不同階段承擔特定職責</li>
+                    <li><strong>智能自動化：</strong>系統自動產生對戰表、分配桌次，管理員只需觸發</li>
+                    <li><strong>文件產出：</strong>每個步驟都會產生相應的管理文件</li>
+                    <li><strong>狀態追蹤：</strong>系統會即時更新各階段的進度狀態</li>
+                    <li><strong>雙軌進行：</strong>集中式和分散式比賽在第五階段有不同的執行方式</li>
+                    <li><strong>系統優勢：</strong>複雜的對戰表計算、桌次分配都由系統智能處理，大幅減少人工作業</li>
                 </ul>
             </div>
         </section>
