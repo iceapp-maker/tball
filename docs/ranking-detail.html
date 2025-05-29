@@ -201,19 +201,40 @@
                 <h2>積分統計方法</h2>
                 
                 <h3>積分計算原則</h3>
-                <ol>
-                    <li><strong>勝場積分</strong>：每勝一場獲得基礎積分</li>
-                    <li><strong>比賽類型加權</strong>：正式比賽積分權重高於挑戰賽</li>
-                    <li><strong>對手實力調整</strong>：擊敗排名較高的對手可獲得額外積分</li>
-                    <li><strong>月度累計</strong>：以月為單位統計總積分</li>
-                </ol>
+                <p>系統會根據比賽類型和比賽形式自動計算積分：</p>
+                
+                <h4>🏆 正式比賽 (Contest) 積分</h4>
+                <ul>
+                    <li><strong>單打獲勝</strong>：300 積分</li>
+                    <li><strong>雙打獲勝</strong>：200 積分（每位獲勝選手）</li>
+                </ul>
+
+                <h4>⚡ 挑戰賽 (Challenge) 積分</h4>
+                <ul>
+                    <li><strong>單打獲勝</strong>：100 積分</li>
+                    <li><strong>雙打獲勝</strong>：50 積分（每位獲勝選手）</li>
+                </ul>
+
+                <h4>積分統計方式</h4>
+                <ul>
+                    <li><strong>月度統計</strong>：積分按月份分別統計和顯示</li>
+                    <li><strong>年度總積分</strong>：累計該年度所有月份的積分總和</li>
+                    <li><strong>年度排名</strong>：根據年度總積分進行全體成員排名</li>
+                    <li><strong>比賽類型分離</strong>：可以選擇查看挑戰賽、正式比賽或全部比賽的積分</li>
+                    <li><strong>即時更新</strong>：每場比賽結束後立即計入對應月份及年度積分</li>
+                    <li><strong>歷史保存</strong>：所有月份和年度的積分數據完整保留</li>
+                </ul>
 
                 <h3>排名規則</h3>
                 <ul>
-                    <li><strong>主要依據</strong>：當月總積分</li>
-                    <li><strong>次要依據</strong>：勝率百分比</li>
-                    <li><strong>參考數據</strong>：總比賽場次</li>
+                    <li><strong>月度排名</strong>：依據當月總積分進行排序</li>
+                    <li><strong>年度排名</strong>：依據年度總積分進行全體成員排序</li>
+                    <li><strong>排名依據</strong>：積分總數（DESC）→ 勝率（DESC）→ 姓名（ASC）</li>
+                    <li><strong>分類排名</strong>：挑戰賽和正式比賽可各自獨立排名</li>
                 </ul>
+
+                <h3>勝率計算</h3>
+                <p><strong>勝率公式</strong>：勝場數 ÷ 總場數 × 100%（四捨五入至小數點後一位）</p>
             </div>
 
             <div class="section">
@@ -225,7 +246,7 @@
                 <h4>功能說明</h4>
                 <ul>
                     <li><strong>月份選擇</strong>：點擊上方月份按鈕查看不同月份的對戰記錄</li>
-                    <li><strong>場次統計</strong>：每個月份按鈕右上角的數字代表該月比賽場次</li>
+                    <li><strong>場次統計</strong>：每個月份按鈕右上角的紅色數字代表該月比賽場次（如：2月有2場，4月有14場，5月有8場）</li>
                     <li><strong>對戰詳情</strong>：顯示具體的比賽日期、對手、搭檔、比分和勝負結果</li>
                 </ul>
 
@@ -354,8 +375,9 @@
                 <h2>數據更新說明</h2>
                 <ul>
                     <li><strong>即時更新</strong>：比賽結束後立即更新積分和排名</li>
-                    <li><strong>月度結算</strong>：每月初重新計算排名</li>
-                    <li><strong>歷史保存</strong>：往期數據完整保留，可隨時查詢</li>
+                    <li><strong>月度歸零</strong>：每月積分重新開始計算，不跨月累積</li>
+                    <li><strong>歷史保存</strong>：每月的排名和積分數據完整保留，可隨時查詢歷史記錄</li>
+                    <li><strong>分類統計</strong>：挑戰賽和正式比賽的積分和排名各自獨立計算</li>
                 </ul>
             </div>
 
@@ -378,8 +400,13 @@
                 </div>
 
                 <div class="highlight-box">
-                    <p><strong>Q: 勝率是如何計算的？</strong><br>
-                    A: 勝率 = 勝場數 ÷ 總場數 × 100%，四捨五入至小數點後一位。</p>
+                    <p><strong>Q: 積分會累積到下個月嗎？</strong><br>
+                    A: 不會。積分按月度計算，每月重新開始，上月積分不會延續到下月。這樣確保每月都有公平的競爭機會。</p>
+                </div>
+
+                <div class="highlight-box">
+                    <p><strong>Q: 為什麼單打和雙打的積分不同？</strong><br>
+                    A: 因為雙打需要與夥伴合作，相對容易一些，所以積分較低。單打完全依靠個人實力，積分較高。</p>
                 </div>
             </div>
 
