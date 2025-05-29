@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>挑戰賽功能使用說明</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Microsoft JhengHei', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+        
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #3498db, #2980b9);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            color: #666;
+        }
+        
+        .content {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+        
+        .section {
+            margin-bottom: 40px;
+        }
+        
+        .section h2 {
+            color: #2c3e50;
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #3498db;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section h2::before {
+            content: "💪";
+            margin-right: 10px;
+            font-size: 1.2em;
+        }
+        
+        .section h3 {
+            color: #34495e;
+            font-size: 1.4em;
+            margin: 25px 0 15px 0;
+            padding-left: 15px;
+            border-left: 4px solid #3498db;
+        }
+        
+        .comparison-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .comparison-table th {
+            background: #3498db;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-size: 1.1rem;
+        }
+        
+        .comparison-table td {
+            padding: 15px;
+            border-bottom: 1px solid #e5e7eb;
+            vertical-align: top;
+        }
+        
+        .comparison-table tr:hover {
+            background: #f8fafc;
+        }
+        
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+        
+        .feature-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 15px;
+            padding: 25px;
+            border-left: 5px solid #3498db;
+            transition: all 0.3s ease;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15);
+        }
+        
+        .feature-card h4 {
+            color: #2c3e50;
+            font-size: 1.2em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .feature-card h4::before {
+            content: "▶";
+            color: #3498db;
+            margin-right: 8px;
+            font-size: 0.9em;
+        }
+        
+        .feature-card p, .feature-card li {
+            color: #555;
+            margin-bottom: 8px;
+        }
+        
+        .feature-card ul {
+            padding-left: 20px;
+        }
+        
+        .highlight-box {
+            background: linear-gradient(120deg, #e3f2fd 0%, #bbdefb 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border-left: 5px solid #3498db;
+            border: 2px solid #3498db;
+        }
+        
+        .highlight-box h4 {
+            color: #2980b9;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+        
+        .warning-box {
+            background: linear-gradient(120fiveeg, #fff3cd 0%, #ffeaa7 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border-left: 5px solid #f39c12;
+            border: 2px solid #f1c40f;
+        }
+        
+        .warning-box h4 {
+            color: #d68910;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+        
+        .link-button {
+            display: inline-block;
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            text-decoration: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin: 10px;
+            box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+        }
+        
+        .link-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .nav-buttons {
+            text-align: center;
+            margin-top: 40px;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .nav-btn {
+            background: #6b7280;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            text-decoration: none;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+        }
+        
+        .nav-btn:hover {
+            background: #4b5563;
+            transform: translateY(-2px);
+            color: white;
+            text-decoration: none;
+        }
+        
+        .nav-btn.primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+        }
+        
+        .nav-btn.primary:hover {
+            background: linear-gradient(135deg, #2980b9, #1e3a5f);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .comparison-table {
+                font-size: 0.9em;
+            }
+            
+            .comparison-table th,
+            .comparison-table td {
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>💪 挑戰賽功能使用說明</h1>
+            <p>隨時進行的桌球對戰系統</p>
+        </div>
+
+        <div class="content">
+            <!-- 功能概述 -->
+            <div class="section">
+                <h2>功能概述</h2>
+                <p>挑戰賽是系統中最靈活的比賽模式，讓使用者能夠隨時發起桌球對戰，無論是即時比賽還是預約對戰，都能輕鬆安排。相較於需要組隊參加的正式比賽，挑戰賽提供了更自由、更便民的競技體驗。</p>
+                
+                <div class="highlight-box">
+                    <h4>🎯 挑戰賽特色</h4>
+                    <ul>
+                        <li><strong>即時對戰</strong>：可直接開始比賽計分</li>
+                        <li><strong>預約功能</strong>：與其他會員互約時間到球場比賽</li>
+                        <li><strong>靈活安排</strong>：不受時間和人數限制</li>
+                        <li><strong>自動記錄</strong>：比賽結果自動更新排名統計</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 挑戰賽 vs 正式比賽 -->
+            <div class="section">
+                <h2>挑戰賽 vs 正式比賽</h2>
+                
+                <table class="comparison-table">
+                    <thead>
+                        <tr>
+                            <th>比較項目</th>
+                            <th>挑戰賽 (Challenge)</th>
+                            <th>正式比賽 (Contest)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>參與方式</strong></td>
+                            <td>個人自由參與，隨時可以開始</td>
+                            <td>需要組隊報名，依賽程進行</td>
+                        </tr>
+                        <tr>
+                            <td><strong>時間安排</strong></td>
+                            <td>
+                                • 即時對戰：立即開始比賽<br>
+                                • 預約對戰：使用約戰功能安排時間
+                            </td>
+                            <td>
+                                • 集中式：所有參與者同時到場<br>
+                                • 分散式：對戰雙方自約時間
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>對戰對象</strong></td>
+                            <td>可挑戰任何團隊成員</td>
+                            <td>依賽程安排的固定對手</td>
+                        </tr>
+                        <tr>
+                            <td><strong>比賽規模</strong></td>
+                            <td>單場對戰為主</td>
+                            <td>多場次錦標賽制</td>
+                        </tr>
+                        <tr>
+                            <td><strong>成績影響</strong></td>
+                            <td>影響個人積分和月度排名</td>
+                            <td>影響隊伍排名和比賽名次</td>
+                        </tr>
+                        <tr>
+                            <td><strong>適用場景</strong></td>
+                            <td>日常練習、隨機對戰、技術切磋</td>
+                            <td>正式錦標賽、團體競賽、重要比賽</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- 參與方式 -->
+            <div class="section">
+                <h2>參與方式</h2>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>🏓 即時對戰</h4>
+                        <p><strong>操作方式：</strong></p>
+                        <ul>
+                            <li>直接進入單打或雙打計分頁面</li>
+                            <li>選擇參與的選手</li>
+                            <li>開始比賽並即時計分</li>
+                            <li>比賽結束後系統自動記錄戰績</li>
+                        </ul>
+                        <p><strong>適用時機：</strong>現場有空閒時間，想要立即開始比賽</p>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>⏰ 預約對戰</h4>
+                        <p><strong>操作方式：</strong></p>
+                        <ul>
+                            <li>使用約戰功能發起邀請</li>
+                            <li>選擇比賽日期和時段</li>
+                            <li>等待對方接受邀約</li>
+                            <li>約定時間到球場進行比賽</li>
+                        </ul>
+                        <p><strong>適用時機：</strong>需要事先安排時間，確保雙方都能參與</p>
+                    </div>
+                </div>
+                
+                <div class="warning-box">
+                    <h4>⚠️ 重要提醒</h4>
+                    <p>挑戰賽的計分操作與正式比賽完全相同，包含所有計分規則、換邊機制、音效提示等功能。詳細的計分操作方式請參考計分功能說明。</p>
+                </div>
+            </div>
+
+            <!-- 約戰功能 -->
+            <div class="section">
+                <h2>約戰功能</h2>
+                
+                <p>約戰功能是挑戰賽的核心特色，讓使用者能夠彈性安排比賽時間，與其他選手進行時間協調。</p>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>📅 時間選擇</h4>
+                        <ul>
+                            <li><strong>早上時段</strong>：8:00-12:00</li>
+                            <li><strong>中午時段</strong>：13:30-18:00</li>
+                            <li><strong>晚上時段</strong>：18:00-22:00</li>
+                            <li><strong>自訂時段</strong>：可輸入具體時間</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🔔 通知機制</h4>
+                        <ul>
+                            <li>發起約戰後對方會收到通知</li>
+                            <li>通知顯示在個人資訊頁面</li>
+                            <li>包含比賽詳情和參與者資訊</li>
+                            <li>提供接受、拒絕、考慮中選項</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="highlight-box">
+                    <h4>💡 約戰功能詳細說明</h4>
+                    <p>關於約戰功能的完整操作流程、通知機制、狀態管理等詳細資訊，請參考：</p>
+                    <a href="schedule-detail.html" class="link-button" target="_blank">📖 約定時間功能說明</a>
+                </div>
+            </div>
+
+            <!-- 計分系統 -->
+            <div class="section">
+                <h2>計分系統</h2>
+                
+                <p>挑戰賽使用與正式比賽相同的計分系統，包含完整的桌球規則實現、音效提示、以及各種特殊功能。</p>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>🏓 單打計分</h4>
+                        <ul>
+                            <li>一對一比賽模式</li>
+                            <li>自動換邊和輪流發球</li>
+                            <li>支援決勝局特殊規則</li>
+                            <li>即時音效和視覺提示</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🏓 雙打計分</h4>
+                        <ul>
+                            <li>二對二比賽模式</li>
+                            <li>四色區塊代表四位選手</li>
+                            <li>複雜的換邊和輪換機制</li>
+                            <li>支援拖拽和快速獲勝功能</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="highlight-box">
+                    <h4>💡 計分功能詳細說明</h4>
+                    <p>計分系統的完整操作方式、規則說明、特殊功能等詳細資訊，請參考：</p>
+                    <div style="text-align: center; margin-top: 15px;">
+                        <a href="scoring-detail.html" class="link-button" target="_blank">📖 桌球計分功能說明</a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 戰績統計 -->
+            <div class="section">
+                <h2>戰績統計</h2>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>📈 個人積分</h4>
+                        <ul>
+                            <li>每場挑戰賽都會影響個人積分</li>
+                            <li>勝利獲得積分，失敗扣除積分</li>
+                            <li>積分影響在團隊中的排名</li>
+                            <li>用於選手選擇時的參考資訊</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>🏆 月度排名</h4>
+                        <ul>
+                            <li>每月統計所有挑戰賽戰績</li>
+                            <li>包含勝場數、敗場數、勝率</li>
+                            <li>顯示在封神榜頁面</li>
+                            <li>提供圖表化的數據展示</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 使用建議 -->
+            <div class="section">
+                <h2>使用建議</h2>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>🎯 適合場景</h4>
+                        <ul>
+                            <li><strong>日常練習</strong>：提升技術水平</li>
+                            <li><strong>友誼賽</strong>：與同事或朋友切磋</li>
+                            <li><strong>積分競爭</strong>：爭取更好的排名</li>
+                            <li><strong>技術測試</strong>：嘗試新的戰術或技巧</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>💡 使用技巧</h4>
+                        <ul>
+                            <li>善用約戰功能安排適合的對戰時間</li>
+                            <li>選擇實力接近的對手獲得更好的練習效果</li>
+                            <li>注意計分系統的各種特殊功能</li>
+                            <li>定期查看個人戰績和排名變化</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 導航按鈕 -->
+            <div class="nav-buttons">
+                <a href="quick-guide.html" class="nav-btn">📋 返回快速指南</a>
+                <a href="scoring-detail.html" class="nav-btn primary">🏓 計分功能說明</a>
+                <a href="schedule-detail.html" class="nav-btn primary">⏰ 約戰功能說明</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
