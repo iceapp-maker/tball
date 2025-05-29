@@ -44,6 +44,53 @@
             margin-bottom: 30px;
         }
         
+        .disclaimer {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 15px;
+            padding: 25px;
+            margin-top: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border-left: 6px solid #f39c12;
+        }
+        
+        .disclaimer h3 {
+            color: #d68910;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .disclaimer-content {
+            color: #333;
+            line-height: 1.8;
+            text-align: left;
+        }
+        
+        .disclaimer-content p {
+            margin-bottom: 12px;
+        }
+        
+        .disclaimer-content ul {
+            margin-left: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .disclaimer-content li {
+            margin-bottom: 8px;
+        }
+        
+        .disclaimer-highlight {
+            color: #e74c3c;
+            font-weight: bold;
+            text-align: center;
+            background: #fdf2f2;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        
         .main-content {
             background: white;
             border-radius: 20px;
@@ -508,38 +555,26 @@
                 </div>
             </div>
             
-            <!-- 選擇適合的比賽方式 -->
+            <!-- 選擇適合的比賽方式 - 替換為重要聲明 -->
             <div class="section">
                 <div class="section-title">
-                    <span>🎯</span> 選擇適合的比賽方式
+                    <span>⚠️</span> 重要聲明
                 </div>
                 
-                <table class="comparison-table">
-                    <thead>
-                        <tr>
-                            <th>比賽類型</th>
-                            <th>適用場景</th>
-                            <th>特色</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><strong>挑戰賽</strong></td>
-                            <td>日常練習、隨機對戰</td>
-                            <td>靈活、即時、簡單</td>
-                        </tr>
-                        <tr>
-                            <td><strong>集中式比賽</strong></td>
-                            <td>正式錦標賽、團體活動</td>
-                            <td>公平、集中、正式</td>
-                        </tr>
-                        <tr>
-                            <td><strong>分散式比賽</strong></td>
-                            <td>長期聯賽、跨時段比賽</td>
-                            <td>彈性、持續、便民</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="subsection" style="background: linear-gradient(135deg, #fff3cd, #ffeaa7); border-left: 5px solid #f39c12;">
+                    <div style="color: #333; line-height: 1.8;">
+                        <p style="margin-bottom: 15px; font-size: 1.1rem;"><strong>📋 關於說明文件中的示範資料：</strong></p>
+                        <ul style="margin-left: 20px; margin-bottom: 20px;">
+                            <li style="margin-bottom: 10px;">說明文件中所有出現的<strong>人名、隊伍名稱、比賽記錄、積分數據</strong>等，均為<strong>系統功能展示之虛擬範例</strong></li>
+                            <li style="margin-bottom: 10px;">所有資料純屬<strong>模擬測試數據</strong>，與任何真實人物、團體或實際比賽結果<strong>無任何關聯</strong></li>
+                            <li style="margin-bottom: 10px;">如有雷同純屬巧合，<strong>不代表任何真實人物的實際表現或能力</strong></li>
+                            <li style="margin-bottom: 10px;">使用本系統時，所有真實的比賽數據將由實際參與者產生，<strong>系統不會預設任何個人資料</strong></li>
+                        </ul>
+                        <div style="color: #e74c3c; font-weight: bold; text-align: center; background: #fdf2f2; padding: 15px; border-radius: 8px; margin-top: 20px; border: 2px solid #f39c12;">
+                            🔒 本系統嚴格保護用戶隱私，所有真實數據均由用戶自主管理
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <!-- 導航按鈕 -->
