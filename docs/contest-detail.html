@@ -79,6 +79,19 @@
             border-radius: 8px;
             margin: 15px 0;
         }
+        .navigation-box {
+            background: #e3f2fd;
+            border: 2px solid #2196f3;
+            color: #0d47a1;
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        .navigation-box::before {
+            content: "🧭 ";
+            margin-right: 8px;
+        }
         ul, ol {
             padding-left: 25px;
         }
@@ -210,7 +223,7 @@
         <div class="info-box">
             <strong>📋 文件資訊</strong><br>
             文件名稱：contest-detail.html<br>
-            版本：1.0<br>
+            版本：1.1 (新增導航路徑說明)<br>
             更新日期：2025年5月<br>
             適用對象：系統管理員、比賽主辦方、隊長、參賽者、觀賽者
         </div>
@@ -327,6 +340,10 @@
         <section id="create-contest">
             <h2>⚙️ 建立比賽</h2>
 
+            <div class="navigation-box">
+                進入路徑：首頁 → 管理員專區 → 建立比賽
+            </div>
+
             <div class="warning-box">
                 <strong>⚠️ 權限要求：</strong>只有系統管理員或球場管理者可以建立比賽。
             </div>
@@ -381,6 +398,10 @@
             <h2>👥 隊伍管理</h2>
 
             <h3>進入參賽區</h3>
+            <div class="navigation-box">
+                進入路徑：首頁 → 參賽區
+            </div>
+            
             <div class="info-box">
                 <strong>🏠 參賽入口：</strong>參賽者需從首頁進入「參賽區」開始報名流程。
             </div>
@@ -396,6 +417,10 @@
             </div>
 
             <h4><span class="step-number">1</span>參加隊伍或建立隊伍</h4>
+            <div class="navigation-box">
+                進入路徑：首頁 → 參賽區 → 選擇比賽 → 參賽
+            </div>
+            
             <div class="mock-interface">
                 <img src="images/joint_or_creat_team.png" alt="參加或建立隊伍" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
             </div>
@@ -408,6 +433,10 @@
             </ul>
 
             <h4><span class="step-number">2</span>隊長邀請隊員</h4>
+            <div class="navigation-box">
+                進入路徑：首頁 → 參賽區 → 選擇比賽 → 參賽（隊長身份）→ 邀請成員
+            </div>
+            
             <div class="mock-interface">
                 <img src="images/invite_team_member.png" alt="隊長邀請隊員" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
             </div>
@@ -423,12 +452,16 @@
             </ul>
 
             <h4><span class="step-number">3</span>隊員接收邀請</h4>
+            <div class="navigation-box">
+                進入路徑：首頁 → 個人資訊（查看邀請提醒）或 首頁 → 賽程邀約（行事曆圖示）
+            </div>
             
             <div class="feature-box">
                 <p><strong>📱 邀請通知方式：</strong></p>
                 <ul>
                     <li>被邀請者在比賽頁面會看到邀請資訊</li>
                     <li>個人資訊頁面會顯示邀請提醒</li>
+                    <li>首頁左上角行事曆圖示會顯示邀請數量</li>
                 </ul>
             </div>
 
@@ -466,6 +499,9 @@
             </div>
 
             <h4><span class="step-number">5</span>確認人員到位</h4>
+            <div class="navigation-box">
+                進入路徑：首頁 → 參賽區 → 選擇比賽 → 參賽（隊長身份）→ 人員已到位
+            </div>
 
             <div class="warning-box">
                 <strong>⚠️ 關鍵步驟：</strong>當隊伍達到規定人數時，隊長會收到通知，必須進行最終確認。
@@ -505,6 +541,10 @@
             <h3>產生條件檢查</h3>
             
             <h4><span class="step-number">1</span>一般使用者確認狀態</h4>
+            <div class="navigation-box">
+                進入路徑：首頁 → 參賽區 → 選擇比賽 → 參賽
+            </div>
+            
             <div class="info-box">
                 <strong>📊 如何知道各隊準備狀況：</strong>參賽者可在比賽頁面查看所有隊伍的準備狀態。
             </div>
@@ -518,6 +558,10 @@
             </div>
 
             <h4><span class="step-number">2</span>管理員產生對戰表</h4>
+            <div class="navigation-box">
+                進入路徑：首頁 → 管理員專區 → 賽程控制區 → 產生對戰表<br>
+                或：首頁 → 個人資訊 → 點擊通知連結
+            </div>
             
             <div class="feature-box">
                 <p><strong>🔧 管理員操作路徑：</strong></p>
@@ -540,492 +584,4 @@
                 <strong>🔄 循環賽對戰表產生邏輯：</strong>
                 <ul>
                     <li>每支隊伍都會與其他所有隊伍對戰一次</li>
-                    <li>系統智能分配輪次，盡量平衡每輪比賽數量</li>
-                    <li>考慮桌次限制，最佳化比賽排程</li>
-                    <li><strong>對戰表考慮平衡每隊出賽時間</strong></li>
-                </ul>
-            </div>
-
-            <h4><span class="step-number">4</span>比賽詳情建立</h4>
-            <ul>
-                <li>根據設定的總點數建立比賽詳情</li>
-                <li>每點比賽標註單打或雙打類型</li>
-                <li>初始化桌次分配系統</li>
-            </ul>
-
-            <div class="success-box">
-                <strong>✅ 產生成功後：</strong>比賽狀態變更為「人員安排中」，進入名單編排階段。
-            </div>
-
-            <div class="mock-interface">
-                <img src="images/player_arrangement_process.png" alt="名單安排中狀態" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
-            </div>
-        </section>
-
-        <section id="lineup-arrangement">
-            <h2>📝 名單安排</h2>
-
-            <div class="info-box">
-                <strong>📋 名單安排階段：</strong>對戰表產生後，各隊隊長需要為每場比賽安排具體的出賽人員。
-            </div>
-
-            <h3>名單編排流程</h3>
-
-            <h4><span class="step-number">1</span>查看名單狀況</h4>
-            <div class="info-box">
-                <strong>📋 名單狀況查看：</strong>在比賽戰況室中選擇「名單狀況」可查看最新的對戰安排。
-            </div>
-
-            <div class="mock-interface">
-                <img src="images/new_contest_form.png" alt="對戰表產生後的狀況" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
-            </div>
-
-            <h4><span class="step-number">2</span>編排出賽名單</h4>
-            <div class="mock-interface">
-                <img src="images/leader_arrange_member.png" alt="隊長安排出賽名單" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
-            </div>
-
-            <div class="feature-box">
-                <p><strong>🔧 隊長編輯入口：</strong></p>
-                <ul>
-                    <li><strong>方式一：</strong>從名單狀況頁面點擊「編輯名單」</li>
-                    <li><strong>方式二：</strong>從個人資訊頁面的提醒連結</li>
-                    <li><strong>方式三：</strong>從個人資訊的待處理事項區塊，點擊已安排的名單訊息連結</li>
-                </ul>
-            </div>
-
-            <div class="mock-interface">
-                <img src="images/leader_editor_list.png" alt="隊長編輯名單連結" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
-            </div>
-
-            <div class="mock-interface">
-                <img src="images/leader_recieve_arrange_player_info.png" alt="隊長收到安排名單提醒" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
-            </div>
-
-            <div class="mock-interface">
-                <img src="images/leader_modify_player.png" alt="隊長變更人員名單" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
-            </div>
-
-            <h4><span class="step-number">3</span>名單安排要點</h4>
-            <ul>
-                <li><strong>單打項目：</strong>每項目選擇1位出賽選手</li>
-                <li><strong>雙打項目：</strong>每項目選擇2位出賽選手</li>
-                <li><strong>重複使用：</strong>系統不限制同一選手可在多個項目出賽，但是否可以，仍需遵循比賽制的規則</li>
-                <li><strong>視覺提示：</strong>已在其他項目選中的選手會標示「已選」</li>
-                <li><strong>彈性安排：</strong>可不足額選擇，但系統會警告</li>
-            </ul>
-
-            <h4><span class="step-number">4</span>桌次分配機制</h4>
-            <div class="warning-box">
-                <strong>⚠️ 重要：桌次分配原理</strong><br>
-                系統的桌次分配是<span class="highlight">依照對戰順序進行</span>，而非等待雙方完成名單安排。因此隊長應依對戰順序安排對戰名單，以利桌次正確的排進。
-            </div>
-
-            <div class="mock-interface">
-                <img src="images/table_arrangement.png" alt="桌次安排說明" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
-            </div>
-
-            <div class="info-box">
-                <strong>📊 桌次分配邏輯：</strong>
-                <ul>
-                    <li>系統按照預設的對戰順序分配桌次</li>
-                    <li>不需要等待對手完成名單安排</li>
-                    <li>隊長應盡早完成名單編排，確保比賽順利進行</li>
-                    <li>桌次分配與名單完成狀況無直接關聯</li>
-                </ul>
-            </div>
-
-            <h4><span class="step-number">5</span>名單公佈機制</h4>
-            
-            <div class="feature-box">
-                <p><strong>📋 名單顯示規則：</strong></p>
-                <ul>
-                    <li><strong>單方完成：</strong>系統只顯示登入者隊伍的名單</li>
-                    <li><strong>雙方完成：</strong>系統公佈雙方完整名單</li>
-                    <li><strong>名單確定：</strong>雙方都完成後不可再修改</li>
-                </ul>
-            </div>
-
-            <div class="mock-interface">
-                <img src="images/player_list_when_one_team.png" alt="單方完成名單時的顯示" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
-            </div>
-
-            <div class="mock-interface">
-                <img src="images/all_list_when_finished.png" alt="雙方完成名單後的顯示" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
-            </div>
-
-            <div class="success-box">
-                <strong>✅ 完成確認：</strong>當雙方都完成名單安排時，該場對戰將進入桌次分配序列，準備開始比賽。
-            </div>
-        </section>
-
-        <section id="battle-management">
-            <h2>⚔️ 比賽進行管理</h2>
-
-            <h3>戰況室功能</h3>
-            <div class="info-box">
-                <strong>🏟️ 戰況室：</strong>比賽進行的中央控制台，提供即時比賽狀況與操作介面。
-            </div>
-
-            <h4>主要功能區塊</h4>
-            <div class="mock-interface">
-                <img src="images/all_list_when_finished.png" alt="戰況室主要功能介面" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
-            </div>
-
-            <h4>戰況室功能說明</h4>
-            <ul>
-                <li><strong>搜尋功能：</strong>可按隊伍名稱或成員姓名搜尋特定比賽</li>
-                <li><strong>桌次顯示：</strong>顯示目前分配的桌次或「Next」(待分配)</li>
-                <li><strong>名單狀態：</strong>即時顯示雙方名單提交狀況</li>
-                <li><strong>比分顯示：</strong>即時更新比賽結果</li>
-                <li><strong>操作按鈕：</strong>根據權限顯示相應功能按鈕</li>
-            </ul>
-
-            <h3>桌次管理系統</h3>
-            <div class="feature-box">
-                <p><strong>🎯 智能桌次分配：</strong>系統根據可用球桌數量自動分配比賽桌次</p>
-                <ul>
-                    <li><strong>優先分配：</strong>雙方都已提交名單的比賽優先分配桌次</li>
-                    <li><strong>動態調整：</strong>比賽結束後，空出的桌次自動分配給下一場</li>
-                    <li><strong>Next標示：</strong>標示為「Next」的比賽將在有桌次空出時優先安排</li>
-                </ul>
-            </div>
-
-            <h4>管理員手動指派桌次功能</h4>
-            <div class="warning-box">
-                <strong>⚠️ 管理員專用功能：</strong>當被分配的桌次人員無法上場時，或其他理由需變更桌次時，管理員可手動重新指派桌次。
-            </div>
-
-            <div class="mock-interface">
-                <img src="images/assign_table.png" alt="管理員手動指派桌次" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
-            </div>
-
-            <div class="info-box">
-                <strong>🔧 使用時機：</strong>
-                <ul>
-                    <li>參賽選手臨時無法上場需要調整</li>
-                    <li>桌次安排需要特殊調整</li>
-                    <li>處理突發狀況或緊急變更</li>
-                    <li>優化比賽進行流程</li>
-                </ul>
-            </div>
-
-            <h4>依桌次檢視</h4>
-            <div class="info-box">
-                <strong>🏓 操作方式：</strong>點擊戰況室右上角的「依桌次」按鈕，即可切換到桌次檢視模式。
-            </div>
-
-            <div class="mock-interface">
-                <img src="images/table_arrangement.png" alt="依桌次檢視介面" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
-            </div>
-
-            <h3>約戰功能整合</h3>
-            <div class="info-box">
-                <strong>⏰ 約戰功能：</strong>特別適用於分散式比賽，讓對戰雙方可以協調比賽時間。
-            </div>
-            
-            <a href="schedule-detail.html" class="external-link">📖 查看約戰功能詳細說明</a>
-
-            <h4>約戰使用時機</h4>
-            <ul>
-                <li><strong>分散式比賽：</strong>雙方需要協調具體比賽時間</li>
-                <li><strong>集中式比賽：</strong>可用於賽前溝通或調整</li>
-                <li><strong>特殊情況：</strong>需要延期或重新安排的比賽</li>
-            </ul>
-
-            <h3>比賽進行操作</h3>
-
-            <h4><span class="step-number">1</span>前往比賽</h4>
-            <ul>
-                <li>點擊「前往比賽」按鈕進入計分頁面</li>
-                <li>系統自動判斷單打或雙打模式</li>
-                <li>參數自動帶入，包含選手資訊</li>
-            </ul>
-
-            <h4><span class="step-number">2</span>計分與記錄</h4>
-            <ul>
-                <li>使用系統內建計分功能</li>
-                <li>比分自動儲存並同步到戰況室</li>
-                <li>完成後自動更新排名統計</li>
-            </ul>
-            
-            <div class="info-box">
-                <strong>📊 計分功能詳細說明：</strong>系統提供完整的即時計分與記錄功能。
-            </div>
-            
-            <a href="scoring-detail.html" class="external-link">📖 查看計分功能詳細說明</a>
-
-            <div class="success-box">
-                <strong>✅ 權限控制：</strong>
-                <ul>
-                    <li><strong>管理員：</strong>可操作任何比賽</li>
-                    <li><strong>參賽者：</strong>可操作任何場次（互相擔任裁判）</li>
-                    <li><strong>非參賽者：</strong>僅能觀看，無法操作</li>
-                </ul>
-            </div>
-        </section>
-
-        <section id="score-analysis">
-            <h2>📊 比分管理與結果分析</h2>
-
-            <h3>比分表功能</h3>
-            <div class="info-box">
-                <strong>📊 即時比分統計：</strong>系統提供完整的比分統計與排名分析功能。
-            </div>
-
-            <a href="scoreboard-detail.html" class="external-link">📖 查看比分表功能詳細說明</a>
-
-            <h4>比分表特色</h4>
-            <ul>
-                <li><strong>即時更新：</strong>比賽結束後立即反映在比分表中</li>
-                <li><strong>多層排名：</strong>依勝場數、直接對戰、勝局數進行排名</li>
-                <li><strong>視覺提示：</strong>不同顏色標示比賽狀態與結果</li>
-                <li><strong>進度追蹤：</strong>粉紅色背景標示未完成的比賽</li>
-            </ul>
-
-            <h3>管理員比分編輯</h3>
-            <div class="warning-box">
-                <strong>⚠️ 管理員專用：</strong>比分編輯功能僅供管理員使用，用於修正錯誤或特殊情況處理。
-            </div>
-
-            <div class="mock-interface">
-                <img src="images/a_admin_edit_score_directly.png" alt="管理員比分編輯介面" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
-            </div>
-
-            <h3>比賽結束管理</h3>
-
-            <h4><span class="step-number">1</span>結束條件檢查</h4>
-            <ul>
-                <li>所有對戰都已完成並記錄比分</li>
-                <li>沒有未完成的比賽（無粉紅色背景格子）</li>
-                <li>管理員確認所有結果無誤</li>
-            </ul>
-
-            <h4><span class="step-number">2</span>確認比賽結束</h4>
-            <div class="success-box">
-                <strong>✅ 管理員操作：</strong>點擊「結束比賽」按鈕，系統狀態變更為「比賽已結束」
-            </div>
-
-            <h4><span class="step-number">3</span>詳細對戰記錄</h4>
-            <div class="info-box">
-                <strong>📝 比賽結束後解鎖：</strong>系統提供詳細的個人對戰記錄，包含每局選手配對和結果。
-            </div>
-            
-            <div class="mock-interface">
-                <img src="images/detail_battle_record.png" alt="詳細對戰記錄" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
-            </div>
-        </section>
-
-        <section id="permissions">
-            <h2>🔒 權限控制</h2>
-
-            <table class="comparison-table">
-                <thead>
-                    <tr>
-                        <th>角色</th>
-                        <th>權限範圍</th>
-                        <th>主要功能</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td><strong>系統管理員</strong></td>
-                        <td>完整系統控制</td>
-                        <td>
-                            • 建立/編輯/刪除比賽<br>
-                            • 產生對戰表<br>
-                            • 修改比分<br>
-                            • 結束比賽<br>
-                            • 查看所有資料
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>比賽主辦方</strong></td>
-                        <td>自己主辦的比賽</td>
-                        <td>
-                            • 建立比賽<br>
-                            • 管理比賽設定<br>
-                            • 產生對戰表<br>
-                            • 監控比賽進度
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>隊長</strong></td>
-                        <td>自己的隊伍</td>
-                        <td>
-                            • 建立隊伍<br>
-                            • 邀請隊員<br>
-                            • 編排出賽名單<br>
-                            • 確認人員到位
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>參賽者</strong></td>
-                        <td>參與的比賽</td>
-                        <td>
-                            • 回應邀請<br>
-                            • 參與比賽計分<br>
-                            • 發起約戰<br>
-                            • 查看比賽結果
-                        </td>
-                    </tr>
-                    <tr>
-                        <td><strong>觀賽者</strong></td>
-                        <td>公開資訊查看</td>
-                        <td>
-                            • 查看比賽進度<br>
-                            • 查看比分表<br>
-                            • 查看排名結果
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-
-            <div class="warning-box">
-                <strong>⚠️ 權限驗證：</strong>系統會根據使用者身份動態顯示可用功能，無權限的功能將隱藏或禁用。
-            </div>
-        </section>
-
-        <section id="workflow">
-            <h2>🔄 完整操作流程</h2>
-
-            <h3>集中式比賽完整流程</h3>
-            <div class="flow-chart">
-管理員建立比賽 → 設定比賽參數 → 開放報名
-    ↓
-隊長建立隊伍 → 邀請隊員 → 隊員回應 → 確認人員到位
-    ↓
-管理員產生對戰表 → 隊長編排名單 → 系統分配桌次
-    ↓
-比賽當日集中進行 → 即時計分記錄 → 比賽結束
-    ↓
-管理員確認結束 → 查看詳細記錄 → 比賽歷史歸檔
-            </div>
-
-            <h3>分散式比賽完整流程</h3>
-            <div class="flow-chart">
-管理員建立比賽 → 設定比賽參數 → 開放報名
-    ↓
-隊長建立隊伍 → 邀請隊員 → 隊員回應 → 確認人員到位
-    ↓
-管理員產生對戰表 → 隊長編排名單
-    ↓
-對戰雙方約定時間 → 分別進行比賽 → 記錄比分
-    ↓
-所有對戰完成 → 管理員確認結束 → 查看最終結果
-            </div>
-
-            <h3>關鍵時間節點</h3>
-            <div class="feature-box">
-                <ul>
-                    <li><strong>報名截止：</strong>隊伍建立的最後期限</li>
-                    <li><strong>名單確認：</strong>隊長確認人員到位的時機</li>
-                    <li><strong>對戰表產生：</strong>不可逆的重要節點</li>
-                    <li><strong>名單編排：</strong>影響桌次分配的關鍵步驟</li>
-                    <li><strong>比賽結束：</strong>開放詳細記錄查看</li>
-                </ul>
-            </div>
-        </section>
-
-        <section id="faq">
-            <h2>❓ 常見問題</h2>
-
-            <h3>比賽建立相關</h3>
-            <div class="feature-box">
-                <p><strong>Q：為什麼我無法建立比賽？</strong></p>
-                <p>A：只有系統管理員或球場管理者才能建立比賽。請確認您的帳號權限。</p>
-            </div>
-
-            <div class="feature-box">
-                <p><strong>Q：比賽建立後可以修改設定嗎？</strong></p>
-                <p>A：在產生對戰表前，管理員可以修改大部分設定。對戰表產生後，基本設定將無法更改。</p>
-            </div>
-
-            <h3>隊伍管理相關</h3>
-            <div class="feature-box">
-                <p><strong>Q：可以同時參加多支隊伍嗎？</strong></p>
-                <p>A：在同一場比賽中，每個人只能參加一支隊伍。但可以同時參加不同比賽的隊伍。</p>
-            </div>
-
-            <div class="feature-box">
-                <p><strong>Q：隊長可以更換嗎？</strong></p>
-                <p>A：目前系統不支援隊長轉移功能。如需更換，請聯繫系統管理員處理。</p>
-            </div>
-
-            <div class="feature-box">
-                <p><strong>Q：隊員拒絕邀請後還能重新邀請嗎？</strong></p>
-                <p>A：可以。隊長可以重新邀請已拒絕的隊員。</p>
-            </div>
-
-            <h3>名單編排相關</h3>
-            <div class="feature-box">
-                <p><strong>Q：為什麼我的比賽沒有分配到桌次？</strong></p>
-                <p>A：只有對戰雙方都完成名單編排時，系統才會分配桌次。請確認對手是否已提交名單。</p>
-            </div>
-
-            <div class="feature-box">
-                <p><strong>Q：名單編排後可以修改嗎？</strong></p>
-                <p>A：在比賽開始前，隊長可以重新編輯名單。比賽開始後將無法修改。</p>
-            </div>
-
-            <h3>比賽進行相關</h3>
-            <div class="feature-box">
-                <p><strong>Q：非參賽者可以幫忙計分嗎？</strong></p>
-                <p>A：為了公平性，只有參賽者和管理員可以進行計分操作。</p>
-            </div>
-
-            <div class="feature-box">
-                <p><strong>Q：比分記錄錯誤怎麼辦？</strong></p>
-                <p>A：請聯繫管理員使用比分編輯功能進行修正。</p>
-            </div>
-
-            <h3>集中式 vs 分散式比賽</h3>
-            <div class="feature-box">
-                <p><strong>Q：如何選擇比賽模式？</strong></p>
-                <p>A：系統本身不區分模式，差異在於執行方式：</p>
-                <ul>
-                    <li><strong>集中式：</strong>所有人同一時間到場比賽</li>
-                    <li><strong>分散式：</strong>對戰雙方自行約定時間比賽</li>
-                </ul>
-            </div>
-
-            <div class="feature-box">
-                <p><strong>Q：分散式比賽需要約戰嗎？</strong></p>
-                <p>A：不是必須的。對戰雙方可以透過其他方式聯繫，約戰功能只是提供方便的協調工具。</p>
-            </div>
-
-            <h3>技術問題</h3>
-            <div class="feature-box">
-                <p><strong>Q：資料沒有即時更新怎麼辦？</strong></p>
-                <p>A：請嘗試重新整理頁面。如果問題持續存在，請聯繫技術支援。</p>
-            </div>
-
-            <div class="feature-box">
-                <p><strong>Q：忘記密碼怎麼辦？</strong></p>
-                <p>A：請聯繫系統管理員重設密碼。</p>
-            </div>
-
-            <h3>其他問題</h3>
-            <div class="feature-box">
-                <p><strong>Q：比賽歷史記錄會保留多久？</strong></p>
-                <p>A：所有比賽記錄都會永久保存，可隨時查詢歷史資料。</p>
-            </div>
-
-            <div class="feature-box">
-                <p><strong>Q：可以匯出比賽結果嗎？</strong></p>
-                <p>A：目前系統提供線上查看功能。如需匯出功能，請聯繫系統管理員。</p>
-            </div>
-        </section>
-
-        <div style="margin-top: 40px; padding: 20px; background: #f8f9fa; border-radius: 8px; text-align: center; color: #6c757d;">
-            <p><strong>📞 技術支援</strong></p>
-            <p>如有任何問題或建議，請聯繫系統管理員</p>
-            <p>相關說明書：
-                <a href="scoreboard-detail.html" class="external-link">比分表功能說明</a>
-                <a href="schedule-detail.html" class="external-link">約戰功能說明</a>
-            </p>
-            <p><em>© 2025 桌球比賽管理系統 - 組隊比賽功能說明書</em></p>
-        </div>
-    </div>
-</body>
-</html>
+                    <li>系統智能分配輪次，
