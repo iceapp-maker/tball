@@ -605,14 +605,52 @@
             <ul>
                 <li><strong>單打項目：</strong>每項目選擇1位出賽選手</li>
                 <li><strong>雙打項目：</strong>每項目選擇2位出賽選手</li>
-                <li><strong>重複使用：</strong>同一選手可在多個項目出賽</li>
+                <li><strong>重複使用：</strong>系統不限制同一選手可在多個項目出賽，但是否可以，仍需遵循比賽制的規則</li>
                 <li><strong>視覺提示：</strong>已在其他項目選中的選手會標示「已選」</li>
                 <li><strong>彈性安排：</strong>可不足額選擇，但系統會警告</li>
             </ul>
 
+            <h4><span class="step-number">4</span>桌次分配機制</h4>
             <div class="warning-box">
-                <strong>⚠️ 重要：名單安排與桌次分配</strong><br>
-                只有當<span class="highlight">對戰雙方都完成名單安排時</span>，該場比賽才會被系統分配桌次。這是自動桌次分配機制的關鍵。
+                <strong>⚠️ 重要：桌次分配原理</strong><br>
+                系統的桌次分配是<span class="highlight">依照對戰順序進行</span>，而非等待雙方完成名單安排。因此隊長應依對戰順序安排對戰名單，以利桌次正確的排進。
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/table_arrangement.png" alt="桌次安排說明" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
+            <div class="info-box">
+                <strong>📊 桌次分配邏輯：</strong>
+                <ul>
+                    <li>系統按照預設的對戰順序分配桌次</li>
+                    <li>不需要等待對手完成名單安排</li>
+                    <li>隊長應盡早完成名單編排，確保比賽順利進行</li>
+                    <li>桌次分配與名單完成狀況無直接關聯</li>
+                </ul>
+            </div>
+
+            <h4><span class="step-number">5</span>名單公佈機制</h4>
+            
+            <div class="feature-box">
+                <p><strong>📋 名單顯示規則：</strong></p>
+                <ul>
+                    <li><strong>單方完成：</strong>系統只顯示登入者隊伍的名單</li>
+                    <li><strong>雙方完成：</strong>系統公佈雙方完整名單</li>
+                    <li><strong>名單確定：</strong>雙方都完成後不可再修改</li>
+                </ul>
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/player_list_when_one_team.png" alt="單方完成名單時的顯示" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/all_list_when_finished.png" alt="雙方完成名單後的顯示" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
+            <div class="success-box">
+                <strong>✅ 完成確認：</strong>當雙方都完成名單安排時，該場對戰將進入桌次分配序列，準備開始比賽。
             </div>
         </section>
 
