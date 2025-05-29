@@ -503,35 +503,50 @@
             </div>
 
             <h3>產生條件檢查</h3>
-            <div class="mock-interface">
-【賽程控制區 - 管理員介面】
-┌─────────────────────────────────┐
-│ 比賽名稱：2025年春季循環賽              │
-│ 狀態：🟢 人員已到位                    │
-│ 報名截止日：6/8                        │
-│                                       │
-│ [編輯] [產生對戰表] [查看隊伍]          │
-└─────────────────────────────────┘
+            
+            <h4><span class="step-number">1</span>一般使用者確認狀態</h4>
+            <div class="info-box">
+                <strong>📊 如何知道各隊準備狀況：</strong>參賽者可在比賽頁面查看所有隊伍的準備狀態。
             </div>
 
-            <h4><span class="step-number">1</span>自動檢查機制</h4>
-            <ul>
-                <li>系統檢查所有隊伍是否達到規定人數</li>
-                <li>確認所有隊長都已點擊「人員已到位」</li>
-                <li>只有條件滿足時才顯示「產生對戰表」按鈕</li>
-            </ul>
+            <div class="mock-interface">
+                <img src="images/all_member_setup_wait_contest_form.png" alt="等待對戰表產生" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
 
-            <h4><span class="step-number">2</span>對戰表產生過程</h4>
+            <div class="success-box">
+                <strong>✅ 準備完成標示：</strong>當所有隊長都確認人員到齊後，頁面會顯示「等待對戰表」狀態。
+            </div>
+
+            <h4><span class="step-number">2</span>管理員產生對戰表</h4>
+            
+            <div class="feature-box">
+                <p><strong>🔧 管理員操作路徑：</strong></p>
+                <ul>
+                    <li><strong>方式一：</strong>從首頁 → 管理員專區 → 賽程控制區</li>
+                    <li><strong>方式二：</strong>從個人資訊頁面的通知連結</li>
+                </ul>
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/admin_action_creat_contest_from.png" alt="管理員產生對戰表" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/admin_personal_inform_creat_contest_form.png" alt="管理員個人資訊通知" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
+            <h4><span class="step-number">3</span>對戰表產生過程</h4>
             <div class="info-box">
                 <strong>🔄 循環賽對戰表產生邏輯：</strong>
                 <ul>
                     <li>每支隊伍都會與其他所有隊伍對戰一次</li>
                     <li>系統智能分配輪次，盡量平衡每輪比賽數量</li>
                     <li>考慮桌次限制，最佳化比賽排程</li>
+                    <li><strong>對戰表考慮平衡每隊出賽時間</strong></li>
                 </ul>
             </div>
 
-            <h4><span class="step-number">3</span>比賽詳情建立</h4>
+            <h4><span class="step-number">4</span>比賽詳情建立</h4>
             <ul>
                 <li>根據設定的總點數建立比賽詳情</li>
                 <li>每點比賽標註單打或雙打類型</li>
@@ -540,6 +555,10 @@
 
             <div class="success-box">
                 <strong>✅ 產生成功後：</strong>比賽狀態變更為「人員安排中」，進入名單編排階段。
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/player_arrangement_process.png" alt="名單安排中狀態" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
             </div>
         </section>
 
@@ -553,47 +572,33 @@
             <h3>名單編排流程</h3>
 
             <h4><span class="step-number">1</span>查看名單狀況</h4>
+            <div class="info-box">
+                <strong>📋 名單狀況查看：</strong>在比賽戰況室中選擇「名單狀況」可查看最新的對戰安排。
+            </div>
+
             <div class="mock-interface">
-【名單狀況頁面】
-┌─────────────────────────────────┐
-│ 2025年春季循環賽 名單狀態               │
-├─────────────────────────────────┤
-│     隊伍1        VS      隊伍2        │
-│                                       │
-│ 雷霆戰隊(✅已編排)  VS  閃電隊(❌未編排) │
-│ 王者之師(✅已編排)  VS  新星隊(✅已編排) │
-│                                       │
-│ [編輯名單] 按鈕僅對未編排的自己隊伍顯示  │
-└─────────────────────────────────┘
+                <img src="images/new_contest_form.png" alt="對戰表產生後的狀況" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
             </div>
 
             <h4><span class="step-number">2</span>編排出賽名單</h4>
             <div class="mock-interface">
-【名單編排介面】
-┌─────────────────────────────────┐
-│ 📝 編排出賽名單                        │
-│ 比賽：2025年春季循環賽                 │
-│ 我方隊伍：雷霆戰隊                      │
-│ 對手隊伍：閃電隊                        │
-├─────────────────────────────────┤
-│ 比賽項目 1: 雙打                       │
-│ 選擇出賽隊員 (最多2人):                │
-│ □ 張隊長(隊長)                         │
-│ ☑ 李小明                              │
-│ ☑ 王大華                              │
-│ □ 陳小美                              │
-│ 已選 2/2                              │
-├─────────────────────────────────┤
-│ 比賽項目 2: 雙打                       │
-│ 選擇出賽隊員 (最多2人):                │
-│ ☑ 張隊長(隊長)                         │
-│ □ 李小明 (已選)                        │
-│ □ 王大華 (已選)                        │
-│ ☑ 陳小美                              │
-│ 已選 2/2                              │
-│                                       │
-│ [確認儲存] [取消]                       │
-└─────────────────────────────────┘
+                <img src="images/leader_arrange_member.png" alt="隊長安排出賽名單" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
+            <div class="feature-box">
+                <p><strong>🔧 隊長編輯入口：</strong></p>
+                <ul>
+                    <li><strong>方式一：</strong>從名單狀況頁面點擊「編輯名單」</li>
+                    <li><strong>方式二：</strong>從個人資訊頁面的提醒連結</li>
+                </ul>
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/leader_editor_list.png" alt="隊長編輯名單連結" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/leader_recieve_arrange_player_info.png" alt="隊長收到安排名單提醒" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
             </div>
 
             <h4><span class="step-number">3</span>名單安排要點</h4>
