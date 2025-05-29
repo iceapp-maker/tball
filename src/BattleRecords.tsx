@@ -58,6 +58,11 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
   const [playerRecords, setPlayerRecords] = useState<any[]>([]);
   const [allRecords, setAllRecords] = useState<any[]>([]);
   const [showAll, setShowAll] = useState(true);
+  const [yearlyScore, setYearlyScore] = useState<{
+    totalPoints: number;
+    rank: number;
+    totalMembers: number;
+  } | null>(null);
 
   // 直接在 function body 計算 user 與 teamId/teamName，確保查詢與標題一致
   const user = currentLoggedInUser || getCurrentUser();
@@ -655,6 +660,73 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
   // 取得當前選擇的比賽類型名稱
   const currentGameTypeName = GAME_TYPE_OPTIONS.find(opt => opt.value === selectedGameType)?.label || '全部比賽';
 
+  // 新增獲取年度總積分的函數
+  const fetchYearlyScore = async () => {
+    if (!user) return;
+    
+    try {
+      // 查詢該使用者全年度所有月份的積分（不限制比賽類型）
+      const { data: userYearlyData, error: userError } = await supabase
+        .from('member_monthly_score_summary')
+        .select('points')
+        .eq('team_id', teamId)
+        .eq('year', selectedYear)
+        .eq('name', user.name)
+        .gt('points', 0);
+
+      if (userError) {
+        console.error('查詢用戶年度積分失敗:', userError);
+        return;
+      }
+
+      // 計算用戶總積分
+      const userTotalPoints = (userYearlyData || []).reduce((sum, record) => sum + record.points, 0);
+
+      // 查詢所有成員的年度積分來計算排名
+      const { data: allMembersData, error: allError } = await supabase
+        .from('member_monthly_score_summary')
+        .select('name, points')
+        .eq('team_id', teamId)
+        .eq('year', selectedYear)
+        .gt('points', 0);
+
+      if (allError) {
+        console.error('查詢所有成員年度積分失敗:', allError);
+        return;
+      }
+
+      // 按成員分組並計算每個成員的年度總積分
+      const memberTotals = new Map<string, number>();
+      (allMembersData || []).forEach(record => {
+        const currentTotal = memberTotals.get(record.name) || 0;
+        memberTotals.set(record.name, currentTotal + record.points);
+      });
+
+      // 轉換為陣列並排序
+      const sortedMembers = Array.from(memberTotals.entries())
+        .map(([name, points]) => ({ name, points }))
+        .sort((a, b) => b.points - a.points);
+
+      // 找到用戶排名
+      const userRank = sortedMembers.findIndex(member => member.name === user.name) + 1;
+      const totalMembers = sortedMembers.length;
+
+      setYearlyScore({
+        totalPoints: userTotalPoints,
+        rank: userRank,
+        totalMembers
+      });
+
+    } catch (error) {
+      console.error('獲取年度積分時發生錯誤:', error);
+    }
+  };
+
+  // 在現有的 useEffect 中添加年度積分查詢
+  useEffect(() => {
+    fetchYearlyScore();
+  }, [teamId, selectedYear, user]); // 當團隊、年份或用戶改變時重新查詢
+
   return (
     <div className="max-w-3xl mx-auto p-2 sm:p-6 overflow-x-auto">
       <div className="mb-2 text-gray-700 text-sm">
@@ -663,6 +735,19 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
           : <span>登入者：訪客（測試）</span>
         }
       </div>
+      
+      {/* 新增：年度總積分顯示 */}
+      {user && yearlyScore && (
+        <div className="mb-4 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg">
+          <div className="text-lg font-bold text-blue-800">
+            {user.name}, {selectedYear}年度總積分為: {yearlyScore.totalPoints}分，總排名: {yearlyScore.rank}名
+            <span className="text-sm text-gray-600 ml-2">
+              (共{yearlyScore.totalMembers}名成員)
+            </span>
+          </div>
+        </div>
+      )}
+      
       <h2 className="text-2xl font-bold mb-4">
         {teamName} {selectedYear} 年 {selectedMonth} 月積分 - {currentGameTypeName}
       </h2>
