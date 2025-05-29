@@ -172,7 +172,7 @@
         }
         
         .warning-box {
-            background: linear-gradient(120fiveeg, #fff3cd 0%, #ffeaa7 100%);
+            background: linear-gradient(120deg, #fff3cd 0%, #ffeaa7 100%);
             padding: 20px;
             border-radius: 15px;
             margin: 20px 0;
@@ -240,6 +240,47 @@
         .nav-btn.primary:hover {
             background: linear-gradient(135deg, #2980b9, #1e3a5f);
         }
+
+        .image-container {
+            text-align: center;
+            margin: 25px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 15px;
+            border: 2px dashed #dee2e6;
+            clear: both;
+            overflow: hidden;
+        }
+        
+        .image-placeholder {
+            width: 100%;
+            max-width: 600px;
+            height: auto;
+            min-height: 200px;
+            background: #e9ecef;
+            border: 2px dashed #adb5bd;
+            display: block;
+            margin: 0 auto;
+            border-radius: 8px;
+            color: #6c757d;
+            font-size: 16px;
+            object-fit: contain;
+        }
+        
+        .image-placeholder img {
+            width: 100%;
+            height: auto;
+            max-width: 100%;
+            display: block;
+            margin: 0 auto;
+        }
+        
+        .caption {
+            margin-top: 10px;
+            font-style: italic;
+            color: #6c757d;
+            font-size: 14px;
+        }
         
         @media (max-width: 768px) {
             .container {
@@ -290,6 +331,18 @@
                         <li><strong>靈活安排</strong>：不受時間和人數限制</li>
                         <li><strong>自動記錄</strong>：比賽結果自動更新排名統計</li>
                     </ul>
+                </div>
+
+                <div class="warning-box">
+                    <h4>🏠 如何進入挑戰賽</h4>
+                    <p><strong>在首頁中直接進入雙打計分(double_game)與單打計分(single_game)即為挑戰賽</strong></p>
+                </div>
+
+                <div class="image-container">
+                    <div class="image-placeholder">
+                        <img src="images/index.png" alt="系統首頁畫面" style="max-width: 100%; height: auto;">
+                    </div>
+                    <div class="caption">圖1：系統首頁 - 可直接點選單打或雙打計分進入挑戰賽模式（index.png）</div>
                 </div>
             </div>
 
@@ -374,6 +427,20 @@
                         </ul>
                         <p><strong>適用時機：</strong>需要事先安排時間，確保雙方都能參與</p>
                     </div>
+                </div>
+
+                <div class="image-container">
+                    <div class="image-placeholder">
+                        <img src="images/single_game.png" alt="單打計分畫面" style="max-width: 100%; height: auto;">
+                    </div>
+                    <div class="caption">圖2：單打計分畫面 - 挑戰賽的單打模式（single_game.png）</div>
+                </div>
+
+                <div class="image-container">
+                    <div class="image-placeholder">
+                        <img src="images/double_game.png" alt="雙打計分畫面" style="max-width: 100%; height: auto;">
+                    </div>
+                    <div class="caption">圖3：雙打計分畫面 - 挑戰賽的雙打模式（double_game.png）</div>
                 </div>
                 
                 <div class="warning-box">
