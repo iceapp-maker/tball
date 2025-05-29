@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TBall - 桌球比賽管理系統</title>
+    <title>賽乒乓 - 革命性桌球比賽管理系統</title>
     <style>
         * {
             margin: 0;
@@ -12,71 +12,261 @@
         }
         
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Segoe UI', 'Microsoft JhengHei', Tahoma, Geneva, Verdana, sans-serif;
             line-height: 1.6;
             color: #333;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
+            overflow-x: hidden;
         }
         
         .container {
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 40px 20px;
+            padding: 20px;
         }
         
+        /* Hero Section */
         .hero {
             text-align: center;
             color: white;
-            margin-bottom: 50px;
+            margin-bottom: 60px;
+            padding: 40px 0;
+        }
+        
+        .logo-container {
+            margin-bottom: 40px;
+            position: relative;
         }
         
         .logo {
-            margin-bottom: 30px;
+            filter: drop-shadow(0 15px 35px rgba(0,0,0,0.4));
+            transition: transform 0.3s ease;
+        }
+        
+        .logo:hover {
+            transform: scale(1.05);
         }
         
         .hero h1 {
-            font-size: 3.5rem;
-            font-weight: bold;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            font-size: 4rem;
+            font-weight: 900;
+            margin-bottom: 15px;
+            text-shadow: 3px 3px 6px rgba(0,0,0,0.4);
+            background: linear-gradient(45deg, #fff, #f1c40f, #fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: glow 2s ease-in-out infinite alternate;
         }
         
-        .hero .subtitle {
-            font-size: 1.5rem;
-            margin-bottom: 20px;
+        @keyframes glow {
+            from { text-shadow: 0 0 20px rgba(241, 196, 15, 0.5); }
+            to { text-shadow: 0 0 30px rgba(241, 196, 15, 0.8); }
+        }
+        
+        .subtitle {
+            font-size: 1.8rem;
+            margin-bottom: 25px;
+            opacity: 0.95;
+            font-weight: 600;
+        }
+        
+        .tagline {
+            font-size: 1.3rem;
+            margin-bottom: 40px;
             opacity: 0.9;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            line-height: 1.8;
         }
         
-        .hero .description {
-            font-size: 1.1rem;
-            opacity: 0.8;
-            max-width: 600px;
-            margin: 0 auto 40px;
-        }
-        
+        /* Main Content */
         .main-content {
-            background: white;
-            border-radius: 20px;
-            padding: 50px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 25px;
+            padding: 60px 50px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            margin-bottom: 40px;
+            backdrop-filter: blur(10px);
         }
         
-        .features-grid {
+        /* Unique Features Section */
+        .unique-features {
+            margin-bottom: 50px;
+        }
+        
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        
+        .section-subtitle {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #7f8c8d;
+            margin-bottom: 40px;
+        }
+        
+        .features-highlight {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 40px;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
             margin: 40px 0;
         }
         
-        .feature-section h2 {
-            color: #2563eb;
-            font-size: 2rem;
+        .highlight-card {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 35px;
+            border-radius: 20px;
+            box-shadow: 0 15px 30px rgba(52, 152, 219, 0.3);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .highlight-card::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.1), transparent);
+            transform: rotate(45deg);
+            transition: all 0.6s;
+            opacity: 0;
+        }
+        
+        .highlight-card:hover::before {
+            animation: shine 0.6s ease-in-out;
+        }
+        
+        @keyframes shine {
+            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); opacity: 0; }
+            50% { opacity: 1; }
+            100% { transform: translateX(100%) translateY(100%) rotate(45deg); opacity: 0; }
+        }
+        
+        .highlight-card:hover {
+            transform: translateY(-10px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(52, 152, 219, 0.4);
+        }
+        
+        .card-icon {
+            font-size: 3.5rem;
             margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            display: block;
+            text-align: center;
+        }
+        
+        .card-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+        
+        .card-description {
+            font-size: 1rem;
+            line-height: 1.7;
+            opacity: 0.95;
+        }
+        
+        /* Comparison Section */
+        .comparison-section {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 20px;
+            padding: 40px;
+            margin: 40px 0;
+            border-left: 6px solid #e74c3c;
+        }
+        
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .comparison-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .vs-traditional {
+            border-top: 4px solid #e74c3c;
+        }
+        
+        .vs-modern {
+            border-top: 4px solid #27ae60;
+        }
+        
+        .comparison-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .comparison-list {
+            list-style: none;
+        }
+        
+        .comparison-list li {
+            padding: 8px 0;
+            position: relative;
+            padding-left: 25px;
+        }
+        
+        .comparison-list li::before {
+            content: "❌";
+            position: absolute;
+            left: 0;
+        }
+        
+        .vs-modern .comparison-list li::before {
+            content: "✅";
+        }
+        
+        /* Core Features */
+        .core-features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+        }
+        
+        .feature-card {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            border-left: 5px solid #3498db;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+        }
+        
+        .feature-icon {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+        
+        .feature-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-bottom: 15px;
         }
         
         .feature-list {
@@ -84,139 +274,126 @@
         }
         
         .feature-list li {
-            padding: 12px 0;
-            border-bottom: 1px solid #eee;
-            font-size: 1.1rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            padding: 5px 0;
+            color: #555;
+            position: relative;
+            padding-left: 20px;
         }
         
-        .feature-list li:last-child {
-            border-bottom: none;
+        .feature-list li::before {
+            content: "▶";
+            position: absolute;
+            left: 0;
+            color: #3498db;
+            font-size: 0.8rem;
         }
         
-        .guide-steps {
-            background: #f8fafc;
-            border-radius: 15px;
-            padding: 30px;
-            margin: 30px 0;
-        }
-        
-        .guide-steps h3 {
-            color: #1e293b;
-            margin-bottom: 20px;
-            font-size: 1.3rem;
-        }
-        
-        .step {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            margin: 15px 0;
-            border-left: 4px solid #3b82f6;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-        }
-        
-        .step-number {
-            display: inline-block;
-            background: #3b82f6;
-            color: white;
-            border-radius: 50%;
-            width: 30px;
-            height: 30px;
+        /* CTA Section */
+        .cta-section {
             text-align: center;
-            line-height: 30px;
+            padding: 50px 0;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 25px;
+            color: white;
+            margin: 50px 0;
+        }
+        
+        .cta-title {
+            font-size: 2.5rem;
             font-weight: bold;
-            margin-right: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .cta-text {
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+            opacity: 0.95;
         }
         
         .buttons {
-            text-align: center;
-            margin: 50px 0 30px;
             display: flex;
-            gap: 20px;
+            gap: 25px;
             justify-content: center;
             flex-wrap: wrap;
+            margin: 40px 0;
         }
         
         .btn {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
             padding: 18px 36px;
             text-decoration: none;
-            border-radius: 12px;
+            border-radius: 50px;
             font-weight: bold;
             font-size: 1.1rem;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.2);
             min-width: 200px;
+            justify-content: center;
         }
         
         .btn-primary {
-            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
             color: white;
         }
         
         .btn-primary:hover {
             transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 12px 30px rgba(79, 172, 254, 0.4);
         }
         
         .btn-secondary {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
+            background: linear-gradient(135deg, #43e97b, #38f9d7);
+            color: #2c3e50;
         }
         
         .btn-secondary:hover {
             transform: translateY(-3px);
-            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+            box-shadow: 0 12px 30px rgba(67, 233, 123, 0.4);
         }
         
-        .highlights {
-            background: linear-gradient(135deg, #f0f9ff, #e0f2fe);
-            border-radius: 15px;
-            padding: 30px;
-            margin: 30px 0;
-            border: 1px solid #0ea5e9;
-        }
-        
-        .highlights h3 {
-            color: #0c4a6e;
-            margin-bottom: 15px;
-            font-size: 1.3rem;
-        }
-        
-        .highlight-items {
+        /* Stats Section */
+        .stats-section {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+            margin: 40px 0;
+            padding: 40px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
         }
         
-        .highlight-item {
-            background: white;
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-        }
-        
-        .highlight-item .icon {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            display: block;
-        }
-        
-        .footer {
+        .stat-item {
             text-align: center;
             color: white;
-            margin-top: 40px;
+        }
+        
+        .stat-number {
+            font-size: 3rem;
+            font-weight: bold;
+            display: block;
+            margin-bottom: 10px;
+            background: linear-gradient(45deg, #f1c40f, #f39c12);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .stat-label {
+            font-size: 1.1rem;
             opacity: 0.9;
         }
         
-        .footer p {
-            margin: 5px 0;
+        /* Footer */
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 60px;
+            padding: 40px 0;
         }
         
+        /* Responsive Design */
         @media (max-width: 768px) {
             .hero h1 {
                 font-size: 2.5rem;
@@ -226,14 +403,17 @@
                 padding: 30px 20px;
             }
             
-            .features-grid {
+            .comparison-grid {
                 grid-template-columns: 1fr;
-                gap: 30px;
             }
             
             .buttons {
                 flex-direction: column;
                 align-items: center;
+            }
+            
+            .features-highlight {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -242,8 +422,8 @@
     <div class="container">
         <!-- Hero Section -->
         <div class="hero">
-            <div class="logo">
-                <svg viewBox="0 0 180 120" width="200" height="140" style="border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+            <div class="logo-container">
+                <svg class="logo" viewBox="0 0 180 120" width="220" height="160" style="border-radius: 15px;">
                     <rect x="30" y="20" width="120" height="80" rx="8" fill="#4c9eeb" stroke="#4c9eeb" stroke-width="4"/>
                     <line x1="90" y1="20" x2="90" y2="100" stroke="#fff" stroke-width="2"/>
                     <line x1="30" y1="60" x2="150" y2="60" stroke="#fff" stroke-width="2"/>
@@ -257,107 +437,210 @@
                 </svg>
             </div>
             <h1>賽乒乓</h1>
-            <div class="subtitle">專業桌球比賽管理系統</div>
-            <div class="description">
-                為桌球愛好者量身打造的全方位比賽管理平台，提供智能計分、選手管理、賽程安排等完整功能，讓每場比賽都精彩非凡。
+            <div class="subtitle">🏓 革命性桌球比賽管理系統</div>
+            <div class="tagline">
+                全球首創<strong>雙軌比賽模式</strong> • <strong>智能對戰表產生</strong> • <strong>四色視覺計分</strong><br>
+                讓每場比賽都精彩非凡，讓每個球友都愛不釋手！
+            </div>
+            
+            <!-- Stats Preview -->
+            <div class="stats-section">
+                <div class="stat-item">
+                    <span class="stat-number">2</span>
+                    <div class="stat-label">比賽模式<br>集中式 + 分散式</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">AI</span>
+                    <div class="stat-label">智能對戰表<br>自動產生平衡賽程</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">4</span>
+                    <div class="stat-label">色彩計分<br>直觀易懂介面</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">∞</span>
+                    <div class="stat-label">無限可能<br>任何規模比賽</div>
+                </div>
             </div>
         </div>
 
         <!-- Main Content -->
         <div class="main-content">
-            <!-- Features Grid -->
-            <div class="features-grid">
-                <div class="feature-section">
-                    <h2>🏓 核心功能</h2>
+            <!-- Why Different Section -->
+            <div class="unique-features">
+                <h2 class="section-title">🚀 為什麼選擇賽乒乓？</h2>
+                <p class="section-subtitle">全球唯一雙軌比賽模式，顛覆傳統桌球管理思維</p>
+                
+                <div class="features-highlight">
+                    <div class="highlight-card">
+                        <span class="card-icon">🎪</span>
+                        <h3 class="card-title">集中式比賽</h3>
+                        <p class="card-description">所有隊伍同一時間、同一地點競技。智能桌次分配，避免衝突，讓錦標賽、團體活動一天內完美落幕！</p>
+                    </div>
+                    
+                    <div class="highlight-card">
+                        <span class="card-icon">🗓️</span>
+                        <h3 class="card-title">分散式比賽</h3>
+                        <p class="card-description">對戰雙方自由約定時間地點。突破場地限制，跨地區參與，讓長期聯賽變得輕鬆有趣！</p>
+                    </div>
+                    
+                    <div class="highlight-card">
+                        <span class="card-icon">🤖</span>
+                        <h3 class="card-title">AI 智能對戰表</h3>
+                        <p class="card-description">革命性循環賽算法，自動平衡每隊出賽時間，智能分配桌次資源，管理員只需一鍵觸發！</p>
+                    </div>
+                    
+                    <div class="highlight-card">
+                        <span class="card-icon">🎨</span>
+                        <h3 class="card-title">四色視覺計分</h3>
+                        <p class="card-description">獨創四色區塊設計，閃爍發球提示，自動換邊規則，讓計分變得直觀有趣，任何人都能輕鬆上手！</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comparison Section -->
+            <div class="comparison-section">
+                <h2 class="section-title" style="color: #2c3e50;">🆚 與其他系統的差異</h2>
+                <div class="comparison-grid">
+                    <div class="comparison-card vs-traditional">
+                        <h3 class="comparison-title" style="color: #e74c3c;">❌ 傳統系統問題</h3>
+                        <ul class="comparison-list">
+                            <li>只能集中式或分散式，無法兼顧</li>
+                            <li>對戰表需人工排程，容易出錯</li>
+                            <li>桌次分配混亂，經常衝突</li>
+                            <li>計分介面複雜，學習成本高</li>
+                            <li>管理流程繁瑣，耗時費力</li>
+                            <li>缺乏智能化功能</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="comparison-card vs-modern">
+                        <h3 class="comparison-title" style="color: #27ae60;">✅ 賽乒乓優勢</h3>
+                        <ul class="comparison-list">
+                            <li>全球首創雙軌模式，靈活切換</li>
+                            <li>AI 智能算法，一鍵產生完美賽程</li>
+                            <li>自動桌次分配，零衝突保證</li>
+                            <li>四色直觀介面，零學習成本</li>
+                            <li>全自動化流程，省時高效</li>
+                            <li>處處充滿智能化設計</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Core Features -->
+            <h2 class="section-title">⚡ 核心功能特色</h2>
+            <div class="core-features">
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3 class="feature-title">完整團隊管理</h3>
                     <ul class="feature-list">
-                        <li>⚡ 智能計分系統 - 支援單打與雙打</li>
-                        <li>👥 團隊管理功能 - 完整會員管理</li>
-                        <li>🏆 比賽管理系統 - 賽程自動化</li>
-                        <li>📊 數據統計分析 - 詳細戰績報告</li>
-                        <li>🔔 即時通知功能 - 不錯過重要消息</li>
-                        <li>📱 響應式設計 - 全平台支援</li>
+                        <li>隊長邀請制度，權責分明</li>
+                        <li>隊員狀態追蹤，即時掌握</li>
+                        <li>名單編排系統，戰術靈活</li>
+                        <li>一鍵確認到位，高效管理</li>
                     </ul>
                 </div>
                 
-                <div class="feature-section">
-                    <h2>🚀 快速上手</h2>
-                    <div class="guide-steps">
-                        <div class="step">
-                            <span class="step-number">1</span>
-                            <strong>系統登入</strong><br>
-                            使用會員帳號登入系統
-                        </div>
-                        <div class="step">
-                            <span class="step-number">2</span>
-                            <strong>選擇功能</strong><br>
-                            從主選單選擇所需功能
-                        </div>
-                        <div class="step">
-                            <span class="step-number">3</span>
-                            <strong>開始比賽</strong><br>
-                            設定參賽選手並開始計分
-                        </div>
-                        <div class="step">
-                            <span class="step-number">4</span>
-                            <strong>查看統計</strong><br>
-                            檢視戰績與排名資料
-                        </div>
-                    </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3 class="feature-title">智能統計分析</h3>
+                    <ul class="feature-list">
+                        <li>即時比分統計，多層排名</li>
+                        <li>詳細對戰記錄，永久保存</li>
+                        <li>個人戰績分析，實力提升</li>
+                        <li>團隊表現評估，策略調整</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🔔</div>
+                    <h3 class="feature-title">智能通知系統</h3>
+                    <ul class="feature-list">
+                        <li>約戰邀請提醒，不錯過機會</li>
+                        <li>比賽進度通知，掌握狀況</li>
+                        <li>管理事項提醒，高效處理</li>
+                        <li>多元通知管道，靈活便利</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🎮</div>
+                    <h3 class="feature-title">直觀計分體驗</h3>
+                    <ul class="feature-list">
+                        <li>四色區塊設計，一目了然</li>
+                        <li>閃爍發球提示，規則清楚</li>
+                        <li>自動換邊規則，零出錯</li>
+                        <li>W鍵快速勝負，應急便利</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">⚔️</div>
+                    <h3 class="feature-title">靈活約戰機制</h3>
+                    <ul class="feature-list">
+                        <li>多時段選擇，彈性安排</li>
+                        <li>自動狀態追蹤，進度透明</li>
+                        <li>智能衝突避免，和諧競技</li>
+                        <li>一鍵約戰發起，操作簡單</li>
+                    </ul>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3 class="feature-title">完善權限控制</h3>
+                    <ul class="feature-list">
+                        <li>角色權限分級，安全可靠</li>
+                        <li>功能動態顯示，簡潔清晰</li>
+                        <li>管理員監控，品質保證</li>
+                        <li>資料保護完善，隱私安全</li>
+                    </ul>
                 </div>
             </div>
 
-            <!-- Highlights -->
-            <div class="highlights">
-                <h3>🌟 系統亮點</h3>
-                <div class="highlight-items">
-                    <div class="highlight-item">
-                        <span class="icon">⚡</span>
-                        <strong>即時計分</strong><br>
-                        <small>快速準確的比分記錄</small>
-                    </div>
-                    <div class="highlight-item">
-                        <span class="icon">📈</span>
-                        <strong>數據分析</strong><br>
-                        <small>完整的戰績統計</small>
-                    </div>
-                    <div class="highlight-item">
-                        <span class="icon">🎯</span>
-                        <strong>操作簡單</strong><br>
-                        <small>直觀易用的介面</small>
-                    </div>
-                    <div class="highlight-item">
-                        <span class="icon">🔒</span>
-                        <strong>資料安全</strong><br>
-                        <small>可靠的資料保護</small>
-                    </div>
+            <!-- CTA Section -->
+            <div class="cta-section">
+                <h2 class="cta-title">🏆 準備好體驗革命性的桌球管理了嗎？</h2>
+                <p class="cta-text">加入數千位球友的選擇，讓每場比賽都精彩非凡！</p>
+                
+                <div class="buttons">
+                    <a href="https://tball.netlify.app/" target="_blank" class="btn btn-primary">
+                        🚀 立即體驗系統
+                    </a>
+                    <a href="quick-guide.html" target="_blank" class="btn btn-secondary">
+                        📖 快速上手指南
+                    </a>
                 </div>
-            </div>
-
-            <!-- Action Buttons -->
-            <div class="buttons">
-                <a href="https://tball.netlify.app/" target="_blank" class="btn btn-primary">
-                    🚀 立即使用系統
-                </a>
-                <a href="quick-guide.html" target="_blank" class="btn btn-secondary">
-                    📖 快速上手指南
-                </a>
             </div>
 
             <!-- Additional Info -->
-            <div style="background: #f8fafc; border-radius: 15px; padding: 30px; margin-top: 30px; text-align: center;">
-                <h3 style="color: #1e293b; margin-bottom: 15px;">💡 使用提示</h3>
-                <p style="color: #64748b; line-height: 1.8; font-size: 1.1rem;">
-                    初次使用請聯繫團隊管理員開通帳號。系統支援多團隊管理，每個團隊都有獨立的資料空間。
-                    建議在使用前先熟悉各項功能，充分發揮系統的強大能力。
-                </p>
+            <div style="background: linear-gradient(135deg, #f8f9fa, #e9ecef); border-radius: 20px; padding: 40px; margin-top: 40px; text-align: center;">
+                <h3 style="color: #2c3e50; margin-bottom: 20px; font-size: 1.8rem;">💡 開始使用提示</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 30px;">
+                    <div style="background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                        <h4 style="color: #3498db; margin-bottom: 10px;">👥 團隊管理</h4>
+                        <p style="color: #555; line-height: 1.6;">聯繫管理員開通帳號，享受獨立團隊空間，完整數據隔離保護。</p>
+                    </div>
+                    <div style="background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                        <h4 style="color: #e74c3c; margin-bottom: 10px;">🎯 模式選擇</h4>
+                        <p style="color: #555; line-height: 1.6;">根據需求選擇集中式或分散式比賽，靈活應對各種場景。</p>
+                    </div>
+                    <div style="background: white; padding: 25px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);">
+                        <h4 style="color: #27ae60; margin-bottom: 10px;">📚 功能探索</h4>
+                        <p style="color: #555; line-height: 1.6;">建議先熟悉各項功能，充分發揮系統的強大能力。</p>
+                    </div>
+                </div>
             </div>
         </div>
 
         <!-- Footer -->
         <div class="footer">
-            <p><strong>TBall 桌球比賽管理系統</strong></p>
-            <p>讓每場比賽都精彩非凡</p>
-            <p style="font-size: 0.9rem; opacity: 0.7;">© 2024 專業桌球比賽管理解決方案</p>
+            <h3 style="margin-bottom: 15px; font-size: 1.8rem;">🏓 賽乒乓桌球比賽管理系統</h3>
+            <p style="font-size: 1.2rem; margin-bottom: 10px;">讓每場比賽都精彩非凡 • 讓每個球友都愛不釋手</p>
+            <p style="font-size: 1rem; opacity: 0.8;">© 2024 革命性桌球比賽管理解決方案</p>
+            <p style="font-size: 0.9rem; opacity: 0.7; margin-top: 20px;">
+                🌟 全球首創雙軌比賽模式 | 🤖 AI智能對戰表 | 🎨 四色視覺計分 | 📱 全平台支援
+            </p>
         </div>
     </div>
 </body>
