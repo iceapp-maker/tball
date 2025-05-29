@@ -1,7 +1,4 @@
-<section id="team-management">
-            <h2>👥 隊伍管理</h2>
-
-            <h3>進入參<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
@@ -383,55 +380,111 @@
         <section id="team-management">
             <h2>👥 隊伍管理</h2>
 
+            <h3>進入參賽區</h3>
+            <div class="info-box">
+                <strong>🏠 參賽入口：</strong>參賽者需從首頁進入「參賽區」開始報名流程。
+            </div>
+            
+            <div class="mock-interface">
+                <img src="images/contest_list.png" alt="參賽區列表" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
             <h3>隊伍報名流程</h3>
 
             <div class="flow-chart">
 參賽者進入比賽 → 建立隊伍 → 邀請隊員 → 隊員回應 → 隊長確認人員到位
             </div>
 
-            <h4><span class="step-number">1</span>建立隊伍</h4>
+            <h4><span class="step-number">1</span>參加隊伍或建立隊伍</h4>
             <div class="mock-interface">
-【隊伍建立介面】
-┌─────────────────────────────────┐
-│ 📋 報名：2025年春季循環賽               │
-├─────────────────────────────────┤
-│ 建立隊伍                               │
-│ 隊名：[________________]               │
-│                                       │
-│ [建立隊伍並成為隊長]                    │
-└─────────────────────────────────┘
+                <img src="images/joint_or_creat_team.png" alt="參加或建立隊伍" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
             </div>
 
             <ul>
-                <li>每位參賽者只能在同一比賽中建立一支隊伍</li>
-                <li>建立者自動成為隊長</li>
-                <li>隊長擁有隊伍管理權限</li>
+                <li><strong>參加現有隊伍：</strong>可選擇加入已建立的隊伍（如有空缺）</li>
+                <li><strong>建立新隊伍：</strong>在隊伍數未達上限時可建立新隊伍</li>
+                <li>每位參賽者只能在同一比賽中參加一支隊伍</li>
+                <li>建立者自動成為隊長，擁有隊伍管理權限</li>
             </ul>
 
-            <h4><span class="step-number">2</span>邀請隊員</h4>
+            <h4><span class="step-number">2</span>隊長邀請隊員</h4>
             <div class="mock-interface">
-【隊員邀請介面】
-┌─────────────────────────────────┐
-│ 隊伍名稱：雷霆戰隊                      │
-│ 隊長：張隊長                           │
-│                                       │
-│ 隊員列表：                             │
-│ • 李小明（已接受）                      │
-│ • 王大華（待回覆）                      │
-│                                       │
-│ 邀請成員：[選擇成員 ▼] [邀請]           │
-└─────────────────────────────────┘
+                <img src="images/invite_team_member.png" alt="隊長邀請隊員" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/select_team_member_list.png" alt="隊長邀請後的畫面" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
             </div>
 
             <ul>
                 <li>隊長可邀請同球場的其他成員</li>
-                <li>被邀請者會收到邀請通知</li>
-                <li>隊員可選擇「接受」或「拒絕」邀請</li>
+                <li>邀請功能可在隊伍管理頁面中使用</li>
+                <li>系統會自動篩選可邀請的成員（排除已參賽或已被邀請者）</li>
             </ul>
 
-            <h4><span class="step-number">3</span>確認人員到位</h4>
+            <h4><span class="step-number">3</span>隊員接收邀請</h4>
+            
+            <div class="feature-box">
+                <p><strong>📱 邀請通知方式：</strong></p>
+                <ul>
+                    <li>被邀請者在比賽頁面會看到邀請資訊</li>
+                    <li>個人資訊頁面會顯示邀請提醒</li>
+                </ul>
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/recieve_invitation.png" alt="接收邀請畫面" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/recieve_invitation_alret.png" alt="個人資訊頁邀請提醒" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
+            <ul>
+                <li>被邀請者可選擇「接受邀約」或「不克參加」</li>
+                <li>回應後系統會即時更新隊伍狀態</li>
+                <li>拒絕後仍可被重新邀請</li>
+            </ul>
+
+            <h4><span class="step-number">4</span>隊長管理功能</h4>
+
+            <div class="feature-box">
+                <p><strong>🔧 隊長專用功能：</strong></p>
+                <ul>
+                    <li><strong>查看成員狀態：</strong>即時了解邀請回應情況</li>
+                    <li><strong>移除成員：</strong>可移除已加入的隊員</li>
+                    <li><strong>最終確認：</strong>人數足夠時確認隊伍完成</li>
+                </ul>
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/team_member_status_list.png" alt="隊伍成員狀態列表" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/team_leader_can_reject_attender.png" alt="隊長移除成員功能" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
+            <h4><span class="step-number">5</span>確認人員到位</h4>
+
+            <div class="warning-box">
+                <strong>⚠️ 關鍵步驟：</strong>當隊伍達到規定人數時，隊長會收到通知，必須進行最終確認。
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/team_leader_reviev_team_member_all_done.png" alt="隊長收到確認通知" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/wait_for_leader_confirm.png" alt="等待隊長最終確認" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
+            <div class="mock-interface">
+                <img src="images/confirm_team_member_allin.png" alt="確認人員到位" style="max-width: 100%; height: auto; display: block; margin: 0 auto;">
+            </div>
+
             <div class="success-box">
-                <strong>重要步驟：</strong>當隊伍達到規定人數時，隊長必須點擊「人員已到位」按鈕，系統才會認定該隊伍準備完成。
+                <strong>✅ 確認完成：</strong>隊長點擊「人員已到位」後，該隊伍狀態變更為「已確認」，可參與對戰表產生。
             </div>
 
             <h3>隊伍狀態管理</h3>
