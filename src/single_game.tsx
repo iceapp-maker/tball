@@ -471,9 +471,15 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
 
   useEffect(() => {
     if (gameOver) {
-      resetGameState();
+      // 延遲 0.5 秒後自動開始下一局
+      const timer = setTimeout(() => {
+        setCurrentGameNumber((prev: number) => prev + 1);
+        resetGameState();
+      }, 500);
+
+      return () => clearTimeout(timer);
     }
-  }, [currentGameNumber]);
+  }, [gameOver]);
   
   useEffect(() => {
     const isOddGame = currentGameNumber % 2 === 1;
@@ -1474,27 +1480,6 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
           <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center">
             <div className="bg-gray-800 p-6 rounded-lg text-white text-center">
               <h2 className="text-2xl font-bold mb-4">{submitMessage}</h2>
-            </div>
-          </div>
-        )}
-        
-        {gameOver && !showWinConfirmation && (
-          <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center">
-            <div className="text-white text-4xl font-bold text-center">
-              Game Over!<br />
-              {
-                gameHistory.length > 0 && 
-                gameHistory[gameHistory.length - 1].topScore === "W" ? 'Top' :
-                gameHistory.length > 0 && 
-                gameHistory[gameHistory.length - 1].bottomScore === "W" ? 'Bottom' :
-                topScore > bottomScore ? 'Top' : 'Bottom'
-              } wins!<br />
-              <button 
-                onClick={handleReset}
-                className="mt-4 px-6 py-2 bg-white text-black text-xl rounded-lg hover:bg-gray-200 transition-colors"
-              >
-                下一局
-              </button>
             </div>
           </div>
         )}
