@@ -1511,6 +1511,18 @@ function DoubleGame() {
 
   // 已移除上方的交換按鈕，只保留中間的上下交換按鈕
 
+  useEffect(() => {
+    if (gameOver) {
+      // 延遲 0.5 秒後自動開始下一局
+      const timer = setTimeout(() => {
+        setCurrentGameNumber((prev: number) => prev + 1);
+        resetGameState();
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [gameOver]);
+
   return (
     <div className="h-screen bg-black flex flex-col">
       {/* 登入資訊顯示區塊 (改為固定在頂部) */}
@@ -1939,26 +1951,6 @@ function DoubleGame() {
         </div>
       )}
 
-      {gameOver && !showWinConfirmation && (
-        <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center">
-          <div className="text-white text-4xl font-bold text-center">
-            Game Over!<br />
-            {
-              gameHistory.length > 0 && 
-              gameHistory[gameHistory.length - 1].topScore === "W" ? 'Top' :
-              gameHistory.length > 0 && 
-              gameHistory[gameHistory.length - 1].bottomScore === "W" ? 'Bottom' :
-              topScore > bottomScore ? 'Top' : 'Bottom'
-            } wins!<br />
-            <button 
-              onClick={handleReset}
-              className="mt-4 px-6 py-2 bg-white text-black text-xl rounded-lg hover:bg-gray-200 transition-colors"
-            >
-              下一局
-            </button>
-          </div>
-        </div>
-      )}
       {showSubmitMessage && (
         <div className="absolute inset-0 bg-black bg-opacity-80 flex items-center justify-center">
           <div className="bg-gray-800 p-6 rounded-lg text-white text-center">
@@ -1966,6 +1958,7 @@ function DoubleGame() {
           </div>
         </div>
       )}
+
       {showPostSaveModal && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-8 flex flex-col items-center max-w-xs w-full">
@@ -1984,6 +1977,7 @@ function DoubleGame() {
           </div>
         </div>
       )}
+
       {isChallengeMode && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-lg p-8 flex flex-col items-center max-w-xs w-full">
@@ -1996,7 +1990,7 @@ function DoubleGame() {
                 value={challengeDate}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setChallengeDate(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
-                onFocus={(e) => e.target.showPicker = true} // 防止點擊觸發關閉
+                onFocus={(e) => e.target.showPicker = true}
               />
               <select
                 className="w-full p-2 border rounded"
