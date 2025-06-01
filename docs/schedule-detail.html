@@ -200,6 +200,21 @@
             font-size: 1.3em;
         }
         
+        .delete-box {
+            background: linear-gradient(120deg, #f8d7da 0%, #e2c3c7 100%);
+            padding: 20px;
+            border-radius: 15px;
+            margin: 20px 0;
+            border-left: 5px solid #dc3545;
+            border: 2px solid #dc3545;
+        }
+        
+        .delete-box h4 {
+            color: #721c24;
+            margin-bottom: 10px;
+            font-size: 1.3em;
+        }
+        
         .process-flow {
             display: flex;
             flex-direction: column;
@@ -295,6 +310,49 @@
             font-size: 0.9em;
         }
         
+        .permission-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+        
+        .permission-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid #e9ecef;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .permission-card.allowed {
+            border-color: #28a745;
+            background: linear-gradient(135deg, #d4edda 0%, #c3e6cb 100%);
+        }
+        
+        .permission-card.denied {
+            border-color: #dc3545;
+            background: linear-gradient(135deg, #f8d7da 0%, #e2c3c7 100%);
+        }
+        
+        .permission-card h4 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .permission-card.allowed h4::before {
+            content: "✅";
+            margin-right: 8px;
+        }
+        
+        .permission-card.denied h4::before {
+            content: "❌";
+            margin-right: 8px;
+        }
+        
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -313,6 +371,10 @@
             }
             
             .status-comparison {
+                grid-template-columns: 1fr;
+            }
+            
+            .permission-grid {
                 grid-template-columns: 1fr;
             }
             
@@ -342,6 +404,7 @@
                         <li><strong>對戰邀約</strong>：與其他選手預約比賽時間</li>
                         <li><strong>系統通知</strong>：自動提醒約定的比賽時間</li>
                         <li><strong>靈活安排</strong>：支援彈性的時間協調機制</li>
+                        <li><strong>邀約管理</strong>：完整的邀約生命週期管理，包含刪除功能</li>
                     </ul>
                 </div>
             </div>
@@ -424,6 +487,7 @@
                         <li>提供詳細的挑戰資訊和參與者名單</li>
                         <li>可查看所有相關的約戰記錄</li>
                         <li><strong>自己發起的約戰</strong>：系統會自動設為接受，也可手動設定</li>
+                        <li><strong>刪除功能</strong>：發起人可刪除不需要的邀約</li>
                     </ul>
                 </div>
 
@@ -471,6 +535,108 @@
                 </div>
             </div>
 
+            <!-- 邀約刪除功能 -->
+            <div class="section">
+                <h2>邀約刪除功能</h2>
+                
+                <div class="delete-box">
+                    <h4>🗑️ 重要更新：邀約刪除功能</h4>
+                    <p>系統現已新增邀約刪除功能，讓發起人能夠有效管理不需要的邀約，避免列表混亂。</p>
+                </div>
+                
+                <h3>🔐 刪除權限控制</h3>
+                <div class="permission-grid">
+                    <div class="permission-card allowed">
+                        <h4>發起人權限</h4>
+                        <ul>
+                            <li><strong>可以刪除</strong>：自己發起的任何邀約</li>
+                            <li><strong>適用範圍</strong>：未過期和已過期的邀約</li>
+                            <li><strong>操作位置</strong>：挑戰列表頁面的操作欄</li>
+                            <li><strong>按鈕顯示</strong>：紅色垃圾桶圖示 🗑️</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="permission-card denied">
+                        <h4>參與者限制</h4>
+                        <ul>
+                            <li><strong>無法刪除</strong>：被邀請的參與者不能刪除邀約</li>
+                            <li><strong>替代操作</strong>：只能接受或拒絕邀請</li>
+                            <li><strong>顯示狀態</strong>：無刪除按鈕或顯示「無權限」</li>
+                            <li><strong>保護機制</strong>：避免意外刪除他人邀約</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <h3>🛡️ 安全機制</h3>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>確認對話框</h4>
+                        <ul>
+                            <li>刪除前會彈出確認視窗</li>
+                            <li>提示「確定要刪除這個挑戰嗎？此操作無法復原！」</li>
+                            <li>必須點擊「確定」才會執行刪除</li>
+                            <li>可點擊「取消」中止操作</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>操作狀態顯示</h4>
+                        <ul>
+                            <li><strong>刪除中</strong>：按鈕顯示「...」或「刪除中...」</li>
+                            <li><strong>禁用狀態</strong>：刪除期間按鈕無法重複點擊</li>
+                            <li><strong>成功提示</strong>：刪除完成後顯示成功訊息</li>
+                            <li><strong>錯誤處理</strong>：失敗時顯示相應錯誤訊息</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>數據清理</h4>
+                        <ul>
+                            <li>同時刪除相關的狀態記錄</li>
+                            <li>清理 challenges 和 challenge_status_logs 表</li>
+                            <li>立即從列表中移除被刪除的邀約</li>
+                            <li>自動更新未讀計數</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>界面更新</h4>
+                        <ul>
+                            <li>刪除後邀約立即從頁面消失</li>
+                            <li>統計數字自動更新</li>
+                            <li>通知計數重新計算</li>
+                            <li>無需手動重新整理頁面</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <h3>📍 刪除按鈕位置</h3>
+                <div class="screenshot-container">
+                    <img src="https://github.com/iceapp-maker/tball/blob/main/docs/images/delete_challenge.png?raw=true" alt="邀約刪除功能界面" class="screenshot">
+                    <div class="screenshot-caption">圖：挑戰列表頁面中的刪除功能 - 只有發起人才能看到紅色垃圾桶刪除按鈕</div>
+                </div>
+                
+                <div class="info-box">
+                    <h4>💡 在不同區域的顯示方式</h4>
+                    <ul>
+                        <li><strong>收到的挑戰（未過期）</strong>：操作欄中，接受/拒絕選單旁邊</li>
+                        <li><strong>收到的挑戰（已過期）</strong>：狀態顯示旁邊的垃圾桶按鈕</li>
+                        <li><strong>我發起的挑戰（未過期）</strong>：操作欄中央的「🗑️ 刪除」按鈕</li>
+                        <li><strong>我發起的挑戰（已過期）</strong>：操作欄中的垃圾桶圖示</li>
+                    </ul>
+                </div>
+                
+                <div class="warning-box">
+                    <h4>⚠️ 刪除注意事項</h4>
+                    <ul>
+                        <li><strong>無法復原</strong>：刪除操作是永久性的，無法撤銷</li>
+                        <li><strong>影響範圍</strong>：會影響所有參與者，邀約將從系統中完全消失</li>
+                        <li><strong>建議時機</strong>：確定不需要此邀約時再執行刪除</li>
+                        <li><strong>替代方案</strong>：如不確定，建議先拒絕邀約而非刪除</li>
+                    </ul>
+                </div>
+            </div>
+
             <!-- 時段選擇功能 -->
             <div class="section">
                 <h2>時段選擇功能</h2>
@@ -492,104 +658,4 @@
                     </div>
                     
                     <div class="feature-card">
-                        <h4>🎯 自訂時段</h4>
-                        <ul>
-                            <li>可輸入具體時間</li>
-                            <li>例如：13:30-15:00</li>
-                            <li>適合特殊需求</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 約戰狀態管理 -->
-            <div class="section">
-                <h2>約戰狀態管理</h2>
-                
-                <div class="info-box">
-                    <h4>🔄 狀態流程</h4>
-                    <p>約戰邀約從發起到完成會經歷以下狀態變化：</p>
-                </div>
-                
-                <div class="feature-grid">
-                    <div class="feature-card">
-                        <h4>📤 已發起</h4>
-                        <ul>
-                            <li>約戰邀約已發送</li>
-                            <li>等待對方回應</li>
-                            <li>約戰按鈕變灰色</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="feature-card">
-                        <h4>⏳ 處理中</h4>
-                        <ul>
-                            <li>對方已收到邀約</li>
-                            <li>正在考慮中</li>
-                            <li>可能需要內部討論</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="feature-card">
-                        <h4>✅ 已接受</h4>
-                        <ul>
-                            <li>雙方達成約戰協議</li>
-                            <li>時間地點確認</li>
-                            <li>準備進行比賽</li>
-                        </ul>
-                    </div>
-                    
-                    <div class="feature-card">
-                        <h4>❌ 已拒絕</h4>
-                        <ul>
-                            <li>對方拒絕約戰</li>
-                            <li>約戰按鈕重新可用</li>
-                            <li>可重新發起約戰</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-
-            <!-- 操作步驟 -->
-            <div class="section">
-                <h2>完整操作步驟</h2>
-                
-                <div class="info-box">
-                    <h4>📋 發起約戰步驟</h4>
-                    <ol class="operation-steps">
-                        <li><strong>選擇約戰管道</strong>：從戰況室（你是對戰其中一員）及單/雙打頁面進入（一般挑戰賽）</li>
-                        <li><strong>點擊約戰按鈕</strong>：確認按鈕為綠色可用狀態</li>
-                        <li><strong>設定比賽時間</strong>：選擇日期和時段</li>
-                        <li><strong>確認參賽資訊</strong>：檢查選手名單和比賽詳情</li>
-                        <li><strong>發送約戰邀約</strong>：點擊「戰書傳送」或「發起挑戰」</li>
-                        <li><strong>等待回應</strong>：對方會在個人資訊頁面收到通知</li>
-                        <li><strong>確認結果</strong>：收到接受/拒絕的回應通知</li>
-                    </ol>
-                </div>
-                
-                <div class="info-box">
-                    <h4>📋 回應約戰步驟</h4>
-                    <ol class="operation-steps">
-                        <li><strong>查看通知</strong>：在個人資訊頁面查看約戰通知</li>
-                        <li><strong>點擊詳情</strong>：進入約戰邀約確認頁面</li>
-                        <li><strong>確認資訊</strong>：檢查比賽時間、地點、參與者</li>
-                        <li><strong>內部討論</strong>：與隊友確認出席狀況</li>
-                        <li><strong>做出決定</strong>：點擊「接受」或「拒絕」按鈕</li>
-                        <li><strong>系統通知</strong>：系統自動通知發起方結果</li>
-                    </ol>
-                </div>
-            </div>
-
-            <!-- 常見問題 -->
-            <div class="section">
-                <h2>常見問題解答</h2>
-                
-                <div class="feature-grid">
-                    <div class="feature-card">
-                        <h4>❓ 為什麼約戰按鈕是灰色的？</h4>
-                        <p>因為已有約戰記錄且在處理中。必須等其中一方拒絕約戰後，按鈕才會重新可用。</p>
-                    </div>
-                    
-                    <div class="feature-card">
-                        <h4>❓ 約戰邀約多久會過期？</h4>
-                        <p>系統會顯示「尚未過期」和「已過期」狀態，建議
+                        <h4>🎯 自訂
