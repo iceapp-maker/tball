@@ -87,6 +87,9 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
   const [winnerTeamId, setWinnerTeamId] = useState<string | null>(null);
   const [winnerTeamName, setWinnerTeamName] = useState<string>('');
 
+  // 新增：遊戲統計狀態
+  const [gameStatsMap, setGameStatsMap] = useState<{ [playerName: string]: number }>({});
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -164,6 +167,121 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
     processUrlParameters();
   }, [location.search]);
 
+  // 新增：排序邏輯
+  const sortMembersWithGameStats = (members: any[], memberPointsMap: any, gameStatsMap: any) => {
+    console.log('開始排序會員，遊戲統計（單打+雙打）:', gameStatsMap);
+    console.log('會員列表:', members.map(m => ({ name: m.name, member_id: m.member_id })));
+    console.log('積分資料:', memberPointsMap);
+    
+    return [...members].sort((a, b) => {
+      // 獲取比賽次數（單打+雙打總和）
+      const aGameCount = gameStatsMap[a.name] || 0;
+      const bGameCount = gameStatsMap[b.name] || 0;
+      const aPoints = memberPointsMap[a.id]?.points || 0;
+      const bPoints = memberPointsMap[b.id]?.points || 0;
+      
+      console.log(`比較 ${a.name}(${aGameCount}場,${aPoints}分,${a.member_id}) vs ${b.name}(${bGameCount}場,${bPoints}分,${b.member_id})`);
+      
+      // 1. 比賽次數分組（有比賽 vs 無比賽）
+      const aHasGames = aGameCount > 0;
+      const bHasGames = bGameCount > 0;
+      
+      if (aHasGames !== bHasGames) {
+        console.log(`  → 比賽次數分組: ${aHasGames ? a.name : b.name} 在前（有比賽記錄）`);
+        return bHasGames - aHasGames; // 有比賽的在前
+      }
+      
+      // 2. 同組內依比賽次數排序（如果都有比賽記錄）
+      if (aHasGames && bHasGames && aGameCount !== bGameCount) {
+        console.log(`  → 比賽次數排序: ${aGameCount > bGameCount ? a.name : b.name} 在前（比賽次數多）`);
+        return bGameCount - aGameCount; // 比賽次數多的在前
+      }
+      
+      // 3. 依積分排序（高到低）
+      if (aPoints !== bPoints) {
+        console.log(`  → 積分排序: ${aPoints > bPoints ? a.name : b.name} 在前（積分高）`);
+        return bPoints - aPoints; // 積分高的在前
+      }
+      
+      // 4. 依會員編號排序（小到大）
+      console.log(`  → 會員編號排序: ${a.member_id < b.member_id ? a.name : b.name} 在前（編號小）`);
+      return a.member_id.localeCompare(b.member_id); // 編號小的在前
+    });
+  };
+
+  // 新增：除錯用函數
+  const debugGameStatsConversion = (data: any) => {
+    console.log('=== 除錯：檢查 RPC 返回資料轉換 ===');
+    console.log('RPC 原始資料:', data);
+    
+    const gameStatsMap: { [key: string]: number } = {};
+    data?.forEach((stat: any) => {
+      console.log(`轉換: ${stat.player_name} -> ${stat.game_count} 場`);
+      gameStatsMap[stat.player_name] = parseInt(stat.game_count); // 確保轉為數字
+    });
+    
+    console.log('轉換後的 gameStatsMap:', gameStatsMap);
+    return gameStatsMap;
+  };
+
+  // 新增：查詢比賽統計函數
+  const fetchRecentGameStats = async (teamId: string) => {
+    console.log('查詢前30天比賽統計（單打+雙打）...');
+    
+    try {
+      // 首先嘗試使用 RPC 函數
+      const { data, error } = await supabase
+        .rpc('get_recent_game_stats', {
+          p_team_id: teamId,
+          p_days_ago: 30
+        });
+      
+      if (error) {
+        console.error('查詢比賽統計錯誤:', error);
+        return {};
+      }
+      
+      console.log('RPC 查詢到的比賽統計（單打+雙打）:', data);
+      
+      // 使用除錯函數轉換資料
+      return debugGameStatsConversion(data);
+      
+    } catch (err) {
+      console.error('查詢比賽統計時發生錯誤:', err);
+      return {};
+    }
+  };
+
+  // 新增：檢查最終排序結果
+  const debugFinalSorting = (sortedMembers: any[], pointsMap: any, gameStatsMap: any) => {
+    console.log('=== 除錯：最終排序結果 ===');
+    sortedMembers.forEach((member, index) => {
+      const gameCount = gameStatsMap[member.name] || 0;
+      const points = pointsMap[member.id]?.points || 0;
+      console.log(`${index + 1}. ${member.name} - ${gameCount}場比賽, ${points}分, 編號:${member.member_id}`);
+    });
+    
+    // 驗證是否按比賽次數正確排序
+    const gameCountOrder = sortedMembers.map(m => gameStatsMap[m.name] || 0);
+    console.log('比賽次數順序:', gameCountOrder);
+    
+    let isCorrectOrder = true;
+    for (let i = 0; i < gameCountOrder.length - 1; i++) {
+      if (gameCountOrder[i] < gameCountOrder[i + 1]) {
+        // 檢查是否是有比賽 vs 無比賽的分組
+        const currentHasGames = gameCountOrder[i] > 0;
+        const nextHasGames = gameCountOrder[i + 1] > 0;
+        if (currentHasGames === nextHasGames) {
+          console.warn(`⚠️ 排序錯誤: 位置 ${i} (${gameCountOrder[i]}場) < 位置 ${i+1} (${gameCountOrder[i+1]}場)`);
+          isCorrectOrder = false;
+        }
+      }
+    }
+    
+    console.log(isCorrectOrder ? '✅ 排序正確' : '❌ 排序有誤');
+  };
+
+  // 修改 fetchMembersAndPoints 函數
   useEffect(() => {
     const fetchMembersAndPoints = async () => {
       console.log('當前來源狀態:', isFromBattleroom ? '戰況室' : '一般挑戰賽');
@@ -173,7 +291,7 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
       const p1Name = params.get('player1_name');
       const p2Name = params.get('player2_name');
       
-      // 從 sessionStorage 獲取 member_id (可能來自戰況室或約戰頁面)
+      // 從 sessionStorage 獲取 member_id
       const p1MemberId = sessionStorage.getItem('player1_member_id');
       const p2MemberId = sessionStorage.getItem('player2_member_id');
       
@@ -201,7 +319,51 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
         allMembers = membersData || [];
         console.log('獲取到的會員:', allMembers.length, '筆');
         
-        // 處理會員 ID 參數 - 適用於戰況室和約戰頁面
+        // 2. 查詢本月有成績的會員
+        const { data: summary, error: summaryError } = await supabase
+          .from('member_monthly_score_summary')
+          .select('*')
+          .eq('team_id', dynamicTeamId)
+          .eq('year', year)
+          .eq('month', month);
+          
+        if (summaryError) {
+          console.error('查詢積分錯誤:', summaryError);
+        }
+
+        // 3. 合併成績與排名
+        const pointsMap: { [memberId: string]: { points: number; rank: number|string } } = {};
+        
+        // 從所有會員中篩選出非比賽選手的 ID
+        const regularMembers = allMembers.filter((m: any) => m.team_id !== 'CONTEST');
+        
+        console.log('查詢積分的會員 ID:', regularMembers.map((m: any) => m.id));
+        
+        // 如果有積分數據，則設置積分
+        if (summary) {
+          summary.forEach((row: any) => {
+            pointsMap[row.member_id] = { points: row.points, rank: row.rank };
+          });
+        }
+        
+        // 沒有成績的會員預設為 0 分/"-"名
+        allMembers.forEach((m: any) => {
+          if (!pointsMap[m.id]) {
+            pointsMap[m.id] = { points: 0, rank: '-' };
+          }
+        });
+        setMemberPointsMap(pointsMap);
+
+        // 4. 查詢比賽統計
+        const gameStats = await fetchRecentGameStats(dynamicTeamId);
+        setGameStatsMap(gameStats);
+
+        // 5. 排序會員列表
+        const sortedMembers = sortMembersWithGameStats(allMembers, pointsMap, gameStats);
+        debugFinalSorting(sortedMembers, pointsMap, gameStats);
+        setMembers(sortedMembers);
+        
+        // 處理會員 ID 參數
         if (allMembers.length > 0) {
           // 嘗試不同方式匹配選手 ID
           const findPlayer = (memberId: string | null) => {
@@ -246,71 +408,11 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
         }
       }
       
-      // 2. 查詢本月有成績的會員
-      const { data: summary, error: summaryError } = await supabase
-        .from('member_monthly_score_summary')
-        .select('*')
-        .eq('team_id', dynamicTeamId)
-        .eq('year', year)
-        .eq('month', month);
-        
-      if (summaryError) {
-        console.error('查詢積分錯誤:', summaryError);
-      }
-
-      // 設置會員列表
-      setMembers(allMembers);
-
-      // 3. 合併成績與排名
-      const pointsMap: { [memberId: string]: { points: number; rank: number|string } } = {};
-      
-      // 從所有會員中篩選出非比賽選手的 ID，避免將非 UUID 格式的 ID 用於查詢
-      const regularMembers = allMembers.filter((m: any) => m.team_id !== 'CONTEST');
-      
-      console.log('查詢積分的會員 ID:', regularMembers.map((m: any) => m.id));
-      
-      // 如果有積分數據，則設置積分
-      if (summary) {
-        summary.forEach((row: any) => {
-          pointsMap[row.member_id] = { points: row.points, rank: row.rank };
-        });
-      }
-      
-      // 沒有成績的會員預設為 0 分/"-"名
-      allMembers.forEach((m: any) => {
-        if (!pointsMap[m.id]) {
-          pointsMap[m.id] = { points: 0, rank: '-' };
-        }
-      });
-      setMemberPointsMap(pointsMap);
-      
-      // 如果是從戰況室進入，檢查比賽是否已完成
-      if (isFromBattleroom && matchDetailId) {
-        console.log('戰況室模式，檢查比賽是否已完成，matchDetailId:', matchDetailId);
-        const { data, error } = await supabase
-          .from('contest_match_detail')
-          .select('score')
-          .eq('match_detail_id', matchDetailId)
-          .not('score', 'is', null) // 檢查 score 是否不為 null
-          .maybeSingle();
-          
-        if (error) {
-          console.error('查詢比賽完成狀態錯誤:', error);
-        } else if (data) {
-          console.log('比賽已完成，比分:', data.score);
-          setIsMatchCompleted(true); // 比賽已完成
-        } else {
-          console.log('比賽尚未完成');
-          setIsMatchCompleted(false); // 比賽尚未完成
-        }
-      }
-      
       // 如果還沒有通過 ID 設置選手，嘗試通過名稱匹配
       if (!redMember || !greenMember) {
         console.log('嘗試通過名稱匹配選手');
         
         if (p1Name && !redMember) {
-          // 在現有清單中尋找名字匹配的選手
           const redMatch = allMembers.find(m => m.name === p1Name);
           if (redMatch) {
             console.log('匹配到紅色選手:', redMatch.name, '(ID:', redMatch.id, ')');
@@ -322,7 +424,6 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
         }
         
         if (p2Name && !greenMember) {
-          // 在現有清單中尋找名字匹配的選手
           const greenMatch = allMembers.find(m => m.name === p2Name);
           if (greenMatch) {
             console.log('匹配到綠色選手:', greenMatch.name, '(ID:', greenMatch.id, ')');
@@ -331,6 +432,27 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
           } else {
             console.log('未找到匹配的綠色選手:', p2Name);
           }
+        }
+      }
+      
+      // 如果是從戰況室進入，檢查比賽是否已完成
+      if (isFromBattleroom && matchDetailId) {
+        console.log('戰況室模式，檢查比賽是否已完成，matchDetailId:', matchDetailId);
+        const { data, error } = await supabase
+          .from('contest_match_detail')
+          .select('score')
+          .eq('match_detail_id', matchDetailId)
+          .not('score', 'is', null)
+          .maybeSingle();
+          
+        if (error) {
+          console.error('查詢比賽完成狀態錯誤:', error);
+        } else if (data) {
+          console.log('比賽已完成，比分:', data.score);
+          setIsMatchCompleted(true);
+        } else {
+          console.log('比賽尚未完成');
+          setIsMatchCompleted(false);
         }
       }
     };
