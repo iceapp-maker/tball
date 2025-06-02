@@ -38,34 +38,45 @@ interface BatchMember {
 
 // ========== 姓名唯一性檢查函數 ==========
 const checkNameUniqueness = async (name: string, team_id: string, excludeId: string | null = null) => {
-  let query = supabase
-    .from('members')
-    .select('name, id')
-    .eq('team_id', team_id)
-    .eq('name', name);
-    
-  if (excludeId) {
-    query = query.neq('id', excludeId);
-  }
-  
-  const { data: existingMembers, error } = await query;
-  
-  if (error) {
-    console.error('檢查姓名失敗:', error);
+  if (!name || !team_id) {
+    console.error('checkNameUniqueness: 缺少必要參數');
     return { isUnique: true, suggestedName: name };
   }
   
-  const isUnique = !existingMembers || existingMembers.length === 0;
-  
-  if (!isUnique) {
-    const suggestedName = await generateNumberSuffix(name, team_id, excludeId);
-    return { 
-      isUnique: false, 
-      suggestedName
-    };
+  try {
+    let query = supabase
+      .from('members')
+      .select('name, id')
+      .eq('team_id', team_id)
+      .eq('name', name.trim()); // 確保姓名去除空白
+      
+    if (excludeId) {
+      query = query.neq('id', excludeId);
+    }
+    
+    const { data: existingMembers, error } = await query;
+    
+    if (error) {
+      console.error('檢查姓名失敗:', error);
+      // 當檢查失敗時，為了安全起見返回不唯一，但提供原名作為建議
+      throw new Error(`姓名檢查失敗: ${error.message}`);
+    }
+    
+    const isUnique = !existingMembers || existingMembers.length === 0;
+    
+    if (!isUnique) {
+      const suggestedName = await generateNumberSuffix(name, team_id, excludeId);
+      return { 
+        isUnique: false, 
+        suggestedName
+      };
+    }
+    
+    return { isUnique: true, suggestedName: name };
+  } catch (error) {
+    console.error('checkNameUniqueness 發生錯誤:', error);
+    throw error; // 重新拋出錯誤讓上層處理
   }
-  
-  return { isUnique: true, suggestedName: name };
 };
 
 // ========== 生成數字後綴建議 ==========
@@ -278,12 +289,12 @@ const BatchAddMemberForm: React.FC<{ onSuccess: () => void; onCancel: () => void
       // 檢查與資料庫的重複
       const { isUnique, suggestedName } = await checkNameUniqueness(name, team_id);
       
-      // 檢查與同批次的重複 - 添加安全檢查
+      // 檢查與同批次的重複 - 改進版本
       const currentBatchNames = members.filter((m: BatchMember, i: number) => 
         i !== index && 
         m && 
         typeof m.name === 'string' && 
-        m.name.trim() === name.trim()
+        m.name.trim().toLowerCase() === name.trim().toLowerCase() // 加入大小寫不敏感比較
       );
       const hasBatchDuplicate = currentBatchNames.length > 0;
       
@@ -350,7 +361,6 @@ const BatchAddMemberForm: React.FC<{ onSuccess: () => void; onCancel: () => void
 
   // 提交批量新增
   const handleSubmit = async () => {
-    // 修正：強化 team_id 驗證
     if (!team_id) {
       alert('錯誤：無法取得團隊ID，請重新登入');
       return;
@@ -365,16 +375,78 @@ const BatchAddMemberForm: React.FC<{ onSuccess: () => void; onCancel: () => void
       return;
     }
 
-    // 檢查是否有姓名警告
-    const hasWarnings = members.some(member => member.nameWarning);
-    if (hasWarnings) {
-      alert('請解決所有姓名重複問題後再提交');
-      return;
-    }
-
     setIsSubmitting(true);
 
     try {
+      // 🚀 修復：最終提交前重新檢查所有姓名
+      console.log('正在進行最終姓名檢查...');
+      const nameCheckPromises = members.map(async (member, index) => {
+        const memberName = member.name.trim();
+        
+        // 檢查與資料庫的重複
+        const { isUnique } = await checkNameUniqueness(memberName, team_id);
+        
+        // 檢查與同批次的重複
+        const batchDuplicates = members.filter((m, i) => 
+          i !== index && m.name.trim() === memberName
+        );
+        
+        return {
+          index,
+          name: memberName,
+          isUnique,
+          hasBatchDuplicate: batchDuplicates.length > 0,
+          batchDuplicateIndices: members
+            .map((m, i) => i !== index && m.name.trim() === memberName ? i : -1)
+            .filter(i => i !== -1)
+        };
+      });
+
+      const nameCheckResults = await Promise.all(nameCheckPromises);
+      
+      // 檢查是否有重複
+      const duplicateResults = nameCheckResults.filter(
+        result => !result.isUnique || result.hasBatchDuplicate
+      );
+      
+      if (duplicateResults.length > 0) {
+        console.error('發現重複姓名:', duplicateResults);
+        
+        let errorMessage = '發現以下姓名重複，請修改後再提交：\n\n';
+        duplicateResults.forEach(result => {
+          if (!result.isUnique) {
+            errorMessage += `• "${result.name}" 在資料庫中已存在\n`;
+          }
+          if (result.hasBatchDuplicate) {
+            errorMessage += `• "${result.name}" 在此批次中重複（行 ${result.index + 1}`;
+            if (result.batchDuplicateIndices.length > 0) {
+              errorMessage += ` 和行 ${result.batchDuplicateIndices.map(i => i + 1).join(', ')}`;
+            }
+            errorMessage += '）\n';
+          }
+        });
+        
+        alert(errorMessage);
+        
+        // 更新 UI 顯示錯誤狀態
+        setMembers(currentMembers => {
+          const updatedMembers = [...currentMembers];
+          duplicateResults.forEach(result => {
+            if (result.index < updatedMembers.length) {
+              updatedMembers[result.index] = {
+                ...updatedMembers[result.index],
+                nameWarning: !result.isUnique ? '此姓名已存在' : '同批次中有重複姓名'
+              };
+            }
+          });
+          return updatedMembers;
+        });
+        
+        return; // 阻止提交
+      }
+
+      console.log('姓名檢查通過，開始插入資料');
+
       // 準備插入資料
       const insertData = members.map(member => {
         const data: any = {
@@ -384,8 +456,8 @@ const BatchAddMemberForm: React.FC<{ onSuccess: () => void; onCancel: () => void
           join_date: member.join_date,
           remark: member.remark.trim() || null,
           role: 'member',
-          team_id: team_id, // 修正：確保使用正確的 team_id
-          password_hash: null // 首次登入狀態
+          team_id: team_id,
+          password_hash: null
         };
 
         // 處理級數
@@ -778,36 +850,38 @@ const AddMemberForm: React.FC<{ onSuccess: () => void; onCancel: () => void; log
         </div>
         <div>
           <label htmlFor="name">姓名</label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={e => handleNameChange(e.target.value)}
-            required
-            className="w-full mb-2 p-2 border rounded"
-          />
-          {showNameWarning && (
-            <div className="mt-1 p-2 bg-yellow-50 border border-yellow-200 rounded">
-              <div className="text-yellow-800 text-sm">此姓名已存在</div>
-              <div className="mt-1 flex items-center gap-2">
-                <span className="text-sm text-gray-600">建議使用：</span>
-                <code className="bg-gray-100 px-2 py-1 rounded text-sm">{nameSuggestion}</code>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setName(nameSuggestion);
-                    setShowNameWarning(false);
-                  }}
-                  className="text-blue-600 hover:text-blue-800 text-sm underline"
-                >
-                  採用
-                </button>
+          <>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={e => handleNameChange(e.target.value)}
+              required
+              className="w-full mb-2 p-2 border rounded"
+            />
+            {showNameWarning && (
+              <div className="mt-1 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                <div className="text-yellow-800 text-sm">此姓名已存在</div>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="text-sm text-gray-600">建議使用：</span>
+                  <code className="bg-gray-100 px-2 py-1 rounded text-sm">{nameSuggestion}</code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setName(nameSuggestion);
+                      setShowNameWarning(false);
+                    }}
+                    className="text-blue-600 hover:text-blue-800 text-sm underline"
+                  >
+                    採用
+                  </button>
+                </div>
+                <div className="mt-1 text-xs text-gray-500">
+                  您也可以手動修改為任何其他名稱
+                </div>
               </div>
-              <div className="mt-1 text-xs text-gray-500">
-                您也可以手動修改為任何其他名稱
-              </div>
-            </div>
-          )}
+            )}
+          </>
         </div>
         <div>
           <label htmlFor="phone">電話</label>
@@ -867,77 +941,175 @@ const AddMemberForm: React.FC<{ onSuccess: () => void; onCancel: () => void; log
 
 // ========== 編輯會員表單（新增重置密碼功能） ==========
 const EditMemberForm: React.FC<{ member: Member; onSuccess: () => void; onCancel: () => void }> = ({ member, onSuccess, onCancel }) => {
-  const [name, setName] = useState(member.name);
-  const [phone, setPhone] = useState(member.phone);
-  const [join_date, setJoinDate] = useState(member.join_date);
-  const [remark, setRemark] = useState(member.remark);
+  // 安全工具函數
+  const safeStringValue = (value: any): string => {
+    if (value === null || value === undefined) {
+      return '';
+    }
+    return value.toString();
+  };
+
+  const safeTrim = (value: any): string => {
+    return safeStringValue(value).trim();
+  };
+
+  // 安全地初始化所有 state
+  const [name, setName] = useState(safeStringValue(member.name));
+  const [phone, setPhone] = useState(safeStringValue(member.phone));
+  const [join_date, setJoinDate] = useState(safeStringValue(member.join_date));
+  const [remark, setRemark] = useState(safeStringValue(member.remark));
   const [grade, setGrade] = useState(member.grade?.toString() || '');
   const [nameCheckTimeout, setNameCheckTimeout] = useState<NodeJS.Timeout | null>(null);
   const [nameSuggestion, setNameSuggestion] = useState('');
   const [showNameWarning, setShowNameWarning] = useState(false);
   const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [gradeError, setGradeError] = useState('');
 
+  // 級數驗證函數
+  const validateGrade = (gradeValue: string) => {
+    const trimmed = gradeValue.trim();
+    
+    // 允許空白
+    if (trimmed === '') {
+      setGradeError('');
+      return { isValid: true, value: null };
+    }
+    
+    // 檢查是否為正整數
+    if (!/^\d+$/.test(trimmed)) {
+      setGradeError('級數只能包含數字');
+      return { isValid: false };
+    }
+    
+    const num = parseInt(trimmed, 10);
+    if (num < 0) {
+      setGradeError('級數不能是負數');
+      return { isValid: false };
+    }
+    
+    if (num > 9999) {
+      setGradeError('級數不能超過 9999');
+      return { isValid: false };
+    }
+    
+    setGradeError('');
+    return { isValid: true, value: num };
+  };
+
+  // 處理姓名變更
   const handleNameChange = async (newName: string) => {
-    setName(newName);
+    const safeName = safeStringValue(newName);
+    setName(safeName);
     
     if (nameCheckTimeout) {
       clearTimeout(nameCheckTimeout);
     }
     
     const timeoutId = setTimeout(async () => {
-      if (newName.trim().length > 0) {
-        const { isUnique, suggestedName } = await checkNameUniqueness(newName, member.team_id, member.id);
-        if (!isUnique) {
-          setNameSuggestion(suggestedName);
-          setShowNameWarning(true);
-        } else {
+      if (safeName.trim().length > 0) {
+        try {
+          const { isUnique, suggestedName } = await checkNameUniqueness(safeName, member.team_id, member.id);
+          if (!isUnique) {
+            setNameSuggestion(suggestedName);
+            setShowNameWarning(true);
+          } else {
+            setShowNameWarning(false);
+            setNameSuggestion('');
+          }
+        } catch (error) {
+          console.error('檢查姓名時發生錯誤:', error);
+          if (error instanceof Error && 
+              (error.message.includes('network') || error.message.includes('timeout'))) {
+            console.warn('網路問題，跳過姓名檢查');
+            return;
+          }
           setShowNameWarning(false);
           setNameSuggestion('');
         }
       }
-    }, 500);
+    }, 300);
     
     setNameCheckTimeout(timeoutId);
   };
 
+  // 提交表單
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const { isUnique } = await checkNameUniqueness(name, member.team_id, member.id);
-    
-    if (!isUnique) {
-      alert('此姓名已存在，請修改後再提交');
+    if (isSubmitting) {
+      console.log('正在提交中，忽略重複提交');
       return;
     }
     
-    const updateData: any = {
-      name: name.trim(),
-      phone: phone.trim() || null,
-      join_date,
-      remark: remark.trim() || null
-    };
-
-    if (grade === '' || grade === null || grade === undefined) {
-      updateData.grade = null;
-    } else {
-      const gradeNum = parseInt(grade.toString(), 10);
-      if (isNaN(gradeNum)) {
-        alert('級數必須是數字');
+    // 驗證級數
+    const gradeValidation = validateGrade(grade);
+    if (!gradeValidation.isValid) {
+      return;
+    }
+    
+    setIsSubmitting(true);
+    
+    try {
+      console.log('開始編輯會員提交流程');
+      
+      // 1. 姓名唯一性檢查 - 加強錯誤處理
+      let nameCheckResult;
+      try {
+        const safeName = safeTrim(name);
+        nameCheckResult = await checkNameUniqueness(safeName, member.team_id, member.id);
+        console.log('姓名檢查結果:', nameCheckResult);
+      } catch (error) {
+        console.error('姓名唯一性檢查失敗:', error);
+        alert('姓名檢查失敗，請稍後再試');
         return;
       }
-      updateData.grade = gradeNum;
-    }
+      
+      if (!nameCheckResult.isUnique) {
+        alert('此姓名已存在，請修改後再提交');
+        return;
+      }
+      
+      // 2. 準備更新資料 - 使用安全函數處理所有值
+      const updateData: any = {
+        name: safeTrim(name),
+        phone: safeTrim(phone) || null,
+        join_date: safeStringValue(join_date),
+        remark: safeTrim(remark) || null,
+        grade: gradeValidation.value
+      };
 
-    const { error } = await supabase
-      .from('members')
-      .update(updateData)
-      .eq('id', member.id);
-    
-    if (error) {
-      console.error('更新失敗:', error);
-      alert('更新失敗: ' + error.message);
-    } else {
+      console.log('準備更新的資料:', updateData);
+      console.log('更新會員ID:', member.id);
+
+      // 3. 執行資料庫更新
+      const { data, error } = await supabase
+        .from('members')
+        .update(updateData)
+        .eq('id', member.id)
+        .select();
+
+      if (error) {
+        console.error('Supabase 更新失敗:', error);
+        alert(`更新失敗: ${error.message}`);
+        return;
+      }
+
+      if (!data || data.length === 0) {
+        console.error('更新沒有影響任何記錄');
+        alert('更新失敗：找不到指定的會員記錄');
+        return;
+      }
+
+      console.log('更新成功:', data);
+      alert('會員資料更新成功！');
       onSuccess();
+      
+    } catch (error: any) {
+      console.error('提交過程中發生未預期錯誤:', error);
+      alert(`發生錯誤: ${error.message || '未知錯誤'}`);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -993,36 +1165,38 @@ const EditMemberForm: React.FC<{ member: Member; onSuccess: () => void; onCancel
         
         <div>
           <label htmlFor="name">姓名</label>
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={e => handleNameChange(e.target.value)}
-            required
-            className="w-full mb-2 p-2 border rounded"
-          />
-          {showNameWarning && (
-            <div className="mt-1 p-2 bg-yellow-50 border border-yellow-200 rounded">
-              <div className="text-yellow-800 text-sm">此姓名已存在</div>
-              <div className="mt-1 flex items-center gap-2">
-                <span className="text-sm text-gray-600">建議使用：</span>
-                <code className="bg-gray-100 px-2 py-1 rounded text-sm">{nameSuggestion}</code>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setName(nameSuggestion);
-                    setShowNameWarning(false);
-                  }}
-                  className="text-blue-600 hover:text-blue-800 text-sm underline"
-                >
-                  採用
-                </button>
+          <>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={e => handleNameChange(e.target.value)}
+              required
+              className="w-full mb-2 p-2 border rounded"
+            />
+            {showNameWarning && (
+              <div className="mt-1 p-2 bg-yellow-50 border border-yellow-200 rounded">
+                <div className="text-yellow-800 text-sm">此姓名已存在</div>
+                <div className="mt-1 flex items-center gap-2">
+                  <span className="text-sm text-gray-600">建議使用：</span>
+                  <code className="bg-gray-100 px-2 py-1 rounded text-sm">{nameSuggestion}</code>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setName(nameSuggestion);
+                      setShowNameWarning(false);
+                    }}
+                    className="text-blue-600 hover:text-blue-800 text-sm underline"
+                  >
+                    採用
+                  </button>
+                </div>
+                <div className="mt-1 text-xs text-gray-500">
+                  您也可以手動修改為任何其他名稱
+                </div>
               </div>
-              <div className="mt-1 text-xs text-gray-500">
-                您也可以手動修改為任何其他名稱
-              </div>
-            </div>
-          )}
+            )}
+          </>
         </div>
         
         <div>
@@ -1060,9 +1234,13 @@ const EditMemberForm: React.FC<{ member: Member; onSuccess: () => void; onCancel
                 setGrade(value);
               }
             }}
-            className="w-full mb-2 p-2 border rounded"
-            placeholder="請輸入數字或留空"
+            className={`w-full mb-2 p-2 border rounded ${gradeError ? 'border-red-500' : ''}`}
+            placeholder="請輸入數字或留空 (最大 9999)"
+            maxLength={4}
           />
+          {gradeError && (
+            <div className="text-red-500 text-sm mb-2">{gradeError}</div>
+          )}
         </div>
         
         <div>
@@ -1123,14 +1301,28 @@ const EditMemberForm: React.FC<{ member: Member; onSuccess: () => void; onCancel
             type="button" 
             onClick={onCancel} 
             className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+            disabled={isSubmitting}
           >
             取消
           </button>
           <button 
             type="submit" 
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            className={`px-4 py-2 text-white rounded ${
+              isSubmitting 
+                ? 'bg-gray-400 cursor-not-allowed' 
+                : 'bg-blue-500 hover:bg-blue-600'
+            }`}
+            disabled={isSubmitting}
           >
-            儲存
+            {isSubmitting ? (
+              <span className="flex items-center">
+                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                儲存中...
+              </span>
+            ) : '儲存'}
           </button>
         </div>
       </form>
