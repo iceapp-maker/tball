@@ -210,6 +210,46 @@ export const usePlayerManagement = () => {
     }
   }, [members, location.search]);
   
+  // 會員排序函數：優先顯示有積分記錄的會員，其餘按會員編號排序
+  const sortMembersByPriorityAndId = (members: Member[], pointsData: any[]) => {
+    const membersWithPoints = new Set(pointsData.map(p => p.member_id));
+    
+    return members.sort((a, b) => {
+      const aHasPoints = membersWithPoints.has(a.id);
+      const bHasPoints = membersWithPoints.has(b.id);
+      
+      // 優先顯示有積分記錄的會員
+      if (aHasPoints && !bHasPoints) {
+        return -1;
+      }
+      if (!aHasPoints && bHasPoints) {
+        return 1;
+      }
+      
+      // 如果都有積分記錄或都沒有，則按會員編號排序
+      return sortByMemberId(a, b);
+    });
+  };
+  
+  // 純按會員編號排序的函數
+  const sortMembersByIdOnly = (members: Member[]) => {
+    return members.sort(sortByMemberId);
+  };
+  
+  // 提取會員編號數字進行比較的函數
+  const sortByMemberId = (a: Member, b: Member) => {
+    const getMemberNumber = (member: Member) => {
+      const memberId = member.member_id || member.id;
+      const match = memberId.match(/(\d+)$/);
+      return match ? parseInt(match[1]) : 999999;
+    };
+    
+    const aNumber = getMemberNumber(a);
+    const bNumber = getMemberNumber(b);
+    
+    return aNumber - bNumber;
+  };
+  
   // 根據使用者登入狀態查詢會員和積分
   useEffect(() => {
     // 啟動載入狀態
@@ -381,6 +421,10 @@ export const usePlayerManagement = () => {
             }
           }
           setMemberPointsMap(map);
+          
+          // 在設定積分對應表後，對會員進行排序
+          const sortedMembers = sortMembersByPriorityAndId(allMembers, pointsData);
+          setMembers(sortedMembers);
         } else {
           // 全部無資料
           const map: { [memberId: string]: { points: number; rank: number } } = {};
@@ -388,9 +432,14 @@ export const usePlayerManagement = () => {
             map[id] = { points: 0, rank: 1 };
           }
           setMemberPointsMap(map);
+          
+          // 沒有積分資料時，只按會員編號排序
+          const sortedMembers = sortMembersByIdOnly(allMembers);
+          setMembers(sortedMembers);
         }
       } else {
         setMemberPointsMap({});
+        setMembers(allMembers);
       }
       
       // 完成載入，設置狀態為false
