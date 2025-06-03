@@ -90,6 +90,13 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
   // 新增：遊戲統計狀態
   const [gameStatsMap, setGameStatsMap] = useState<{ [playerName: string]: number }>({});
 
+  // 新增：追蹤自動選擇狀態
+  const [autoSelectedPlayer, setAutoSelectedPlayer] = useState<'red' | 'green' | null>(null);
+
+  // 1. 新增狀態
+  const [originalPlayer1Name, setOriginalPlayer1Name] = useState<string | null>(null); // team1 對應選手
+  const [originalPlayer2Name, setOriginalPlayer2Name] = useState<string | null>(null); // team2 對應選手
+
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -159,6 +166,11 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
       const team2NameParam = params.get('team2_name');
       if (team1NameParam) setTeam1Name(team1NameParam);
       if (team2NameParam) setTeam2Name(team2NameParam);
+      // 新增：記錄原始對應關係
+      const p1Name = params.get('player1_name');
+      const p2Name = params.get('player2_name');
+      setOriginalPlayer1Name(p1Name || null);
+      setOriginalPlayer2Name(p2Name || null);
     }
   };
 
@@ -297,6 +309,10 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
       
       console.log('選手資訊:', { p1Name, p2Name, p1MemberId, p2MemberId });
       
+      // 檢查是否為直接進入（沒有URL參數）
+      const isDirectEntry = !p1Name && !p2Name && !p1MemberId && !p2MemberId;
+      console.log('是否為直接進入:', isDirectEntry);
+      
       let allMembers: any[] = [];
       
       // 查詢符合條件的會員
@@ -363,96 +379,111 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
         debugFinalSorting(sortedMembers, pointsMap, gameStats);
         setMembers(sortedMembers);
         
-        // 處理會員 ID 參數
-        if (allMembers.length > 0) {
-          // 嘗試不同方式匹配選手 ID
-          const findPlayer = (memberId: string | null) => {
-            if (!memberId) return null;
-            
-            // 首先嘗試匹配 member_id（戰況室格式）
-            let player = allMembers.find(m => m.member_id === memberId);
-            
-            // 如果沒找到，嘗試匹配 id（約戰頁面格式）
-            if (!player) {
-              player = allMembers.find(m => m.id === memberId);
-            }
-            
-            return player;
-          };
+        // ===== 新增：智能預選邏輯 =====
+        if (isDirectEntry && currentLoggedInUser?.name && allMembers.length > 0) {
+          // 尋找登入者在會員列表中的資料
+          const loginUserMember = allMembers.find(m => m.name === currentLoggedInUser.name);
           
-          // 處理紅色選手
-          if (p1MemberId) {
-            console.log('嘗試使用 ID 選擇紅色選手:', p1MemberId);
-            const player1 = findPlayer(p1MemberId);
-            if (player1) {
-              console.log('找到符合的紅色選手:', player1.name);
-              setRedMember(player1.id);
-              setRedMemberName(player1.name);
-            } else {
-              console.log('未找到符合ID的紅色選手');
-            }
-          }
-          
-          // 處理綠色選手
-          if (p2MemberId) {
-            console.log('嘗試使用 ID 選擇綠色選手:', p2MemberId);
-            const player2 = findPlayer(p2MemberId);
-            if (player2) {
-              console.log('找到符合的綠色選手:', player2.name);
-              setGreenMember(player2.id);
-              setGreenMemberName(player2.name);
-            } else {
-              console.log('未找到符合ID的綠色選手');
-            }
-          }
-        }
-      }
-      
-      // 如果還沒有通過 ID 設置選手，嘗試通過名稱匹配
-      if (!redMember || !greenMember) {
-        console.log('嘗試通過名稱匹配選手');
-        
-        if (p1Name && !redMember) {
-          const redMatch = allMembers.find(m => m.name === p1Name);
-          if (redMatch) {
-            console.log('匹配到紅色選手:', redMatch.name, '(ID:', redMatch.id, ')');
-            setRedMember(redMatch.id);
-            setRedMemberName(redMatch.name);
+          if (loginUserMember) {
+            console.log('直接進入模式，自動預選登入者:', loginUserMember.name);
+            setRedMemberName(loginUserMember.name);
+            setAutoSelectedPlayer('red'); // 標記為自動選擇
           } else {
-            console.log('未找到匹配的紅色選手:', p1Name);
+            console.log('未在會員列表中找到登入者:', currentLoggedInUser.name);
           }
-        }
-        
-        if (p2Name && !greenMember) {
-          const greenMatch = allMembers.find(m => m.name === p2Name);
-          if (greenMatch) {
-            console.log('匹配到綠色選手:', greenMatch.name, '(ID:', greenMatch.id, ')');
-            setGreenMember(greenMatch.id);
-            setGreenMemberName(greenMatch.name);
-          } else {
-            console.log('未找到匹配的綠色選手:', p2Name);
-          }
-        }
-      }
-      
-      // 如果是從戰況室進入，檢查比賽是否已完成
-      if (isFromBattleroom && matchDetailId) {
-        console.log('戰況室模式，檢查比賽是否已完成，matchDetailId:', matchDetailId);
-        const { data, error } = await supabase
-          .from('contest_match_detail')
-          .select('score')
-          .eq('match_detail_id', matchDetailId)
-          .not('score', 'is', null)
-          .maybeSingle();
-          
-        if (error) {
-          console.error('查詢比賽完成狀態錯誤:', error);
-        } else if (data) {
-          console.log('比賽已完成，比分:', data.score);
-          setIsMatchCompleted(true);
         } else {
-          console.log('比賽尚未完成');
-          setIsMatchCompleted(false);
+          // 處理會員 ID 參數（原有邏輯）
+          if (allMembers.length > 0) {
+            // 嘗試不同方式匹配選手 ID
+            const findPlayer = (memberId: string | null) => {
+              if (!memberId) return null;
+              
+              // 首先嘗試匹配 member_id（戰況室格式）
+              let player = allMembers.find(m => m.member_id === memberId);
+              
+              // 如果沒找到，嘗試匹配 id（約戰頁面格式）
+              if (!player) {
+                player = allMembers.find(m => m.id === memberId);
+              }
+              
+              return player;
+            };
+            
+            // 處理紅色選手
+            if (p1MemberId) {
+              console.log('嘗試使用 ID 選擇紅色選手:', p1MemberId);
+              const player1 = findPlayer(p1MemberId);
+              if (player1) {
+                console.log('找到符合的紅色選手:', player1.name);
+                setRedMember(player1.id);
+                setRedMemberName(player1.name);
+              } else {
+                console.log('未找到符合ID的紅色選手');
+              }
+            }
+            
+            // 處理綠色選手
+            if (p2MemberId) {
+              console.log('嘗試使用 ID 選擇綠色選手:', p2MemberId);
+              const player2 = findPlayer(p2MemberId);
+              if (player2) {
+                console.log('找到符合的綠色選手:', player2.name);
+                setGreenMember(player2.id);
+                setGreenMemberName(player2.name);
+              } else {
+                console.log('未找到符合ID的綠色選手');
+              }
+            }
+          }
+        }
+        // ===== 智能預選邏輯結束 =====
+        
+        // 如果還沒有通過 ID 設置選手，嘗試通過名稱匹配（原有邏輯）
+        if (!redMember || !greenMember) {
+          console.log('嘗試通過名稱匹配選手');
+          
+          if (p1Name && !redMember) {
+            const redMatch = allMembers.find(m => m.name === p1Name);
+            if (redMatch) {
+              console.log('匹配到紅色選手:', redMatch.name, '(ID:', redMatch.id, ')');
+              setRedMember(redMatch.id);
+              setRedMemberName(redMatch.name);
+            } else {
+              console.log('未找到匹配的紅色選手:', p1Name);
+            }
+          }
+          
+          if (p2Name && !greenMember) {
+            const greenMatch = allMembers.find(m => m.name === p2Name);
+            if (greenMatch) {
+              console.log('匹配到綠色選手:', greenMatch.name, '(ID:', greenMatch.id, ')');
+              setGreenMember(greenMatch.id);
+              setGreenMemberName(greenMatch.name);
+            } else {
+              console.log('未找到匹配的綠色選手:', p2Name);
+            }
+          }
+        }
+        
+        // 如果是從戰況室進入，檢查比賽是否已完成（原有邏輯）
+        if (isFromBattleroom && matchDetailId) {
+          console.log('戰況室模式，檢查比賽是否已完成，matchDetailId:', matchDetailId);
+          const { data, error } = await supabase
+            .from('contest_match_detail')
+            .select('score')
+            .eq('match_detail_id', matchDetailId)
+            .not('score', 'is', null)
+            .maybeSingle();
+            
+          if (error) {
+            console.error('查詢比賽完成狀態錯誤:', error);
+          } else if (data) {
+            console.log('比賽已完成，比分:', data.score);
+            setIsMatchCompleted(true);
+          } else {
+            console.log('比賽尚未完成');
+            setIsMatchCompleted(false);
+          }
         }
       }
     };
@@ -927,17 +958,26 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
   const submitGameResult = async () => {
     // 如果已儲存過或比賽已完成，就不再重複儲存
     if (hasSaved || isMatchCompleted) {
+      console.log('=== 儲存檢查 ===');
+      console.log('已儲存:', hasSaved, '比賽已完成:', isMatchCompleted);
       return;
     }
 
     // 修改驗證條件
     if (!redMemberName || !greenMemberName) {
+      console.log('=== 驗證失敗 ===');
+      console.log('紅色選手:', redMemberName, '綠色選手:', greenMemberName);
       setSubmitStatus('error');
       setSubmitMessage('請選擇所有位置的會員');
       setShowSubmitMessage(true);
       setTimeout(() => setShowSubmitMessage(false), 3000);
       return;
     }
+
+    console.log('=== 開始儲存比賽結果（基於星號數量判定） ===');
+    console.log('選手配置:');
+    console.log('  紅色選手 (player1):', redMemberName);
+    console.log('  綠色選手 (player2):', greenMemberName);
 
     setSubmitStatus('loading');
     setShowSubmitMessage(true);
@@ -947,15 +987,33 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
       // 取得登入者名稱
       const loginUserName = currentLoggedInUser?.name ?? '訪客';
 
-      // Determine the winning player based on the number of wins (stars)
-      const winningPlayer = redWins > greenWins ? 'red' : 'green';
+      // 獲取位置勝場數（星號數量）
+      const topWins = getWins(true);   // 上方位置的勝場（星號數）
+      const bottomWins = getWins(false); // 下方位置的勝場（星號數）
       
-      // 確認上下交換次數是奇數還是偶數
-      const isSwapped = swapCount % 2 === 1;
-      
-      // 根據交換次數結果選擇比分表示方式
-      const score = isSwapped ? `${greenWins}:${redWins}` : `${redWins}:${greenWins}`;
-      console.log('儲存比分:', score, '(原始比分:', `${redWins}:${greenWins}`, '交換次數:', swapCount, '是否已交換:', isSwapped, ')');
+      console.log('=== 簡化比分計算 ===');
+      console.log('當前界面顯示：');
+      console.log('  上方選手:', redMemberName, '星號數:', topWins);
+      console.log('  下方選手:', greenMemberName, '星號數:', bottomWins);
+
+      // 【挑戰賽】：直接使用界面顯示的結果
+      const challengePlayer1Score = topWins;    // redMemberName的得分
+      const challengePlayer2Score = bottomWins; // greenMemberName的得分
+      const challengeScore = `${challengePlayer1Score}:${challengePlayer2Score}`;
+      console.log('=== 挑戰賽比分 ===');
+      console.log(`${redMemberName}:${greenMemberName} = ${challengeScore}`);
+
+      // 判定獲勝者（用挑戰賽格式）
+      let winner = '';
+      if (challengePlayer1Score > challengePlayer2Score) {
+        winner = `紅色選手 ${redMemberName} 獲勝 (${challengePlayer1Score}:${challengePlayer2Score})`;
+      } else if (challengePlayer2Score > challengePlayer1Score) {
+        winner = `綠色選手 ${greenMemberName} 獲勝 (${challengePlayer2Score}:${challengePlayer1Score})`;
+      } else {
+        winner = `平局 (${challengePlayer1Score}:${challengePlayer2Score})`;
+      }
+      console.log('=== 獲勝判定 ===');
+      console.log(winner);
       
       // 獲取會員名稱
       const redMemberObj = members.find(m => m.name === redMemberName);
@@ -964,28 +1022,19 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
       const redMemberNameVal = redMemberObj?.name || redMemberName || '';
       const greenMemberNameVal = greenMemberObj?.name || greenMemberName || '';
       
-      console.log('會員資料:', members);
-      console.log('選擇的會員:', { redMemberName, greenMemberName });
-      console.log('會員名稱:', { redMemberNameVal, greenMemberNameVal });
-      
-      // 準備要提交的資料 - 確保欄位名稱與資料庫結構完全匹配
+      // 準備要提交的資料（始終用挑戰賽格式）
       const gameData = {
-        player1: redMemberNameVal,  // 紅色會員名稱
-        player2: greenMemberNameVal,  // 綠色會員名稱
-        score: score,
-        created_by_name: loginUserName, // 登錄者
-        notes: `${new Date().toISOString()} - 單打比賽`,
-        team_id: currentLoggedInUser?.team_id || 'T', // 沒登入時給預設值 'T'
-        source_type: sourceType, // 預設為 'challenge'
-        source_id: isFromBattleroom && matchDetailId ? matchDetailId.toString() : null, // 如果是從戰況室進入，記錄match_detail_id
+        player1: redMemberNameVal,
+        player2: greenMemberNameVal,
+        score: challengeScore, // 【重要】始終使用挑戰賽格式記錄到 g_single_game
+        created_by_name: loginUserName,
+        notes: `${new Date().toISOString()} - 單打比賽 - ${winner}`,
+        team_id: currentLoggedInUser?.team_id || 'T',
+        source_type: sourceType,
+        source_id: isFromBattleroom && matchDetailId ? matchDetailId.toString() : null,
       };
-      
-      // 記錄關聯信息
-      if (isFromBattleroom && matchDetailId) {
-        console.log(`關聯戰況室比賽ID: ${matchDetailId} 到單打記錄`);
-      }
-      
-      console.log('準備提交的資料:', gameData);
+      console.log('=== 準備提交的資料（挑戰賽格式）===');
+      console.log('gameData:', gameData);
       
       // Insert the game result into the g_single_game table
       const { data, error } = await supabase
@@ -1002,107 +1051,233 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
         setSubmitMessage('比賽結果已成功儲存！');
         setHasSaved(true);
         
-        // 如果是從戰況室進入，更新比賽詳情的比分
+        // 【戰況室特有】更新比賽詳情時使用隊伍比分格式
         if (isFromBattleroom && matchDetailId) {
           try {
-            console.log('從戰況室進入，開始更新 contest_match_detail 資料表...');
+            console.log('=== 🎯 戰況室模式：更新比賽詳情開始 ===');
+            console.log('📋 基本參數:', {
+              isFromBattleroom,
+              matchDetailId,
+              matchDetailIdType: typeof matchDetailId
+            });
             
-            // 首先獲取 match_id
+            // === 步驟 1: 獲取 match_id ===
+            console.log('🔍 步驟 1: 查詢 match_id...');
             const { data: matchDetailData, error: matchDetailError } = await supabase
               .from('contest_match_detail')
-              .select('match_id')
+              .select('match_id, match_detail_id, score, winner_team_id')
               .eq('match_detail_id', matchDetailId)
               .single();
               
+            console.log('📊 查詢 contest_match_detail 結果:', {
+              data: matchDetailData,
+              error: matchDetailError,
+              查詢條件: { match_detail_id: matchDetailId }
+            });
+              
             if (matchDetailError) {
-              console.error('獲取 match_id 失敗:', matchDetailError);
+              console.error('❌ 獲取 match_id 失敗:', matchDetailError);
+              console.error('❌ 錯誤詳情:', {
+                message: matchDetailError.message,
+                details: matchDetailError.details,
+                hint: matchDetailError.hint,
+                code: matchDetailError.code
+              });
+              return;
+            }
+            
+            if (!matchDetailData) {
+              console.error('❌ 未找到對應的 match_detail_id:', matchDetailId);
               return;
             }
             
             const matchId = matchDetailData.match_id;
-            console.log('獲取到 match_id:', matchId);
+            console.log('✅ 成功獲取 match_id:', matchId);
+            console.log('📋 當前比賽詳情狀態:', {
+              現有比分: matchDetailData.score,
+              現有獲勝隊伍: matchDetailData.winner_team_id
+            });
             
-            // 然後獲取 team1_id 和 team2_id
+            // === 步驟 2: 獲取隊伍 ID ===
+            console.log('🔍 步驟 2: 查詢隊伍資料...');
             const { data: matchData, error: matchError } = await supabase
               .from('contest_match')
-              .select('team1_id, team2_id')
+              .select('team1_id, team2_id, match_id')
               .eq('match_id', matchId)
               .single();
               
+            console.log('📊 查詢 contest_match 結果:', {
+              data: matchData,
+              error: matchError,
+              查詢條件: { match_id: matchId }
+            });
+              
             if (matchError) {
-              console.error('獲取隊伍 ID 失敗:', matchError);
+              console.error('❌ 獲取隊伍 ID 失敗:', matchError);
+              console.error('❌ 錯誤詳情:', {
+                message: matchError.message,
+                details: matchError.details,
+                hint: matchError.hint,
+                code: matchError.code
+              });
               return;
             }
             
-            console.log('獲取到隊伍資料:', matchData);
+            if (!matchData) {
+              console.error('❌ 未找到對應的 match_id:', matchId);
+              return;
+            }
             
-            // 根據獲勝方決定 winner_team_id
-            // 已在上方計算了 isSwapped
-            console.log('儲存比分時的交換次數:', swapCount, '是否已交換:', isSwapped);
+            console.log('✅ 成功獲取隊伍資料:', matchData);
             
-            // 如果交換次數為奇數，則需要翻轉勝負判斷
-            const winnerTeamId = isSwapped 
-              ? (redWins > greenWins ? matchData.team2_id : matchData.team1_id)
-              : (redWins > greenWins ? matchData.team1_id : matchData.team2_id);
+            // === 步驟 3: 計算比分 ===
+            console.log('🧮 步驟 3: 計算比分...');
+            console.log('📋 原始對應關係:');
+            console.log('  team1 對應選手:', originalPlayer1Name);
+            console.log('  team2 對應選手:', originalPlayer2Name);
+            console.log('📋 當前界面顯示:');
+            console.log('  上方選手:', redMemberName, '星號數:', topWins);
+            console.log('  下方選手:', greenMemberName, '星號數:', bottomWins);
             
-            console.log('獲勝隊伍 ID:', winnerTeamId, 
-              '(紅色勝場:', redWins, '綠色勝場:', greenWins, 
-              '交換次數:', swapCount, '是否已交換:', isSwapped, ')');
+            // 根據原始對應關係計算每個隊伍的得分
+            let team1Score, team2Score;
             
-            // 從當前比賽詳情獲取權限號
-            const { data: currentMatchDetail, error: currentMatchDetailError } = await supabase
+            if (originalPlayer1Name === redMemberName) {
+              // team1的選手在上方（紅色區塊）
+              team1Score = topWins;
+              team2Score = bottomWins;
+              console.log('✅ team1選手', originalPlayer1Name, '在上方，得分:', team1Score);
+              console.log('✅ team2選手', originalPlayer2Name, '在下方，得分:', team2Score);
+            } else if (originalPlayer1Name === greenMemberName) {
+              // team1的選手在下方（綠色區塊）
+              team1Score = bottomWins;
+              team2Score = topWins;
+              console.log('✅ team1選手', originalPlayer1Name, '在下方，得分:', team1Score);
+              console.log('✅ team2選手', originalPlayer2Name, '在上方，得分:', team2Score);
+            } else {
+              console.error('❌ 無法匹配 team1 選手:', {
+                originalPlayer1Name,
+                currentPlayers: { red: redMemberName, green: greenMemberName }
+              });
+              return;
+            }
+            
+            // === 步驟 4: 判定獲勝隊伍 ===
+            console.log('🏆 步驟 4: 判定獲勝隊伍...');
+            const battleWinnerTeamId = team1Score > team2Score ? matchData.team1_id : 
+                                      team2Score > team1Score ? matchData.team2_id : null;
+            
+            console.log('📊 隊伍比分:', `team1(${team1Score}) vs team2(${team2Score})`);
+            console.log('🏆 獲勝隊伍 ID:', battleWinnerTeamId);
+            
+            if (battleWinnerTeamId) {
+              console.log('✅ 獲勝原因:', team1Score > team2Score ? 
+                `team1 得分較高 (${team1Score} > ${team2Score})` : 
+                `team2 得分較高 (${team2Score} > ${team1Score})`);
+            } else {
+              console.log('🤝 比賽結果: 平局');
+            }
+            
+            // === 步驟 5: 準備更新資料 ===
+            const finalContestScore = `${team1Score}:${team2Score}`;
+            console.log('📝 戰況室比分格式:', finalContestScore);
+            
+            const updateData = {
+              score: finalContestScore,
+              winner_team_id: battleWinnerTeamId
+            };
+            
+            console.log('📋 準備更新的資料:', updateData);
+            console.log('📋 更新條件:', { match_detail_id: matchDetailId });
+            
+            // === 步驟 6: 執行更新 ===
+            console.log('💾 步驟 6: 執行資料庫更新...');
+            
+            // 先檢查當前登入用戶的權限
+            console.log('👤 當前登入用戶資訊:', {
+              name: currentLoggedInUser?.name,
+              role: currentLoggedInUser?.role,
+              team_id: currentLoggedInUser?.team_id
+            });
+            
+            const { data: updateResult, error: updateScoreError } = await supabase
               .from('contest_match_detail')
-              .select('table_no')
+              .update(updateData)
               .eq('match_detail_id', matchDetailId)
-              .single();
-            
-            if (currentMatchDetailError) {
-              console.error('獲取當前比賽權限號失敗:', currentMatchDetailError);
-              return;
-            }
-            
-            // 只記錄目前比賽的狀態，不進行桌次處理
-            console.log('當前比賽狀態 - 比賽 ID:', matchDetailId, '分數:', score, '獲勝隊伍:', winnerTeamId);
-            
-            // 只更新比分和獲勝隊伍 ID，桌次分配由後端 SQL 觸發器處理
-            const { error: updateScoreError } = await supabase
-              .from('contest_match_detail')
-              .update({ 
-                score: score,
-                winner_team_id: winnerTeamId
-              })
-              .eq('match_detail_id', matchDetailId);
+              .select(); // 加上 select() 來獲取更新後的資料
+              
+            console.log('📊 更新結果:', {
+              data: updateResult,
+              error: updateScoreError
+            });
               
             if (updateScoreError) {
-              console.error('更新比賽分數失敗:', updateScoreError);
-              return; // 如果更新分數失敗，直接返回
-            } 
-            
-            console.log('比賽分數更新成功，更新資料:', { score, winner_team_id: winnerTeamId });
-            console.log('桌次分配由後端 SQL 觸發器自動處理');
-            
-            // 儲存獲勝隊伍 ID
-            setWinnerTeamId(winnerTeamId);
-            
-            // 查詢獲勝隊伍名稱
-            try {
-              const { data: teamData, error: teamError } = await supabase
-                .from('contest_team')
-                .select('name')
-                .eq('contest_team_id', winnerTeamId)
+              console.error('❌ 更新比賽分數失敗:', updateScoreError);
+              console.error('❌ 詳細錯誤資訊:', {
+                message: updateScoreError.message,
+                details: updateScoreError.details,
+                hint: updateScoreError.hint,
+                code: updateScoreError.code
+              });
+              
+              // 嘗試檢查是否是權限問題
+              console.log('🔍 嘗試檢查資料庫權限...');
+              const { data: testRead, error: testReadError } = await supabase
+                .from('contest_match_detail')
+                .select('match_detail_id, score, winner_team_id')
+                .eq('match_detail_id', matchDetailId)
                 .single();
                 
-              if (teamError) {
-                console.error('查詢獲勝隊伍名稱失敗:', teamError);
-              } else if (teamData) {
-                setWinnerTeamName(teamData.name);
-                console.log('獲勝隊伍名稱:', teamData.name);
+              console.log('📊 讀取權限測試:', {
+                canRead: !testReadError,
+                readData: testRead,
+                readError: testReadError
+              });
+              
+              return;
+            } 
+            
+            console.log('✅ 戰況室比賽分數更新成功！');
+            console.log('📊 更新後的資料:', updateResult);
+            
+            // === 步驟 7: 查詢獲勝隊伍名稱 ===
+            if (battleWinnerTeamId) {
+              console.log('🔍 步驟 7: 查詢獲勝隊伍名稱...');
+              
+              // 儲存獲勝隊伍 ID
+              setWinnerTeamId(battleWinnerTeamId);
+              
+              try {
+                const { data: teamData, error: teamError } = await supabase
+                  .from('contest_team')
+                  .select('name, contest_team_id')
+                  .eq('contest_team_id', battleWinnerTeamId)
+                  .single();
+                  
+                console.log('📊 查詢隊伍名稱結果:', {
+                  data: teamData,
+                  error: teamError,
+                  查詢條件: { contest_team_id: battleWinnerTeamId }
+                });
+                  
+                if (teamError) {
+                  console.error('❌ 查詢獲勝隊伍名稱失敗:', teamError);
+                } else if (teamData) {
+                  setWinnerTeamName(teamData.name);
+                  console.log('✅ 獲勝隊伍名稱:', teamData.name);
+                } else {
+                  console.warn('⚠️ 未找到獲勝隊伍資料');
+                }
+              } catch (teamErr) {
+                console.error('❌ 查詢獲勝隊伍資料發生錯誤:', teamErr);
               }
-            } catch (teamErr) {
-              console.error('查詢獲勝隊伍資料發生錯誤:', teamErr);
             }
+            
+            console.log('🎉 戰況室更新流程完成！');
+            
           } catch (updateErr) {
-            console.error('更新比賽詳情時發生錯誤:', updateErr);
+            console.error('💥 更新比賽詳情時發生嚴重錯誤:', updateErr);
+            console.error('💥 錯誤堆疊:', updateErr.stack);
           }
         }
         
@@ -1111,8 +1286,8 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
           console.log('從戰況室進入並完成儲存，準備返回上一頁...');
           setTimeout(() => {
             console.log('自動返回上一頁');
-            navigate(-1); // 使用 navigate(-1) 返回上一頁
-          }, 1500); // 等待 1.5 秒後自動返回，讓用戶有時間看到成功訊息
+            navigate(-1);
+          }, 1500);
         }
         
         // 儲存成功後自動重置遊戲狀態
@@ -1319,6 +1494,35 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
     }
   };
 
+  // 新增：處理選手選擇變更，清除自動選擇標記
+  const handlePlayerSelection = (player: 'red' | 'green', memberName: string) => {
+    if (player === 'red') {
+      setRedMemberName(memberName);
+      // 如果是紅色選手且之前是自動選擇，清除標記
+      if (autoSelectedPlayer === 'red') {
+        setAutoSelectedPlayer(null);
+      }
+    } else {
+      setGreenMemberName(memberName);
+      // 如果是綠色選手且之前是自動選擇，清除標記
+      if (autoSelectedPlayer === 'green') {
+        setAutoSelectedPlayer(null);
+      }
+    }
+  };
+
+  // 新增：獲取選手選單的樣式
+  const getPlayerSelectStyle = (player: 'red' | 'green') => {
+    const baseStyle = "w-full p-2 rounded bg-gray-800 text-white border border-gray-700";
+    
+    // 如果是自動選擇的選手，添加特殊樣式
+    if (autoSelectedPlayer === player) {
+      return `${baseStyle} border-yellow-400 shadow-lg shadow-yellow-400/30`;
+    }
+    
+    return baseStyle;
+  };
+
   return (
     <div className="p-4">
       {/* 顯示登入會員名稱與團隊 */}
@@ -1421,9 +1625,9 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
               <select
                 value={redMemberName}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                  setRedMemberName(e.target.value);
+                  handlePlayerSelection('red', e.target.value);
                 }}
-                className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700"
+                className={getPlayerSelectStyle('red')}
               >
                 <option value="">選擇選手</option>
                 {members.map((member: { id: string; name: string; team_id: string }) => (
@@ -1489,6 +1693,13 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
                   setGreenMemberName(prevTop);
                   // 交換次數加一
                   setSwapCount(prev => prev + 1);
+                  console.log('=== 交換選手與顏色區塊對應關係 ===');
+                  console.log('交換前：');
+                  console.log('  紅色區塊(上方)：', prevTop);
+                  console.log('  綠色區塊(下方)：', prevBottom);
+                  console.log('交換後：');
+                  console.log('  紅色區塊(上方)：', prevBottom);
+                  console.log('  綠色區塊(下方)：', prevTop);
                   console.log('交換次數:', swapCount + 1); // +1 因為 state 更新是非同步的
                 }}
               >
@@ -1535,9 +1746,9 @@ function SingleGame({ currentLoggedInUser }: SingleGameProps) {
               <select
                 value={greenMemberName}
                 onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                  setGreenMemberName(e.target.value);
+                  handlePlayerSelection('green', e.target.value);
                 }}
-                className="w-full p-2 rounded bg-gray-800 text-white border border-gray-700"
+                className={getPlayerSelectStyle('green')}
               >
                 <option value="">選擇選手</option>
                 {members.map((member: { id: string; name: string; team_id: string }) => (
