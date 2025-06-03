@@ -326,12 +326,18 @@
                 <div class="feature-grid">
                     <div class="feature-card">
                         <h4>選手下拉選單</h4>
+                        <div class="screenshot-container">
+                            <img src="https://github.com/iceapp-maker/tball/blob/main/docs/images/player_list.png?raw=true" alt="選手清單排序" class="screenshot">
+                            <div class="screenshot-caption">圖：選手下拉選單 - 系統自動將常用選手置前</div>
+                        </div>
                         <p>每個顏色區塊上方都有選手選擇下拉選單，顯示格式為：</p>
                         <p><strong>選手姓名（積分/排名）</strong></p>
                         <ul>
-                            <li>積分：該選手的當前積分</li>
-                            <li>排名：在團隊中的排名</li>
-                            <li>已被選用的選手在下拉式清單中呈現禁止選取狀態</li>
+                            <li><strong>智慧排序</strong>：系統自動將常用的選手名單置前，便於常用選手選取</li>
+                            <li><strong>積分顯示</strong>：該選手的當前積分</li>
+                            <li><strong>排名顯示</strong>：在團隊中的排名</li>
+                            <li><strong>防重複選取</strong>：已被選用的選手在下拉式清單中呈現禁止選取狀態</li>
+                            <li><strong>適用範圍</strong>：單打和雙打頁面都使用相同的優化排序</li>
                         </ul>
                     </div>
                     
@@ -609,3 +615,75 @@
                         <li><strong>開始比賽</strong>：點擊顏色區塊為獲分方加分</li>
                         <li><strong>注意換邊</strong>：觀察閃爍提示，了解當前發球方</li>
                         <li><strong>系統不判定那一局為最終局，比賽結束時由使用者於最終局按下儲存結果</strong></li>
+                    </ol>
+                </div>
+            </div>
+
+            <!-- 常見問題 -->
+            <div class="section">
+                <h2>常見問題與注意事項</h2>
+                
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <h4>❓ 選手選擇問題</h4>
+                        <ul>
+                            <li><strong>問</strong>：為什麼某些選手無法選擇？</li>
+                            <li><strong>答</strong>：已被選用的選手會自動禁用，避免重複選取</li>
+                            <li><strong>問</strong>：選手清單順序是如何排列的？</li>
+                            <li><strong>答</strong>：系統會自動將常用選手置前，方便快速選取</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>❓ 計分規則問題</h4>
+                        <ul>
+                            <li><strong>問</strong>：什麼時候會自動交換發球權？</li>
+                            <li><strong>答</strong>：每2分交換一次，平分後每分都交換</li>
+                            <li><strong>問</strong>：FG模式有什麼特殊規則？</li>
+                            <li><strong>答</strong>：任一方達5分時會執行特殊的位置調整</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>❓ 操作技巧</h4>
+                        <ul>
+                            <li><strong>建議</strong>：比賽前先調整好選手位置</li>
+                            <li><strong>建議</strong>：注意觀察閃爍提示確認發球方</li>
+                            <li><strong>建議</strong>：使用音效可以更好地掌握比賽節奏</li>
+                            <li><strong>建議</strong>：善用W按鈕處理特殊情況</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="feature-card">
+                        <h4>❓ 儲存相關</h4>
+                        <ul>
+                            <li><strong>注意</strong>：確保所有選手都已選擇再儲存</li>
+                            <li><strong>注意</strong>：每場比賽只能儲存一次</li>
+                            <li><strong>注意</strong>：儲存後可選擇結束或繼續下一盤</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 版本資訊 -->
+            <div class="section">
+                <h2>版本更新資訊</h2>
+                
+                <div class="info-box">
+                    <h4>📝 最新更新</h4>
+                    <ul>
+                        <li><strong>選手清單優化</strong>：新增智慧排序功能，常用選手自動置前</li>
+                        <li><strong>適用範圍</strong>：單打和雙打頁面都支援新的排序邏輯</li>
+                        <li><strong>使用體驗</strong>：大幅提升選手選取的便利性</li>
+                    </ul>
+                </div>
+                
+                <div class="highlight-box">
+                    <h4>💡 使用建議</h4>
+                    <p>新的選手清單排序功能會根據選手的比賽活躍度自動調整順序，經常參與比賽的選手會優先顯示在下拉選單的前面，讓記分員能夠更快速地找到並選擇選手。</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
