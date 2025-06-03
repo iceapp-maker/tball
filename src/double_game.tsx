@@ -223,7 +223,7 @@ function DoubleGame() {
 
   // 音效相關功能已移至 useAudioEffects hook
   // 重置遊戲狀態
-  const resetGameState = (preserveFG = false) => {
+  const resetGameState = (preserveFG = false, resetSwapCount = false) => {
     setTopScore(0);
     setBottomScore(0);
     setTopColors(['red', 'green']);
@@ -233,30 +233,27 @@ function DoubleGame() {
     previousTopScoreRef.current = 0;
     previousBottomScoreRef.current = 0;
     previousTotalScoreRef.current = 0;
-    
     // 只有在不保留FG狀態時才重置FG相關設置
     if (!preserveFG) {
       fgSpecialRuleAppliedRef.current = false;
-      // 不重置isFinalGame，而是保留其當前狀態
     } else {
-      // 如果是保留FG狀態，只重置FG特殊規則的應用標記
       fgSpecialRuleAppliedRef.current = false;
     }
-    
     hasReachedFiveRef.current = false;
-
     const isOddGame = currentGameNumber % 2 === 1;
     setIsTopFlashing(!isOddGame);
-    
-    // 只有在不保留FG狀態時才設置isFinalGame
     if (!preserveFG) {
       setIsFinalGame(currentGameNumber === 5);
     }
-    
     // Reset drag and drop states
     setShowWinConfirmation(false);
     setWinSide(null);
     setShowPostSaveModal(false);
+    // *** 新增：選擇性重置交換次數 ***
+    if (resetSwapCount) {
+      setPositionSwapCount(0);
+      console.log('重置遊戲狀態：已重置交換次數為 0');
+    }
   };
 
   useEffect(() => {
@@ -1022,83 +1019,115 @@ function DoubleGame() {
       // 取得登入者名稱
       const loginUserName = currentLoggedInUser?.name ?? '訪客';
 
-      // 獲取實際勝場數作為分數（基於星號數量）
+      // *** 修正：比分格式始終為 上方:下方 ***
       const topWins = getWins(true);  // 上方獲勝場次
       const bottomWins = getWins(false);  // 下方獲勝場次
-      
+
       console.log('實際獲勝場次:', { topWins, bottomWins });
       console.log('遊戲歷史:', gameHistory);
 
-      // --- 送出時改用 id 查找會員資料 ---
+      const formattedScore = `${topWins}:${bottomWins}`;
+
+      console.log('DEBUG: 比分計算結果:', {
+        topWins,
+        bottomWins,
+        formattedScore,
+        說明: '比分格式為 上方勝場:下方勝場，不考慮隊伍交換'
+      });
+
+      // 判斷哪一方獲勝（基於目前顯示的上下位置）
+      const isTopWinner = topWins > bottomWins;
+
+      // 判斷是否有交換過場地，用於後續的獲勝選手判斷
+      const isSwapped = positionSwapCount % 2 === 1;
+
+      // 詳細記錄交換前後的選手分佈和隊伍對應
       const getMemberById = (id: string): Member | undefined => {
         return members.find((member: Member) => member.id === id);
       };
-
-      // 送出時用 id 查找會員資訊
       const red = getMemberById(redMember);
       const green = getMemberById(greenMember);
       const blue = getMemberById(blueMember);
       const yellow = getMemberById(yellowMember);
-      
-      // 判斷哪一方獲勝
-      const isTopWinner = topWins > bottomWins;
-      
-      // 判斷是否有交換過場地，用於後續的比分計算
-      const isSwapped = positionSwapCount % 2 === 1;
-      console.log('DEBUG: 目前交換狀態:', {
-        positionSwapCount,
-        isSwapped: isSwapped ? '已交換' : '未交換'
+
+      console.log('DEBUG: 選手隊伍對應詳情:', {
+        交換次數: positionSwapCount,
+        交換狀態: isSwapped ? '已交換' : '未交換',
+        當前選手分佈: {
+          上方紅色區塊: { 選手: red?.name, ID: redMember },
+          上方綠色區塊: { 選手: green?.name, ID: greenMember },
+          下方藍色區塊: { 選手: blue?.name, ID: blueMember },
+          下方黃色區塊: { 選手: yellow?.name, ID: yellowMember }
+        },
+        隊伍歸屬: {
+          team1成員: team1Members,
+          team2成員: team2Members,
+          紅色區塊選手歸屬: team1Members.includes(red?.name) ? 'team1' : (team2Members.includes(red?.name) ? 'team2' : '未知'),
+          綠色區塊選手歸屬: team1Members.includes(green?.name) ? 'team1' : (team2Members.includes(green?.name) ? 'team2' : '未知'),
+          藍色區塊選手歸屬: team1Members.includes(blue?.name) ? 'team1' : (team2Members.includes(blue?.name) ? 'team2' : '未知'),
+          黃色區塊選手歸屬: team1Members.includes(yellow?.name) ? 'team1' : (team2Members.includes(yellow?.name) ? 'team2' : '未知')
+        },
+        勝負統計: {
+          上方勝場: topWins,
+          下方勝場: bottomWins,
+          判定上方獲勝: isTopWinner,
+          比分格式: formattedScore
+        }
       });
-      
-      // 根據交換次數調整獲勝隊伍
-      // 如果沒有交換，則 isTopWinner 對應 team1，否則 isTopWinner 對應 team2
-      let tempWinnerTeamId;
-      if (isSwapped) {
-        // 已交換，頂部獲勝對應 team2，底部獲勝對應 team1
-        tempWinnerTeamId = isTopWinner ? team2Id : team1Id;
-        console.log('DEBUG: 已交換狀態下，獲勝隊伍為:', isTopWinner ? 'team2(頂部)' : 'team1(底部)');
+
+      // *** 獲勝選手判斷邏輯保持不變 ***
+      let win1_name, win2_name;
+      if (!isContestMode) {
+        // 一般挑戰賽：根據交換狀態調整獲勝選手判斷
+        if (isSwapped) {
+          // 已交換狀態：藍黃在上，紅綠在下
+          if (isTopWinner) {
+            win1_name = blue?.name;   // 藍色選手
+            win2_name = yellow?.name; // 黃色選手
+          } else {
+            win1_name = red?.name;    // 紅色選手
+            win2_name = green?.name;  // 綠色選手
+          }
+        } else {
+          // 未交換狀態：紅綠在上，藍黃在下
+          if (isTopWinner) {
+            win1_name = red?.name;    // 紅色選手
+            win2_name = green?.name;  // 綠色選手
+          } else {
+            win1_name = blue?.name;   // 藍色選手
+            win2_name = yellow?.name; // 黃色選手
+          }
+        }
       } else {
-        // 未交換，頂部獲勝對應 team1，底部獲勝對應 team2
-        tempWinnerTeamId = isTopWinner ? team1Id : team2Id;
-        console.log('DEBUG: 未交換狀態下，獲勝隊伍為:', isTopWinner ? 'team1(頂部)' : 'team2(底部)');
+        // 戰況室模式：使用原始邏輯
+        if (isTopWinner) {
+          win1_name = red?.name;    // 紅色選手
+          win2_name = green?.name;  // 綠色選手
+        } else {
+          win1_name = blue?.name;   // 藍色選手
+          win2_name = yellow?.name; // 黃色選手
+        }
       }
-      
-      // 轉換為數字以便比較
-      let numericWinnerTeamId = parseInt(String(tempWinnerTeamId), 10);
-      console.log('DEBUG: 獲勝隊伍 ID:', numericWinnerTeamId);
-      
-      // 定義比分格式
-      let formattedScore = "";
-      
-      // 必須根據交換狀態調整比分順序
-      const team1Numeric = parseInt(String(team1Id), 10);
-      const team2Numeric = parseInt(String(team2Id), 10);
-      
-      // 判斷是否需要翻轉比分順序
-      if (isSwapped) {
-        // 已交換狀態，比分順序應為 "bottomWins:topWins"
-        formattedScore = `${bottomWins}:${topWins}`;
-        console.log('DEBUG: 已交換狀態，比分格式應為 team2:team1 即', formattedScore);
-      } else {
-        // 未交換狀態，比分順序應為 "topWins:bottomWins"
-        formattedScore = `${topWins}:${bottomWins}`;
-        console.log('DEBUG: 未交換狀態，比分格式應為 team1:team2 即', formattedScore);
-      }
-      
-      // 創建顯示用的資訊字串，包含寫入資料表的比分
+
+      console.log('DEBUG: 獲勝選手判斷:', {
+        模式: isContestMode ? '戰況室模式' : '一般挑戰賽',
+        isSwapped,
+        isTopWinner,
+        獲勝選手: {
+          win1_name,
+          win2_name
+        },
+        最終結果: {
+          比分: formattedScore,
+          獲勝方: isTopWinner ? '上方' : '下方',
+          獲勝選手: `${win1_name} + ${win2_name}`
+        }
+      });
+
+      // 創建顯示用的資訊字串
       const scoreInfo = `寫入資料表比分: ${formattedScore}`;
-      console.log('DEBUG:', scoreInfo,
-                '獲勝隊伍 ID:', numericWinnerTeamId,
-                '交換次數:', positionSwapCount,
-                '交換狀態:', positionSwapCount % 2 === 1 ? '已交換' : '未交換');
-      
-      // 更新狀態變量以顯示寫入資料表的比分
+      console.log('DEBUG:', scoreInfo);
       setFinalScoreInfo(scoreInfo);
-      
-      // 確認獲勝隊伍和分數是否合理
-      if ((isTopWinner && topWins <= bottomWins) || (!isTopWinner && bottomWins <= topWins)) {
-        console.log('WARNING: 獲勝隊伍和顯示分數不匹配！獲勝隊伍應該有更高的分數');
-      }
 
       // 送出團隊id與名字（不送id）
       const gameData = {
@@ -1108,13 +1137,16 @@ function DoubleGame() {
         player4: yellow?.name,
         team_id: currentLoggedInUser?.team_id || 'T',
         score: formattedScore,
-        win1_name: isTopWinner ? red?.name : blue?.name,
-        win2_name: isTopWinner ? green?.name : yellow?.name,
+        win1_name,  // 使用修正後的獲勝選手判斷
+        win2_name,  // 使用修正後的獲勝選手判斷
         notes: `${new Date().toISOString()} - Auto recorded, 場次數:${gameHistory.length}`,
-        created_by_name: loginUserName, // 新增這行
-        source_type: isContestMode ? 'contest' : 'challenge', // 根據來源設置類型
-        source_id: isContestMode && matchDetailId ? matchDetailId : null, // 設置來源ID
+        created_by_name: loginUserName,
+        source_type: isContestMode ? 'contest' : 'challenge',
+        source_id: isContestMode && matchDetailId ? matchDetailId : null,
       };
+
+      console.log('DEBUG: 最終要儲存的資料:', gameData);
+
       const { data, error: insertError } = await supabase
         .from('g_double_game')
         .insert([gameData])
@@ -1427,6 +1459,9 @@ function DoubleGame() {
     setYellowMember('');
     setHasSaved(false);
     setShowPostSaveModal(false);
+    // *** 重要修正：重置交換次數 ***
+    setPositionSwapCount(0);
+    console.log('結束遊戲：已重置交換次數為 0');
   };
 
   // 再來一盤：保留選手，交換上下位置並各自對調
@@ -1451,8 +1486,7 @@ function DoubleGame() {
     const prevGreen = greenMember;
     const prevBlue = blueMember;
     const prevYellow = yellowMember;
-    // 先交換上下兩組
-    // 再各自對調
+    // 先交換上下兩組，再各自對調
     setRedMember(prevYellow);    // 上面左：原黃
     setGreenMember(prevBlue);    // 上面右：原藍
     setBlueMember(prevGreen);    // 下面左：原綠
@@ -1461,6 +1495,9 @@ function DoubleGame() {
     setBottomColors(topColors);
     setHasSaved(false);
     setShowPostSaveModal(false);
+    // *** 重要修正：重置交換次數 ***
+    setPositionSwapCount(0);
+    console.log('再來一盤：已重置交換次數為 0');
   };
 
   // 提交按鈕
@@ -1615,7 +1652,11 @@ function DoubleGame() {
                   currentLoggedInUser
                     ? m.team_id === currentLoggedInUser.team_id
                     : m.team_id === 'T'
-                ).map(member => {
+                ).sort((a, b) => {
+                  const aInfo = memberPointsMap[a.id] || { points: 0, rank: members.length };
+                  const bInfo = memberPointsMap[b.id] || { points: 0, rank: members.length };
+                  return bInfo.points - aInfo.points; // 積分由大到小排序
+                }).map(member => {
                   const info = memberPointsMap[member.id] || { points: 0, rank: members.length };
                   return (
                     <option
@@ -1688,7 +1729,11 @@ function DoubleGame() {
                   currentLoggedInUser
                     ? m.team_id === currentLoggedInUser.team_id
                     : m.team_id === 'T'
-                ).map(member => {
+                ).sort((a, b) => {
+                  const aInfo = memberPointsMap[a.id] || { points: 0, rank: members.length };
+                  const bInfo = memberPointsMap[b.id] || { points: 0, rank: members.length };
+                  return bInfo.points - aInfo.points; // 積分由大到小排序
+                }).map(member => {
                   const info = memberPointsMap[member.id] || { points: 0, rank: members.length };
                   return (
                     <option
@@ -1799,7 +1844,11 @@ function DoubleGame() {
                   currentLoggedInUser
                     ? m.team_id === currentLoggedInUser.team_id
                     : m.team_id === 'T'
-                ).map(member => {
+                ).sort((a, b) => {
+                  const aInfo = memberPointsMap[a.id] || { points: 0, rank: members.length };
+                  const bInfo = memberPointsMap[b.id] || { points: 0, rank: members.length };
+                  return bInfo.points - aInfo.points; // 積分由大到小排序
+                }).map(member => {
                   const info = memberPointsMap[member.id] || { points: 0, rank: members.length };
                   return (
                     <option
@@ -1872,7 +1921,11 @@ function DoubleGame() {
                   currentLoggedInUser
                     ? m.team_id === currentLoggedInUser.team_id
                     : m.team_id === 'T'
-                ).map(member => {
+                ).sort((a, b) => {
+                  const aInfo = memberPointsMap[a.id] || { points: 0, rank: members.length };
+                  const bInfo = memberPointsMap[b.id] || { points: 0, rank: members.length };
+                  return bInfo.points - aInfo.points; // 積分由大到小排序
+                }).map(member => {
                   const info = memberPointsMap[member.id] || { points: 0, rank: members.length };
                   return (
                     <option
