@@ -688,7 +688,7 @@
                         <div style="font-weight: bold; color: #1e40af; margin-bottom: 8px; font-size: 1.05em;">
                             ${navigationPath.title}
                         </div>
-                        <div style="color: #475569; font-size: 1rem; line-height: 1.4;">
+                        <div style="color: #475569; font-size: 0.95rem; line-height: 1.6; white-space: pre-line;">
                             ${navigationPath.path}
                         </div>
                     </div>
@@ -816,18 +816,24 @@
                     title: '🏆 建立比賽規則設定',
                     path: '首頁 → 管理員專區 → 建立比賽'
                 },
-                // ===== 新增：剩餘功能導航路徑 =====
+                // ===== 新增：剩餘功能導航路徑（包含多重路徑） =====
                 'contest-list': {
                     title: '👥 成員參賽列表',
                     path: '首頁 → 參賽區'
                 },
                 'generate-table': {
                     title: '📋 管理員產生對戰表',
-                    path: '首頁 → 管理員專區 → 賽程控制區 → 產生對戰表'
+                    path: `方式一：首頁 → 管理員專區 → 賽程控制區 → 產生對戰表
+                    
+方式二：首頁 → 個人資訊 → 點擊通知連結`
                 },
                 'arrange-lineup': {
                     title: '📝 隊長安排出賽名單',
-                    path: '首頁 → 參賽區 → 選擇比賽 → 戰況室 → 名單狀況 → 編輯名單'
+                    path: `方式一：首頁 → 參賽區 → 選擇比賽 → 戰況室 → 名單狀況 → 編輯名單
+                    
+方式二：首頁 → 個人資訊 → 點擊提醒連結
+                    
+方式三：首頁 → 個人資訊 → 待處理事項區塊 → 點擊已安排的名單訊息連結`
                 },
                 'match-progress': {
                     title: '⚔️ 比賽進行狀況',
@@ -839,11 +845,17 @@
                 },
                 'appointment': {
                     title: '📅 選手各自約戰',
-                    path: '首頁 → 參賽區 → 選擇比賽 → 戰況室 → 約戰按鈕（約）'
+                    path: `方式一：首頁 → 參賽區 → 選擇比賽 → 戰況室 → 約戰按鈕（約）
+                    
+方式二：首頁 → 賽程邀約（行事曆圖示）
+
+※ 注意：在組隊比賽模式中，請使用上述方式進行約戰，避免從單打/雙打計分頁面約戰，以確保系統能正確識別比賽類型並儲存資料。`
                 },
                 'final-results': {
                     title: '📊 比分表詳細記錄',
-                    path: '首頁 → 參賽區 → 選擇比賽 → 比賽結果 → 詳細個人對戰記錄'
+                    path: `方式一：首頁 → 參賽區 → 選擇比賽 → 比賽結果 → 詳細個人對戰記錄
+                    
+方式二：首頁 → 參賽區 → 選擇比賽 → 戰況室 → 比分表（比賽結束後解鎖）`
                 },
                 'admin-result': {
                     title: '✅ 管理員確認比賽結束',
