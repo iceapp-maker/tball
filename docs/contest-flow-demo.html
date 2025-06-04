@@ -497,8 +497,8 @@
                 <img src="https://github.com/iceapp-maker/tball/blob/main/docs/images/contest_flow.png?raw=true" alt="賽乒乓分散式比賽流程圖" class="flowchart-image" id="flowchart">
                 
                 <!-- 可點擊區域 -->
-                <div class="clickable-area area-start" onclick="openDocumentation('start')">
-                    <div class="tooltip">🏓 賽乒乓 - 系統啟動</div>
+                <div class="clickable-area area-start" onclick="openDocumentation('menu')">
+                    <div class="tooltip">🏓 賽乒乓 - 主選單功能</div>
                 </div>
                 
                 <div class="clickable-area area-admin-setup" onclick="openDocumentation('admin')">
@@ -509,8 +509,8 @@
                     <div class="tooltip">❓ 隊長組建隊伍判斷</div>
                 </div>
                 
-                <div class="clickable-area area-create-contest" onclick="openDocumentation('contest')">
-                    <div class="tooltip">🏆 管理員建立比賽</div>
+                <div class="clickable-area area-create-contest" onclick="openDocumentation('create-contest')">
+                    <div class="tooltip">🏆 管理員 - 建立比賽詳細步驟</div>
                 </div>
                 
                 <div class="clickable-area area-generate-table" onclick="openDocumentation('contest')">
@@ -585,9 +585,10 @@
     <script>
         // 文檔連結映射
         const documentationMap = {
-            'start': 'quick-guide.html',
+            'menu': 'menu-detail.html',
             'admin': 'admin-detail.html',
             'team-building': 'contest-detail.html#team-management',
+            'create-contest': 'contest-detail.html#create-contest',
             'contest': 'contest-detail.html',
             'scoring': 'scoring-detail.html',
             'schedule': 'schedule-detail.html',
