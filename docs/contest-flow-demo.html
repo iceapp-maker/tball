@@ -510,8 +510,8 @@
                     <div class="tooltip">👥 管理員建立團隊成員名單</div>
                 </div>
                 
-                <div class="clickable-area area-team-decision" onclick="openDocumentation('contest-list')">
-                    <div class="tooltip">👥 成員參賽</div>
+                <div class="clickable-area area-team-decision" onclick="openDocumentation('team-building')">
+                    <div class="tooltip">👑 隊長組建隊伍</div>
                 </div>
                 
                 <div class="clickable-area area-create-contest" onclick="openDocumentation('create-contest')">
@@ -588,11 +588,11 @@
     </div>
 
     <script>
-        // 圖片連結映射 (修改：新增更多圖片連結)
+        // 圖片連結映射 (修改：新增隊長組建隊伍圖片)
         const imageMap = {
             'menu': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/index.png?raw=true',
             'admin': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/add_member_multi.png?raw=true',
-            'team-building': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/attend_contest_as_captain.png?raw=true',
+            'team-building': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/joint_or_creat_team.png?raw=true',
             'create-contest': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/creat_point_rule.png?raw=true',
             // ===== 新增：剩餘流程圖片連結 =====
             'contest-list': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/contest_list.png?raw=true',
@@ -781,7 +781,7 @@
             const titles = {
                 'menu': '🏓 賽乒乓主選單介面',
                 'admin': '👥 管理員批量新增會員',
-                'team-building': '👑 隊長參加比賽界面',
+                'team-building': '👑 隊長組建隊伍',
                 'create-contest': '🏆 建立比賽規則設定',
                 // ===== 新增：剩餘功能標題 =====
                 'contest-list': '👥 成員參賽列表',
@@ -810,7 +810,7 @@
                 },
                 'team-building': {
                     title: '👑 隊長組建隊伍',
-                    path: '首頁 → 參賽區 → 選擇比賽 → 參賽'
+                    path: '首頁 → 參賽區 → 選擇比賽 → 建立隊伍並成為隊長'
                 },
                 'create-contest': {
                     title: '🏆 建立比賽規則設定',
