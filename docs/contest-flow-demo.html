@@ -588,7 +588,7 @@
     </div>
 
     <script>
-        // 圖片連結映射
+        // 圖片連結映射 (原有代碼)
         const imageMap = {
             'menu': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/index.png?raw=true',
             'admin': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/add_member_multi.png?raw=true',
@@ -600,7 +600,7 @@
             'ranking': 'ranking-detail.html'
         };
 
-        // 開啟圖片或文檔
+        // 開啟圖片或文檔 (原有函數)
         function openDocumentation(section) {
             const url = imageMap[section];
             if (url) {
@@ -619,7 +619,7 @@
 
         // 開啟圖片模態框
         function openImageModal(imageUrl, section) {
-            // 創建模態框
+            // 創建模態框 (原有代碼)
             const modal = document.createElement('div');
             modal.style.cssText = `
                 position: fixed;
@@ -635,7 +635,7 @@
                 animation: fadeIn 0.3s ease;
             `;
 
-            // 創建圖片容器
+            // 創建圖片容器 (原有代碼)
             const imageContainer = document.createElement('div');
             imageContainer.style.cssText = `
                 position: relative;
@@ -647,7 +647,7 @@
                 box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
             `;
 
-            // 創建標題
+            // 創建標題 (原有代碼)
             const title = document.createElement('h3');
             title.style.cssText = `
                 margin: 0 0 15px 0;
@@ -657,7 +657,7 @@
             `;
             title.textContent = getSectionTitle(section);
 
-            // 創建導航路徑區塊
+            // ===== 新增：創建導航路徑區塊 =====
             const navigationPath = getNavigationPath(section);
             let pathElement = null;
             if (navigationPath) {
@@ -671,19 +671,22 @@
                     color: #0c4a6e;
                 `;
                 pathElement.innerHTML = `
-                    <div style="font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                    <div style="font-weight: bold; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; font-size: 1.1em;">
                         <span>🧭</span> 主要功能進入路徑
                     </div>
-                    <div style="font-weight: bold; color: #1e40af; margin-bottom: 5px;">
-                        ${navigationPath.title}
-                    </div>
-                    <div style="color: #64748b; font-size: 0.95em;">
-                        ${navigationPath.path}
+                    <div style="background: white; padding: 12px; border-radius: 8px; border-left: 4px solid #0ea5e9;">
+                        <div style="font-weight: bold; color: #1e40af; margin-bottom: 8px; font-size: 1.05em;">
+                            ${navigationPath.title}
+                        </div>
+                        <div style="color: #475569; font-size: 1rem; line-height: 1.4;">
+                            ${navigationPath.path}
+                        </div>
                     </div>
                 `;
             }
+            // ===== 新增區塊結束 =====
 
-            // 創建圖片
+            // 創建圖片 (修改：調整最大高度邏輯)
             const img = document.createElement('img');
             img.src = imageUrl;
             img.style.cssText = `
@@ -694,12 +697,12 @@
                 border-radius: 10px;
             `;
             
-            // 如果有路徑說明，調整圖片最大高度
+            // 新增：如果有路徑說明，調整圖片最大高度
             if (pathElement) {
                 img.style.maxHeight = '60vh';
             }
 
-            // 創建關閉按鈕
+            // 創建關閉按鈕 (原有代碼)
             const closeBtn = document.createElement('button');
             closeBtn.innerHTML = '✕';
             closeBtn.style.cssText = `
@@ -718,6 +721,7 @@
                 transition: all 0.3s ease;
             `;
 
+            // 按鈕懸停效果 (原有代碼)
             closeBtn.onmouseover = () => {
                 closeBtn.style.background = '#c0392b';
                 closeBtn.style.transform = 'scale(1.1)';
@@ -727,19 +731,19 @@
                 closeBtn.style.transform = 'scale(1)';
             };
 
-            // 組合元素
+            // 組合元素 (修改：新增路徑元素的條件性插入)
             imageContainer.appendChild(title);
             if (pathElement) {
-                imageContainer.appendChild(pathElement);
+                imageContainer.appendChild(pathElement); // 新增：插入路徑說明
             }
             imageContainer.appendChild(img);
             imageContainer.appendChild(closeBtn);
             modal.appendChild(imageContainer);
 
-            // 添加到頁面
+            // 添加到頁面 (原有代碼)
             document.body.appendChild(modal);
 
-            // 關閉功能
+            // 關閉功能 (原有代碼)
             const closeModal = () => {
                 modal.style.animation = 'fadeOut 0.3s ease';
                 setTimeout(() => {
@@ -752,7 +756,7 @@
                 if (e.target === modal) closeModal();
             };
 
-            // ESC鍵關閉
+            // ESC鍵關閉 (原有代碼)
             const handleEsc = (e) => {
                 if (e.key === 'Escape') {
                     closeModal();
@@ -760,71 +764,9 @@
                 }
             };
             document.addEventListener('keydown', handleEsc);
-
-            // 顯示幫助對話框
-            function showHelpDialog() {
-                alert('💡 操作說明：\n\n' +
-                      '• 點擊流程圖中的任何節點查看詳細說明\n' +
-                      '• 使用底部的連結快速訪問各功能說明書\n' +
-                      '• 按 H 鍵顯示此幫助訊息\n' +
-                      '• 按 Escape 鍵返回首頁\n\n' +
-                      '🎯 此流程圖展示分散式比賽的完整執行過程');
-            }
-
-            // 頁面載入完成後的初始化
-            document.addEventListener('DOMContentLoaded', function() {
-                // 為流程圖添加載入動畫
-                const flowchart = document.getElementById('flowchart');
-                
-                // 圖片載入完成後顯示
-                flowchart.onload = function() {
-                    console.log('流程圖載入完成');
-                };
-                
-                // 如果圖片載入失敗，顯示替代內容
-                flowchart.onerror = function() {
-                    flowchart.style.display = 'none';
-                    const container = flowchart.parentElement;
-                    const errorMsg = document.createElement('div');
-                    errorMsg.innerHTML = `
-                        <div style="text-align: center; padding: 50px; background: #fef2f2; border: 2px solid #fecaca; border-radius: 10px; color: #dc2626;">
-                            <h3>📷 流程圖載入中...</h3>
-                            <p style="margin-top: 10px;">請確保 contest_flow.png 檔案存在於正確位置</p>
-                            <p style="margin-top: 10px; font-size: 0.9em;">您仍可以使用下方的說明書連結了解系統功能</p>
-                        </div>
-                    `;
-                    container.insertBefore(errorMsg, flowchart);
-                };
-
-                // 顯示載入提示
-                console.log('🏓 賽乒乓流程圖頁面已載入');
-                console.log('💡 提示：點擊流程圖中的節點可查看詳細說明');
-            });
-
-            // 響應式調整函數
-            function adjustLayout() {
-                const container = document.querySelector('.flowchart-container');
-                const width = container.offsetWidth;
-                
-                // 根據容器寬度調整點擊區域
-                const clickableAreas = document.querySelectorAll('.clickable-area');
-                clickableAreas.forEach(area => {
-                    if (width < 600) {
-                        area.style.transform = 'scale(0.8)';
-                    } else {
-                        area.style.transform = 'scale(1)';
-                    }
-                });
-            }
-
-            // 監聽視窗大小變化
-            window.addEventListener('resize', adjustLayout);
-            
-            // 初始調整
-            setTimeout(adjustLayout, 100);
         }
 
-        // 獲取區塊標題
+        // 獲取區塊標題 (原有函數)
         function getSectionTitle(section) {
             const titles = {
                 'menu': '🏓 賽乒乓主選單介面',
@@ -835,16 +777,103 @@
             return titles[section] || '系統操作介面';
         }
 
-        // 獲取導航路徑
+        // ===== 新增函數：獲取導航路徑 =====
         function getNavigationPath(section) {
             const paths = {
-                'menu': { title: '🏓 賽乒乓主選單介面', path: '進入主選單後，您可以選擇不同的功能選項' },
-                'admin': { title: '👥 管理員批量新增會員', path: '進入管理員功能後，您可以新增團隊成員' },
-                'team-building': { title: '👑 隊長參加比賽界面', path: '進入隊長參加比賽界面後，您可以組建隊伍' },
-                'create-contest': { title: '🏆 建立比賽規則設定', path: '進入建立比賽規則設定後，您可以設定比賽規則' }
+                'menu': {
+                    title: '🏓 賽乒乓主選單',
+                    path: '直接訪問系統網址 → tball.netlify.app'
+                },
+                'admin': {
+                    title: '👥 管理員批量新增會員',
+                    path: '首頁 → 管理員專區 → 會員管理 → 批量新增會員'
+                },
+                'team-building': {
+                    title: '👑 隊長組建隊伍',
+                    path: '首頁 → 參賽區 → 選擇比賽 → 參賽'
+                },
+                'create-contest': {
+                    title: '🏆 建立比賽規則設定',
+                    path: '首頁 → 管理員專區 → 建立比賽'
+                }
             };
-            return paths[section];
+            return paths[section] || null;
         }
+        // ===== 新增函數結束 =====
+
+        // 添加鍵盤快捷鍵支援 (原有代碼)
+        document.addEventListener('keydown', function(e) {
+            // 按 'H' 鍵顯示幫助
+            if (e.key === 'h' || e.key === 'H') {
+                showHelpDialog();
+            }
+            // 按 'Escape' 鍵返回
+            if (e.key === 'Escape') {
+                window.location.href = 'index.html';
+            }
+        });
+
+        // 顯示幫助對話框 (原有函數)
+        function showHelpDialog() {
+            alert('💡 操作說明：\n\n' +
+                  '• 點擊流程圖中的任何節點查看詳細說明\n' +
+                  '• 使用底部的連結快速訪問各功能說明書\n' +
+                  '• 按 H 鍵顯示此幫助訊息\n' +
+                  '• 按 Escape 鍵返回首頁\n\n' +
+                  '🎯 此流程圖展示分散式比賽的完整執行過程');
+        }
+
+        // 頁面載入完成後的初始化 (原有代碼)
+        document.addEventListener('DOMContentLoaded', function() {
+            // 為流程圖添加載入動畫
+            const flowchart = document.getElementById('flowchart');
+            
+            // 圖片載入完成後顯示
+            flowchart.onload = function() {
+                console.log('流程圖載入完成');
+            };
+            
+            // 如果圖片載入失敗，顯示替代內容
+            flowchart.onerror = function() {
+                flowchart.style.display = 'none';
+                const container = flowchart.parentElement;
+                const errorMsg = document.createElement('div');
+                errorMsg.innerHTML = `
+                    <div style="text-align: center; padding: 50px; background: #fef2f2; border: 2px solid #fecaca; border-radius: 10px; color: #dc2626;">
+                        <h3>📷 流程圖載入中...</h3>
+                        <p style="margin-top: 10px;">請確保 contest_flow.png 檔案存在於正確位置</p>
+                        <p style="margin-top: 10px; font-size: 0.9em;">您仍可以使用下方的說明書連結了解系統功能</p>
+                    </div>
+                `;
+                container.insertBefore(errorMsg, flowchart);
+            };
+
+            // 顯示載入提示
+            console.log('🏓 賽乒乓流程圖頁面已載入');
+            console.log('💡 提示：點擊流程圖中的節點可查看詳細說明');
+        });
+
+        // 響應式調整函數 (原有函數)
+        function adjustLayout() {
+            const container = document.querySelector('.flowchart-container');
+            const width = container.offsetWidth;
+            
+            // 根據容器寬度調整點擊區域
+            const clickableAreas = document.querySelectorAll('.clickable-area');
+            clickableAreas.forEach(area => {
+                if (width < 600) {
+                    area.style.transform = 'scale(0.8)';
+                } else {
+                    area.style.transform = 'scale(1)';
+                }
+            });
+        }
+
+        // 監聽視窗大小變化 (原有代碼)
+        window.addEventListener('resize', adjustLayout);
+        
+        // 初始調整 (原有代碼)
+        setTimeout(adjustLayout, 100);
     </script>
 </body>
 </html>
