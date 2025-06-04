@@ -510,39 +510,39 @@
                     <div class="tooltip">👥 管理員建立團隊成員名單</div>
                 </div>
                 
-                <div class="clickable-area area-team-decision" onclick="openDocumentation('team-building')">
-                    <div class="tooltip">❓ 隊長組建隊伍判斷</div>
+                <div class="clickable-area area-team-decision" onclick="openDocumentation('contest-list')">
+                    <div class="tooltip">👥 成員參賽</div>
                 </div>
                 
                 <div class="clickable-area area-create-contest" onclick="openDocumentation('create-contest')">
                     <div class="tooltip">🏆 管理員 - 建立比賽詳細步驟</div>
                 </div>
                 
-                <div class="clickable-area area-generate-table" onclick="openDocumentation('contest')">
+                <div class="clickable-area area-generate-table" onclick="openDocumentation('generate-table')">
                     <div class="tooltip">📋 管理員產生對戰表</div>
                 </div>
                 
-                <div class="clickable-area area-arrange-lineup" onclick="openDocumentation('contest')">
+                <div class="clickable-area area-arrange-lineup" onclick="openDocumentation('arrange-lineup')">
                     <div class="tooltip">📝 隊長安排出賽名單</div>
                 </div>
                 
-                <div class="clickable-area area-match-progress" onclick="openDocumentation('contest')">
+                <div class="clickable-area area-match-progress" onclick="openDocumentation('match-progress')">
                     <div class="tooltip">⚔️ 比賽進行中</div>
                 </div>
                 
-                <div class="clickable-area area-battle-room" onclick="openDocumentation('scoring')">
+                <div class="clickable-area area-battle-room" onclick="openDocumentation('battle-room')">
                     <div class="tooltip">🏟️ 戰況室即時對戰成績</div>
                 </div>
                 
-                <div class="clickable-area area-appointment" onclick="openDocumentation('schedule')">
+                <div class="clickable-area area-appointment" onclick="openDocumentation('appointment')">
                     <div class="tooltip">📅 選手各自約戰</div>
                 </div>
                 
-                <div class="clickable-area area-admin-result" onclick="openDocumentation('contest')">
+                <div class="clickable-area area-admin-result" onclick="openDocumentation('admin-result')">
                     <div class="tooltip">✅ 管理員確認比賽結果</div>
                 </div>
                 
-                <div class="clickable-area area-final-results" onclick="openDocumentation('ranking')">
+                <div class="clickable-area area-final-results" onclick="openDocumentation('final-results')">
                     <div class="tooltip">📊 比分表 & 詳細對戰清單</div>
                 </div>
                 
@@ -588,12 +588,22 @@
     </div>
 
     <script>
-        // 圖片連結映射 (原有代碼)
+        // 圖片連結映射 (修改：新增更多圖片連結)
         const imageMap = {
             'menu': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/index.png?raw=true',
             'admin': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/add_member_multi.png?raw=true',
             'team-building': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/attend_contest_as_captain.png?raw=true',
             'create-contest': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/creat_point_rule.png?raw=true',
+            // ===== 新增：剩餘流程圖片連結 =====
+            'contest-list': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/contest_list.png?raw=true',
+            'generate-table': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/admi_action_creat_contest_from.png?raw=true',
+            'arrange-lineup': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/leader_arrange_member.png?raw=true',
+            'match-progress': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/contest_progress.png?raw=true',
+            'battle-room': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/battle_room_score_bord.png?raw=true',
+            'appointment': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/contest_appoint.png?raw=true',
+            'final-results': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/score_board_detail_personal.png?raw=true',
+            'admin-result': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/admin_ending_contest.png?raw=true',
+            // ===== 新增區塊結束 =====
             'contest': 'contest-detail.html',
             'scoring': 'scoring-detail.html',
             'schedule': 'schedule-detail.html',
@@ -766,13 +776,23 @@
             document.addEventListener('keydown', handleEsc);
         }
 
-        // 獲取區塊標題 (原有函數)
+        // 獲取區塊標題 (修改：新增更多標題)
         function getSectionTitle(section) {
             const titles = {
                 'menu': '🏓 賽乒乓主選單介面',
                 'admin': '👥 管理員批量新增會員',
                 'team-building': '👑 隊長參加比賽界面',
-                'create-contest': '🏆 建立比賽規則設定'
+                'create-contest': '🏆 建立比賽規則設定',
+                // ===== 新增：剩餘功能標題 =====
+                'contest-list': '👥 成員參賽列表',
+                'generate-table': '📋 管理員產生對戰表',
+                'arrange-lineup': '📝 隊長安排出賽名單',
+                'match-progress': '⚔️ 比賽進行狀況',
+                'battle-room': '🏟️ 戰況室即時對戰成績',
+                'appointment': '📅 選手各自約戰',
+                'final-results': '📊 比分表詳細記錄',
+                'admin-result': '✅ 管理員確認比賽結束'
+                // ===== 新增區塊結束 =====
             };
             return titles[section] || '系統操作介面';
         }
@@ -795,7 +815,41 @@
                 'create-contest': {
                     title: '🏆 建立比賽規則設定',
                     path: '首頁 → 管理員專區 → 建立比賽'
+                },
+                // ===== 新增：剩餘功能導航路徑 =====
+                'contest-list': {
+                    title: '👥 成員參賽列表',
+                    path: '首頁 → 參賽區'
+                },
+                'generate-table': {
+                    title: '📋 管理員產生對戰表',
+                    path: '首頁 → 管理員專區 → 賽程控制區 → 產生對戰表'
+                },
+                'arrange-lineup': {
+                    title: '📝 隊長安排出賽名單',
+                    path: '首頁 → 參賽區 → 選擇比賽 → 戰況室 → 名單狀況 → 編輯名單'
+                },
+                'match-progress': {
+                    title: '⚔️ 比賽進行狀況',
+                    path: '首頁 → 參賽區 → 選擇比賽 → 戰況室'
+                },
+                'battle-room': {
+                    title: '🏟️ 戰況室即時對戰成績',
+                    path: '首頁 → 參賽區 → 選擇比賽 → 戰況室 → 比分表'
+                },
+                'appointment': {
+                    title: '📅 選手各自約戰',
+                    path: '首頁 → 參賽區 → 選擇比賽 → 戰況室 → 約戰按鈕（約）'
+                },
+                'final-results': {
+                    title: '📊 比分表詳細記錄',
+                    path: '首頁 → 參賽區 → 選擇比賽 → 比賽結果 → 詳細個人對戰記錄'
+                },
+                'admin-result': {
+                    title: '✅ 管理員確認比賽結束',
+                    path: '首頁 → 參賽區 → 選擇比賽 → 戰況室 → 比分表 → 結束比賽'
                 }
+                // ===== 新增區塊結束 =====
             };
             return paths[section] || null;
         }
