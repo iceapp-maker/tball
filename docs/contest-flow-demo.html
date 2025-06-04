@@ -401,10 +401,15 @@
             }
         }
         
-        /* 動畫效果 */
+        /* 圖片模態框動畫 */
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
         }
         
         .flowchart-container {
@@ -583,27 +588,155 @@
     </div>
 
     <script>
-        // 文檔連結映射
-        const documentationMap = {
-            'menu': 'menu-detail.html',
-            'admin': 'admin-detail.html',
-            'team-building': 'contest-detail.html#team-management',
-            'create-contest': 'contest-detail.html#create-contest',
+        // 圖片連結映射
+        const imageMap = {
+            'menu': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/index.png?raw=true',
+            'admin': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/add_member_multi.png?raw=true',
+            'team-building': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/attend_contest_as_captain.png?raw=true',
+            'create-contest': 'https://github.com/iceapp-maker/tball/blob/main/docs/images/creat_point_rule.png?raw=true',
             'contest': 'contest-detail.html',
             'scoring': 'scoring-detail.html',
             'schedule': 'schedule-detail.html',
             'ranking': 'ranking-detail.html'
         };
 
-        // 開啟相關說明文檔
+        // 開啟圖片或文檔
         function openDocumentation(section) {
-            const url = documentationMap[section];
+            const url = imageMap[section];
             if (url) {
-                window.open(url, '_blank');
+                // 如果是圖片連結，在新視窗中開啟圖片
+                if (url.includes('.png') || url.includes('.jpg') || url.includes('.jpeg')) {
+                    openImageModal(url, section);
+                } else {
+                    // 如果是HTML頁面，正常開啟
+                    window.open(url, '_blank');
+                }
             } else {
                 // 備用方案：開啟快速指南
                 window.open('quick-guide.html', '_blank');
             }
+        }
+
+        // 開啟圖片模態框
+        function openImageModal(imageUrl, section) {
+            // 創建模態框
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: fadeIn 0.3s ease;
+            `;
+
+            // 創建圖片容器
+            const imageContainer = document.createElement('div');
+            imageContainer.style.cssText = `
+                position: relative;
+                max-width: 90%;
+                max-height: 90%;
+                background: white;
+                border-radius: 15px;
+                padding: 20px;
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+            `;
+
+            // 創建圖片
+            const img = document.createElement('img');
+            img.src = imageUrl;
+            img.style.cssText = `
+                width: 100%;
+                height: auto;
+                max-height: 80vh;
+                object-fit: contain;
+                border-radius: 10px;
+            `;
+
+            // 創建標題
+            const title = document.createElement('h3');
+            title.style.cssText = `
+                margin: 0 0 15px 0;
+                color: #2c3e50;
+                text-align: center;
+                font-size: 1.3em;
+            `;
+            title.textContent = getSectionTitle(section);
+
+            // 創建關閉按鈕
+            const closeBtn = document.createElement('button');
+            closeBtn.innerHTML = '✕';
+            closeBtn.style.cssText = `
+                position: absolute;
+                top: 10px;
+                right: 15px;
+                background: #e74c3c;
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 35px;
+                height: 35px;
+                font-size: 1.2em;
+                cursor: pointer;
+                font-weight: bold;
+                transition: all 0.3s ease;
+            `;
+
+            closeBtn.onmouseover = () => {
+                closeBtn.style.background = '#c0392b';
+                closeBtn.style.transform = 'scale(1.1)';
+            };
+            closeBtn.onmouseout = () => {
+                closeBtn.style.background = '#e74c3c';
+                closeBtn.style.transform = 'scale(1)';
+            };
+
+            // 組合元素
+            imageContainer.appendChild(title);
+            imageContainer.appendChild(img);
+            imageContainer.appendChild(closeBtn);
+            modal.appendChild(imageContainer);
+
+            // 添加到頁面
+            document.body.appendChild(modal);
+
+            // 關閉功能
+            const closeModal = () => {
+                modal.style.animation = 'fadeOut 0.3s ease';
+                setTimeout(() => {
+                    document.body.removeChild(modal);
+                }, 300);
+            };
+
+            closeBtn.onclick = closeModal;
+            modal.onclick = (e) => {
+                if (e.target === modal) closeModal();
+            };
+
+            // ESC鍵關閉
+            const handleEsc = (e) => {
+                if (e.key === 'Escape') {
+                    closeModal();
+                    document.removeEventListener('keydown', handleEsc);
+                }
+            };
+            document.addEventListener('keydown', handleEsc);
+        }
+
+        // 獲取區塊標題
+        function getSectionTitle(section) {
+            const titles = {
+                'menu': '🏓 賽乒乓主選單介面',
+                'admin': '👥 管理員批量新增會員',
+                'team-building': '👑 隊長參加比賽界面',
+                'create-contest': '🏆 建立比賽規則設定'
+            };
+            return titles[section] || '系統操作介面';
         }
 
         // 添加鍵盤快捷鍵支援
