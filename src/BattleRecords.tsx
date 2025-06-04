@@ -393,14 +393,6 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
       
       const date = new Date(isoDate);
       
-      // 偵錯日誌 (開發用)
-      console.debug('[時區檢查]', {
-        輸入日期: g.record_date,
-        標準化格式: isoDate,
-        UTC月份: date.getUTCMonth() + 1,
-        本地月份: date.getMonth() + 1
-      });
-    
       return date.getUTCFullYear() === selectedYear && 
              date.getUTCMonth() + 1 === tableMonth;
     });
@@ -425,8 +417,9 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
           </div>
         )}
         
-        <div className="flex gap-2 mb-2">
-          {[1,2,3,4,5,6].map(m => (
+        {/* 月份選擇按鈕 */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
             <span key={m} className="relative inline-block">
               <button
                 disabled={!availableMonths.includes(m)}
@@ -453,52 +446,25 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
             </span>
           ))}
         </div>
-        <div className="flex gap-2 mb-2">
-          {[7,8,9,10,11,12].map(m => (
-            <span key={m} className="relative inline-block">
-              <button
-                disabled={!availableMonths.includes(m)}
-                className={`px-2 py-1 border rounded transition-all duration-200
-                  ${availableMonths.includes(m) ? 'bg-blue-100 font-bold text-blue-800 border-blue-400' : 'bg-gray-100 text-gray-400 border-gray-200'}
-                  ${tableMonth === m ? 'bg-blue-400 text-white border-blue-700' : ''}
-                  `}
-                onClick={() => setTableMonth(m)}
-                style={{ minWidth: 40 }}
-              >
-                {m}月
-              </button>
-              {availableMonths.includes(m) && (
-                <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs rounded-full px-1.5 py-0.5">
-                  {records.filter(g => {
-                    const isoDate = g.record_date.includes('T') 
-                      ? g.record_date 
-                      : `${g.record_date.replace(' ', 'T')}Z`;
-                    const date = new Date(isoDate);
-                    return date.getUTCFullYear() === selectedYear && date.getUTCMonth() + 1 === m;
-                  }).length}
-                </span>
-              )}
-            </span>
-          ))}
-        </div>
+
         <h2 className="mb-2 font-bold">{tableMonth}月所有對戰</h2>
         <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
           <table className="min-w-full border text-center">
-            <thead>
+            <thead className="bg-gray-50">
               <tr>
-                <th className="border px-2">#</th>
-                <th className="border px-2">日期</th>
-                <th className="border px-2">類型</th>
-                <th className="border px-2">搭檔</th>
-                <th className="border px-2">對手</th>
-                <th className="border px-2">比分</th>
-                <th className="border px-2">勝負</th>
-                <th className="border px-2">類型</th>
+                <th className="border px-2 py-2">#</th>
+                <th className="border px-2 py-2">日期</th>
+                <th className="border px-2 py-2">類型</th>
+                <th className="border px-2 py-2">搭檔</th>
+                <th className="border px-2 py-2">對手</th>
+                <th className="border px-2 py-2">比分</th>
+                <th className="border px-2 py-2">勝負</th>
+                <th className="border px-2 py-2">類型</th>
               </tr>
             </thead>
             <tbody>
               {filteredGames.length === 0 ? (
-                <tr><td colSpan={8}>無紀錄</td></tr>
+                <tr><td colSpan={8} className="border px-2 py-4 text-gray-500">無紀錄</td></tr>
               ) : (
                 filteredGames.map((game, idx) => {
                   const date = game.record_date ? new Date(game.record_date) : null;
@@ -506,15 +472,17 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
                   const gameTypeSymbol = getGameTypeSymbol(game.source_type);
                   
                   return (
-                    <tr key={game.id || idx}>
-                      <td className="border px-2">{idx + 1}</td>
-                      <td className="border px-2">{dateStr}</td>
-                      <td className="border px-2">{game.type}</td>
-                      <td className="border px-2">{game.partner}</td>
-                      <td className="border px-2">{game.opponent}</td>
-                      <td className="border px-2">{game.score}</td>
-                      <td className="border px-2">{game.result}</td>
-                      <td className="border px-2 text-lg">{gameTypeSymbol}</td>
+                    <tr key={game.id || idx} className="hover:bg-gray-50">
+                      <td className="border px-2 py-2">{idx + 1}</td>
+                      <td className="border px-2 py-2">{dateStr}</td>
+                      <td className="border px-2 py-2">{game.type}</td>
+                      <td className="border px-2 py-2">{game.partner}</td>
+                      <td className="border px-2 py-2">{game.opponent}</td>
+                      <td className="border px-2 py-2 font-bold">{game.score}</td>
+                      <td className={`border px-2 py-2 ${game.result === '勝' ? 'text-green-600' : 'text-red-600'}`}>
+                        {game.result}
+                      </td>
+                      <td className="border px-2 py-2 text-lg">{gameTypeSymbol}</td>
                     </tr>
                   );
                 })
@@ -538,7 +506,10 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
       }
     }, [records, availableMonths]);
     
-    const filteredGames = records.filter(g => g.record_date && new Date(g.record_date).getMonth() + 1 === tableMonth);
+    // 依照日期由新到舊排序
+    const filteredGames = records
+      .filter(g => g.record_date && new Date(g.record_date).getMonth() + 1 === tableMonth)
+      .sort((a, b) => new Date(b.record_date).getTime() - new Date(a.record_date).getTime());
 
     return (
       <div className="mt-8">
@@ -560,8 +531,9 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
           </div>
         )}
         
-        <div className="flex gap-2 mb-2">
-          {[1,2,3,4,5,6].map(m => (
+        {/* 月份選擇按鈕 */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => (
             <span key={m} className="relative inline-block">
               <button
                 disabled={!availableMonths.includes(m)}
@@ -575,69 +547,54 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
                 {m}月
               </button>
               {availableMonths.includes(m) && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1 min-w-[20px] text-center shadow">
+                <span className="absolute -top-2 -right-2 bg-blue-500 text-white text-xs rounded-full px-1.5 py-0.5">
                   {records.filter(g => g.record_date && new Date(g.record_date).getMonth() + 1 === m).length}
                 </span>
               )}
             </span>
           ))}
         </div>
-        <div className="flex gap-2 mb-2">
-          {[7,8,9,10,11,12].map(m => (
-            <span key={m} className="relative inline-block">
-              <button
-                disabled={!availableMonths.includes(m)}
-                className={`px-2 py-1 border rounded transition-all duration-200
-                  ${availableMonths.includes(m) ? 'bg-blue-100 font-bold text-blue-800 border-blue-400' : 'bg-gray-100 text-gray-400 border-gray-200'}
-                  ${tableMonth === m ? 'bg-blue-400 text-white border-blue-700' : ''}
-                  `}
-                onClick={() => setTableMonth(m)}
-                style={{ minWidth: 40 }}
-              >
-                {m}月
-              </button>
-              {availableMonths.includes(m) && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full px-1 min-w-[20px] text-center shadow">
-                  {records.filter(g => g.record_date && new Date(g.record_date).getMonth() + 1 === m).length}
-                </span>
-              )}
-            </span>
-          ))}
-        </div>
+
         <h2 className="mb-2 font-bold">{tableMonth}月所有對戰</h2>
         <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
           <table className="min-w-full border text-center">
-            <thead>
+            <thead className="bg-gray-50">
               <tr>
-                <th className="border px-2">#</th>
-                <th className="border px-2">日期</th>
-                <th className="border px-2">player1</th>
-                <th className="border px-2">player2</th>
-                <th className="border px-2">player3</th>
-                <th className="border px-2">player4</th>
-                <th className="border px-2">比數</th>
-                <th className="border px-2">類型</th>
+                <th className="border px-2 py-2">#</th>
+                <th className="border px-2 py-2">日期</th>
+                <th className="border px-2 py-2">player1</th>
+                <th className="border px-2 py-2">player2</th>
+                <th className="border px-2 py-2">player3</th>
+                <th className="border px-2 py-2">player4</th>
+                <th className="border px-2 py-2">比數</th>
+                <th className="border px-2 py-2">類型</th>
               </tr>
             </thead>
             <tbody>
               {filteredGames.length === 0 ? (
-                <tr><td colSpan={8}>無紀錄</td></tr>
+                <tr><td colSpan={8} className="border px-2 py-4 text-gray-500">無紀錄</td></tr>
               ) : (
                 filteredGames.map((game, idx) => {
                   const date = game.record_date ? new Date(game.record_date) : null;
                   const dateStr = date ? `${date.getMonth() + 1}/${date.getDate()}` : '';
                   const gameTypeSymbol = getGameTypeSymbol(game.source_type);
                   
+                  // 判斷每個玩家是否獲勝
+                  const isPlayer1Winner = game.win1_name === game.player1 || game.win2_name === game.player1;
+                  const isPlayer2Winner = game.win1_name === game.player2 || game.win2_name === game.player2;
+                  const isPlayer3Winner = game.win1_name === game.player3 || game.win2_name === game.player3;
+                  const isPlayer4Winner = game.win1_name === game.player4 || game.win2_name === game.player4;
+                  
                   return (
-                    <tr key={game.id || idx}>
-                      <td className="border px-2">{idx + 1}</td>
-                      <td className="border px-2">{dateStr}</td>
-                      <td className="border px-2">{game.player1 || '--'}</td>
-                      <td className="border px-2">{game.player2 || '--'}</td>
-                      <td className="border px-2">{game.player3 || '--'}</td>
-                      <td className="border px-2">{game.player4 || '--'}</td>
-                      <td className="border px-2">{game.score || '--'}</td>
-                      <td className="border px-2 text-lg">{gameTypeSymbol}</td>
+                    <tr key={game.id || idx} className="hover:bg-gray-50">
+                      <td className="border px-2 py-2">{idx + 1}</td>
+                      <td className="border px-2 py-2">{dateStr}</td>
+                      <td className={`border px-2 py-2 ${isPlayer1Winner ? 'bg-green-100' : ''}`}>{game.player1 || '--'} {isPlayer1Winner ? '👑' : ''}</td>
+                      <td className={`border px-2 py-2 ${isPlayer2Winner ? 'bg-green-100' : ''}`}>{game.player2 || '--'} {isPlayer2Winner ? '👑' : ''}</td>
+                      <td className={`border px-2 py-2${game.player3 ? (isPlayer3Winner ? ' bg-green-100' : '') : ''}`}>{game.player3 ? `${game.player3} ${isPlayer3Winner ? '👑' : ''}` : ''}</td>
+                      <td className={`border px-2 py-2${game.player4 ? (isPlayer4Winner ? ' bg-green-100' : '') : ''}`}>{game.player4 ? `${game.player4} ${isPlayer4Winner ? '👑' : ''}` : ''}</td>
+                      <td className="border px-2 py-2 font-bold">{game.score || '--'}</td>
+                      <td className="border px-2 py-2 text-lg">{gameTypeSymbol}</td>
                     </tr>
                   );
                 })
