@@ -58,11 +58,26 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
   const [playerRecords, setPlayerRecords] = useState<any[]>([]);
   const [allRecords, setAllRecords] = useState<any[]>([]);
   const [showAll, setShowAll] = useState(true);
+  
+  // 新增刪除相關狀態
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [gameToDelete, setGameToDelete] = useState<any>(null);
+  const [deleting, setDeleting] = useState(false);
+  
+  // 條形圖分頁
+  const [chartPage, setChartPage] = useState(1);
+  const chartPageSize = 5;
+  
+  // 狀態：存儲年度總積分
+  const [annualTotalPoints, setAnnualTotalPoints] = useState<number>(0);
 
   // 直接在 function body 計算 user 與 teamId/teamName，確保查詢與標題一致
   const user = currentLoggedInUser || getCurrentUser();
   const teamId = user?.team_id || 'T';
   const teamName = TEAM_NAMES[teamId] || teamId;
+  
+  // 判斷是否為管理員
+  const isAdmin = user?.role === 'admin';
 
   // 獲取所有有積分的成員數據
   useEffect(() => {
@@ -101,7 +116,7 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
     };
     
     fetchAllData();
-  }, [teamId, selectedYear, selectedMonth, selectedGameType]); // 新增 selectedGameType 依賴
+  }, [teamId, selectedYear, selectedMonth, selectedGameType]);
 
   // 獲取所有比賽記錄
   const fetchAllRecords = async () => {
@@ -134,7 +149,7 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
 
   useEffect(() => {
     fetchAllRecords();
-  }, [teamId, selectedGameType]); // 新增 selectedGameType 依賴
+  }, [teamId, selectedGameType]);
 
   // 搜尋自己跳到對應頁面
   const handleCenterSelf = async () => {
@@ -276,6 +291,82 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
     await fetchAllRecords();
   };
 
+  // 新增：開啟刪除確認對話框
+  const handleDeleteClick = (game: any) => {
+    setGameToDelete(game);
+    setShowDeleteModal(true);
+  };
+
+  // 新增：執行刪除操作
+  const handleConfirmDelete = async () => {
+    if (!gameToDelete) return;
+    
+    setDeleting(true);
+    try {
+      const tableName = gameToDelete.player3 ? 'g_double_game' : 'g_single_game';
+      
+      const { error } = await supabase
+        .from(tableName)
+        .delete()
+        .eq('id', gameToDelete.id)
+        .eq('team_id', teamId); // 額外安全檢查，確保只能刪除自己團隊的記錄
+      
+      if (error) {
+        throw error;
+      }
+      
+      // 刪除成功，重新載入資料
+      setShowDeleteModal(false);
+      setGameToDelete(null);
+      
+      // 根據當前顯示狀態重新載入對應資料
+      if (showAll) {
+        await fetchAllRecords();
+      } else if (selectedPlayer) {
+        await fetchPlayerRecords(selectedPlayer);
+      }
+      
+      // 重新載入積分數據
+      const fetchAllData = async () => {
+        const targetTeamId = user?.team_id || 'T';
+        
+        let query = supabase
+          .from('member_monthly_score_summary')
+          .select('*', { count: 'exact' })
+          .eq('team_id', targetTeamId)
+          .eq('year', selectedYear)
+          .eq('month', selectedMonth)
+          .gt('points', 0)
+          .gt('total_games', 0);
+        
+        if (selectedGameType !== 'all') {
+          query = query.eq('source_type', selectedGameType);
+        }
+        
+        const { data, error, count } = await query.order('points', { ascending: false });
+        
+        if (!error) {
+          setAllData(data || []);
+          setTotal(count || 0);
+        }
+      };
+      
+      await fetchAllData();
+      
+    } catch (error) {
+      console.error('刪除失敗:', error);
+      setErrorMsg('刪除失敗，請稍後再試');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  // 新增：取消刪除
+  const handleCancelDelete = () => {
+    setShowDeleteModal(false);
+    setGameToDelete(null);
+  };
+
   // 分頁按鈕 UI
   const renderPagination = () => {
     const totalPages = Math.ceil(total / pageSize);
@@ -305,9 +396,6 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
     );
   };
 
-  // 條形圖分頁
-  const [chartPage, setChartPage] = useState(1);
-  const chartPageSize = 5;
   const chartTotalPages = Math.ceil(allData.length / chartPageSize);
   const chartPageData = useMemo(() => {
     // 取得分頁內的資料
@@ -460,16 +548,18 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
                 <th className="border px-2 py-2">比分</th>
                 <th className="border px-2 py-2">勝負</th>
                 <th className="border px-2 py-2">類型</th>
+                {isAdmin && <th className="border px-2 py-2">操作</th>}
               </tr>
             </thead>
             <tbody>
               {filteredGames.length === 0 ? (
-                <tr><td colSpan={8} className="border px-2 py-4 text-gray-500">無紀錄</td></tr>
+                <tr><td colSpan={isAdmin ? 9 : 8} className="border px-2 py-4 text-gray-500">無紀錄</td></tr>
               ) : (
                 filteredGames.map((game, idx) => {
                   const date = game.record_date ? new Date(game.record_date) : null;
                   const dateStr = date ? `${date.getMonth() + 1}/${date.getDate()}` : '';
                   const gameTypeSymbol = getGameTypeSymbol(game.source_type);
+                  const isChallenge = game.source_type === 'challenge';
                   
                   return (
                     <tr key={game.id || idx} className="hover:bg-gray-50">
@@ -483,6 +573,21 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
                         {game.result}
                       </td>
                       <td className="border px-2 py-2 text-lg">{gameTypeSymbol}</td>
+                      {isAdmin && (
+                        <td className="border px-2 py-2">
+                          {isChallenge ? (
+                            <button
+                              onClick={() => handleDeleteClick(game)}
+                              className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded"
+                              title="刪除此挑戰賽記錄"
+                            >
+                              🗑️
+                            </button>
+                          ) : (
+                            <span className="text-gray-400" title="正式比賽不可刪除">-</span>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })
@@ -568,16 +673,18 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
                 <th className="border px-2 py-2">player4</th>
                 <th className="border px-2 py-2">比數</th>
                 <th className="border px-2 py-2">類型</th>
+                {isAdmin && <th className="border px-2 py-2">操作</th>}
               </tr>
             </thead>
             <tbody>
               {filteredGames.length === 0 ? (
-                <tr><td colSpan={8} className="border px-2 py-4 text-gray-500">無紀錄</td></tr>
+                <tr><td colSpan={isAdmin ? 9 : 8} className="border px-2 py-4 text-gray-500">無紀錄</td></tr>
               ) : (
                 filteredGames.map((game, idx) => {
                   const date = game.record_date ? new Date(game.record_date) : null;
                   const dateStr = date ? `${date.getMonth() + 1}/${date.getDate()}` : '';
                   const gameTypeSymbol = getGameTypeSymbol(game.source_type);
+                  const isChallenge = game.source_type === 'challenge';
                   
                   // 判斷每個玩家是否獲勝
                   const isPlayer1Winner = game.win1_name === game.player1 || game.win2_name === game.player1;
@@ -595,6 +702,21 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
                       <td className={`border px-2 py-2${game.player4 ? (isPlayer4Winner ? ' bg-green-100' : '') : ''}`}>{game.player4 ? `${game.player4} ${isPlayer4Winner ? '👑' : ''}` : ''}</td>
                       <td className="border px-2 py-2 font-bold">{game.score || '--'}</td>
                       <td className="border px-2 py-2 text-lg">{gameTypeSymbol}</td>
+                      {isAdmin && (
+                        <td className="border px-2 py-2">
+                          {isChallenge ? (
+                            <button
+                              onClick={() => handleDeleteClick(game)}
+                              className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded"
+                              title="刪除此挑戰賽記錄"
+                            >
+                              🗑️
+                            </button>
+                          ) : (
+                            <span className="text-gray-400" title="正式比賽不可刪除">-</span>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   );
                 })
@@ -612,9 +734,6 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
   // 取得當前選擇的比賽類型名稱
   const currentGameTypeName = GAME_TYPE_OPTIONS.find(opt => opt.value === selectedGameType)?.label || '全部比賽';
 
-  // 狀態：存儲年度總積分
-  const [annualTotalPoints, setAnnualTotalPoints] = useState<number>(0);
-  
   // 獲取登入者的年度總積分
   useEffect(() => {
     const fetchAnnualPoints = async () => {
@@ -649,7 +768,7 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
     <div className="max-w-3xl mx-auto p-2 sm:p-6 overflow-x-auto">
       <div className="mb-2 text-gray-700 text-sm">
         {user
-          ? <span>登入者：{user.name}（{TEAM_NAMES[user.team_id] || user.team_id}）</span>
+          ? <span>登入者：{user.name}（{TEAM_NAMES[user.team_id] || user.team_id}）{isAdmin && <span className="ml-2 px-2 py-1 bg-red-100 text-red-700 text-xs rounded font-bold">管理員</span>}</span>
           : <span>登入者：訪客（測試）</span>
         }
       </div>
@@ -852,6 +971,50 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
         </table>
         {renderPagination()}
       </div>
+
+      {/* 刪除確認對話框 */}
+      {showDeleteModal && gameToDelete && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white p-6 rounded-lg shadow-lg max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold mb-4 text-red-600">確認刪除比賽記錄</h3>
+            
+            <div className="mb-4 p-3 bg-gray-50 rounded">
+              <div className="text-sm space-y-1">
+                <div><span className="font-bold">日期：</span>{gameToDelete.record_date ? new Date(gameToDelete.record_date).toLocaleDateString() : '--'}</div>
+                <div><span className="font-bold">類型：</span>{gameToDelete.player3 ? '雙打' : '單打'} ({getGameTypeSymbol(gameToDelete.source_type)} {gameToDelete.source_type === 'challenge' ? '挑戰賽' : '正式比賽'})</div>
+                <div><span className="font-bold">參賽者：</span>
+                  {gameToDelete.player1}{gameToDelete.player2 ? ` + ${gameToDelete.player2}` : ''}
+                  {gameToDelete.player3 ? ` vs ${gameToDelete.player3}` : ''}
+                  {gameToDelete.player4 ? ` + ${gameToDelete.player4}` : ''}
+                </div>
+                <div><span className="font-bold">比分：</span>{gameToDelete.score || '--'}</div>
+                <div><span className="font-bold">獲勝者：</span>{gameToDelete.win1_name}{gameToDelete.win2_name ? ` + ${gameToDelete.win2_name}` : ''}</div>
+              </div>
+            </div>
+            
+            <div className="text-sm text-red-600 mb-4">
+              ⚠️ 此操作無法復原，確定要刪除這筆比賽記錄嗎？
+            </div>
+            
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={handleCancelDelete}
+                className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                disabled={deleting}
+              >
+                取消
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                disabled={deleting}
+              >
+                {deleting ? '刪除中...' : '確認刪除'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
