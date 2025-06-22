@@ -878,7 +878,7 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
                 tick={{ angle: -40, fontSize: 14, dy: 10 }}
                 interval={0}
               />
-              <YAxis tick={{ fontSize: 10 }} />
+              <YAxis tick={{ fontSize: 14 }} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="points" fill="#3182ce">
                 {/* 只保留 bar 內部顯示勝率 */}
