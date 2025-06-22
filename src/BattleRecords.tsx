@@ -886,7 +886,7 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
                   dataKey="winning_rate"
                   position="inside"
                   formatter={(v: number | undefined) => (typeof v === 'number' ? `${v.toFixed(1)}%` : '')}
-                  style={{ fontSize: 11, fill: '#fff' }}
+                  style={{ fontSize: 14, fill: '#fff' }}
                 />
               </Bar>
             </BarChart>
