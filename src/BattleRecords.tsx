@@ -875,7 +875,7 @@ const BattleRecords: React.FC<{ currentLoggedInUser?: any }> = ({ currentLoggedI
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis
                 dataKey="name"
-                tick={{ angle: -40, fontSize: 10, dy: 10 }}
+                tick={{ angle: -40, fontSize: 14, dy: 10 }}
                 interval={0}
               />
               <YAxis tick={{ fontSize: 10 }} />
