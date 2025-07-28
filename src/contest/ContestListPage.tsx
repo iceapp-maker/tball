@@ -268,8 +268,8 @@ const ContestListPage: React.FC = () => {
     // 編碼邀請數據
     const encodedData = btoa(JSON.stringify(inviteData));
     
-    // 生成邀請URL - 指向實際網站
-    const baseUrl = 'https://tball.netlify.app';
+    // 生成邀請URL - 使用相對位置
+    const baseUrl = window.location.origin;
     const inviteUrl = `${baseUrl}/qr-join?data=${encodedData}`;
     
     // 使用 Google Charts API 生成QR碼
@@ -277,6 +277,13 @@ const ContestListPage: React.FC = () => {
     
     console.log('QR碼URL:', qrCodeUrl);
     console.log('邀請URL:', inviteUrl);
+    console.log('QR碼內容數據:', {
+      contest_id: inviteData.contest_id,
+      team_id: inviteData.team_id,
+      member_id: inviteData.member_id,
+      timestamp: inviteData.timestamp,
+      encodedData: encodedData
+    });
     
     setQrCodeData(qrCodeUrl);
     setQrCodeModalOpen(true);
