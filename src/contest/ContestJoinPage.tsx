@@ -95,6 +95,8 @@ const ContestJoinPage: React.FC = () => {
   const [selectedMemberToRemove, setSelectedMemberToRemove] = useState<any>(null);
   const [isRemoveModalOpen, setIsRemoveModalOpen] = useState(false);
   const [removeLoading, setRemoveLoading] = useState(false);
+  const [qrCodeModalOpen, setQrCodeModalOpen] = useState(false);
+  const [qrCodeData, setQrCodeData] = useState('');
 
   // 假設有user context
   const user = JSON.parse(localStorage.getItem('loginUser') || '{}');
@@ -102,6 +104,56 @@ const ContestJoinPage: React.FC = () => {
   // 處理邀請參數
   const params = new URLSearchParams(location.search);
   const inviteMemberId = params.get('invite');
+
+  // 生成QR碼邀請
+  const generateQRInvite = (memberId: string, memberName: string, teamId?: string) => {
+    if (!contest_id) return;
+    
+    // 確定要使用的隊伍ID
+    const targetTeamId = teamId || (joinedTeam ? joinedTeam.contest_team_id : null);
+    if (!targetTeamId) {
+      Modal.error({ title: '錯誤', content: '無法確定隊伍資訊' });
+      return;
+    }
+    
+    // 檢查是否為隊長
+    const isCaptainOfTeam = allTeamMembers.some(
+      (m: any) => m.contest_team_id === targetTeamId && 
+           m.member_name === user.name && 
+           m.status === 'captain'
+    );
+
+    if (!isCaptainOfTeam) {
+      Modal.error({ title: '錯誤', content: '只有隊長可以生成邀請碼' });
+      return;
+    }
+
+    // 生成邀請數據
+    const inviteData = {
+      contest_id: contest_id,
+      team_id: targetTeamId,
+      member_id: memberId,
+      timestamp: new Date().toISOString()
+    };
+
+    console.log('生成QR碼邀請數據:', inviteData);
+
+    // 編碼邀請數據
+    const encodedData = btoa(JSON.stringify(inviteData));
+    
+    // 生成邀請URL - 指向實際網站
+    const baseUrl = 'https://tball.netlify.app';
+    const inviteUrl = `${baseUrl}/qr-join?data=${encodedData}`;
+    
+    // 使用 Google Charts API 生成QR碼
+    const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(inviteUrl)}`;
+    
+    console.log('QR碼URL:', qrCodeUrl);
+    console.log('邀請URL:', inviteUrl);
+    
+    setQrCodeData(qrCodeUrl);
+    setQrCodeModalOpen(true);
+  };
 
   // 處理邀請送出
   const handleInvite = async () => {
@@ -871,9 +923,35 @@ const ContestJoinPage: React.FC = () => {
                          m.status === 'reject' ? '謝絕' : m.status}
                       ）
                     </span>
-                    {m.contest_team_id === team.contest_team_id && // 確保是同一隊伍
+                    {m.status === 'invited' && allTeamMembers.some(captain => 
+                      captain.contest_team_id === joinedTeam.contest_team_id && 
+                      captain.member_name === user.name && 
+                      captain.status === 'captain'
+                    ) && (
+                      <Button 
+                        type="link" 
+                        size="small"
+                        onClick={() => generateQRInvite(m.member_id, m.member_name)}
+                      >
+                        生成邀請碼
+                      </Button>
+                    )}
+                    {m.status === 'invited' && allTeamMembers.some(captain => 
+                      captain.contest_team_id === joinedTeam.contest_team_id && 
+                      captain.member_name === user.name && 
+                      captain.status === 'captain'
+                    ) && (
+                      <Button 
+                        type="link" 
+                        size="small"
+                        onClick={() => generateQRInvite(m.member_id, m.member_name)}
+                      >
+                        生成邀請碼
+                      </Button>
+                    )}
+                    {m.contest_team_id === joinedTeam.contest_team_id && // 確保是同一隊伍
                      allTeamMembers.some(captain => 
-                       captain.contest_team_id === team.contest_team_id && 
+                       captain.contest_team_id === joinedTeam.contest_team_id && 
                        captain.member_name === user.name && 
                        captain.status === 'captain'
                      ) && 
@@ -931,7 +1009,7 @@ const ContestJoinPage: React.FC = () => {
             )}
           </div>
           {allTeamMembers.some(captain => 
-            captain.contest_team_id === team.contest_team_id && 
+            captain.contest_team_id === joinedTeam.contest_team_id && 
             captain.member_name === user.name && 
             captain.status === 'captain'
           ) && (
@@ -1167,6 +1245,19 @@ const ContestJoinPage: React.FC = () => {
                                m.status === 'reject' ? '謝絕' : m.status}
                             ）
                           </span>
+                          {m.status === 'invited' && allTeamMembers.some(captain => 
+                            captain.contest_team_id === team.contest_team_id && 
+                            captain.member_name === user.name && 
+                            captain.status === 'captain'
+                          ) && (
+                            <Button 
+                              type="link" 
+                              size="small"
+                              onClick={() => generateQRInvite(m.member_id, m.member_name, team.contest_team_id)}
+                            >
+                              生成邀請碼
+                            </Button>
+                          )}
                           {m.contest_team_id === team.contest_team_id && // 確保是同一隊伍
                            allTeamMembers.some(captain => 
                              captain.contest_team_id === team.contest_team_id && 
@@ -1335,6 +1426,34 @@ const ContestJoinPage: React.FC = () => {
         destroyOnClose
       >
         <p>確定要移除 {selectedMemberToRemove?.member_name} 嗎？</p>
+      </Modal>
+
+      {/* QR碼邀請 Modal */}
+      <Modal
+        title="邀請QR碼"
+        open={qrCodeModalOpen}
+        onCancel={() => setQrCodeModalOpen(false)}
+        footer={[
+          <Button key="close" onClick={() => setQrCodeModalOpen(false)}>
+            關閉
+          </Button>
+        ]}
+        width={400}
+        centered
+      >
+        <div style={{ textAlign: 'center', padding: '20px' }}>
+          <p style={{ marginBottom: '20px' }}>請讓隊員掃描此QR碼加入隊伍</p>
+          {qrCodeData && (
+            <img 
+              src={qrCodeData} 
+              alt="邀請QR碼" 
+              style={{ maxWidth: '100%', height: 'auto' }}
+            />
+          )}
+          <p style={{ marginTop: '20px', fontSize: '12px', color: '#666' }}>
+            隊員掃碼後將直接跳轉到加入頁面
+          </p>
+        </div>
       </Modal>
     </div>
   );
