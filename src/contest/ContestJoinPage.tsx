@@ -141,8 +141,8 @@ const ContestJoinPage: React.FC = () => {
     // 編碼邀請數據
     const encodedData = btoa(JSON.stringify(inviteData));
     
-    // 生成邀請URL - 指向實際網站
-    const baseUrl = 'https://tball.netlify.app';
+    // 生成邀請URL - 使用相對位置
+    const baseUrl = window.location.origin;
     const inviteUrl = `${baseUrl}/qr-join?data=${encodedData}`;
     
     // 使用 Google Charts API 生成QR碼
@@ -150,6 +150,13 @@ const ContestJoinPage: React.FC = () => {
     
     console.log('QR碼URL:', qrCodeUrl);
     console.log('邀請URL:', inviteUrl);
+    console.log('QR碼內容數據:', {
+      contest_id: inviteData.contest_id,
+      team_id: inviteData.team_id,
+      member_id: inviteData.member_id,
+      timestamp: inviteData.timestamp,
+      encodedData: encodedData
+    });
     
     setQrCodeData(qrCodeUrl);
     setQrCodeModalOpen(true);
@@ -923,19 +930,6 @@ const ContestJoinPage: React.FC = () => {
                          m.status === 'reject' ? '謝絕' : m.status}
                       ）
                     </span>
-                    {m.status === 'invited' && allTeamMembers.some(captain => 
-                      captain.contest_team_id === joinedTeam.contest_team_id && 
-                      captain.member_name === user.name && 
-                      captain.status === 'captain'
-                    ) && (
-                      <Button 
-                        type="link" 
-                        size="small"
-                        onClick={() => generateQRInvite(m.member_id, m.member_name)}
-                      >
-                        生成邀請碼
-                      </Button>
-                    )}
                     {m.status === 'invited' && allTeamMembers.some(captain => 
                       captain.contest_team_id === joinedTeam.contest_team_id && 
                       captain.member_name === user.name && 
