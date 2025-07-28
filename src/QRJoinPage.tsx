@@ -177,12 +177,22 @@ const QRJoinPage: React.FC = () => {
         }
       }
 
+      // 將被邀請成員的資訊存入 localStorage，實現臨時登入
+      const tempUser = {
+        member_id: inviteData.member_id,
+        name: memberInfo.name,
+        team_id: memberInfo.team_id,
+        role: 'member', // 預設為一般成員
+        is_captain: false
+      };
+      localStorage.setItem('loginUser', JSON.stringify(tempUser));
+      
       Modal.success({
         title: '加入成功！',
         content: `您已成功加入 ${teamInfo?.team_name} 隊伍參加 ${contestInfo?.contest_name}`,
         onOk: () => {
-          // 跳轉到實際網站的比賽頁面
-          window.location.href = `https://tball.netlify.app/contest/${inviteData.contest_id}/join`;
+          // 跳轉到比賽頁面
+          navigate(`/contest/${inviteData.contest_id}/join`);
         }
       });
 
@@ -231,8 +241,7 @@ const QRJoinPage: React.FC = () => {
             title: '已拒絕邀請',
             content: '您已拒絕加入該隊伍',
             onOk: () => {
-              // 跳轉到實際網站的參賽區
-              window.location.href = 'https://tball.netlify.app/contests';
+              navigate('/contests');
             }
           });
         } catch (err) {
@@ -266,13 +275,13 @@ const QRJoinPage: React.FC = () => {
           <div className="space-y-3">
             <Button 
               type="primary" 
-              onClick={() => window.location.href = 'https://tball.netlify.app/contests'}
+              onClick={() => navigate('/contests')}
               block
             >
               前往參賽區
             </Button>
             <Button 
-              onClick={() => window.location.href = 'https://tball.netlify.app/'}
+              onClick={() => navigate('/')}
               block
             >
               返回首頁
@@ -335,7 +344,7 @@ const QRJoinPage: React.FC = () => {
           
           <Button
             size="large"
-            onClick={() => window.location.href = 'https://tball.netlify.app/contests'}
+            onClick={() => navigate('/contests')}
             disabled={processing}
             block
           >
