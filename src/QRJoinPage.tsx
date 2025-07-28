@@ -177,16 +177,6 @@ const QRJoinPage: React.FC = () => {
         }
       }
 
-      // 將被邀請成員的資訊存入 localStorage，實現臨時登入
-      const tempUser = {
-        member_id: inviteData.member_id,
-        name: memberInfo.name,
-        team_id: memberInfo.team_id,
-        role: 'member', // 預設為一般成員
-        is_captain: false
-      };
-      localStorage.setItem('loginUser', JSON.stringify(tempUser));
-      
       Modal.success({
         title: '加入成功！',
         content: `您已成功加入 ${teamInfo?.team_name} 隊伍參加 ${contestInfo?.contest_name}`,
