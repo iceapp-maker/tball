@@ -2,6 +2,8 @@ import React, { useState, useEffect, useContext } from 'react';
 import { BellIcon, XIcon, CalendarIcon } from 'lucide-react';
 import ChallengeListPage from './ChallengeListPage';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import TournamentBracketPage from './contest/TournamentBracketPage';
+import CustomTournamentPage from './contest/CustomTournamentPage';
 import DoubleGame from './double_game';
 import SingleGame from './single_game';
 import MemberManagement from './MemberManagement';
@@ -26,8 +28,10 @@ import ContestResultsPage from './contest/ContestResultsPage';
 import LineupStatusPage from './contest/LineupStatusPage';
 import ContestTableView from './contest/ContestTableView';
 import ScoreEditPage from './contest/ScoreEditPage';
+import SubContestTeamManagementPage from './contest/SubContestTeamManagementPage'; // 導入子賽事隊伍管理頁面
+import QRJoinPage from './QRJoinPage'; // 導入QR碼掃描加入頁面
 // 版本信息
-const CURRENT_VERSION = "a.20";
+const CURRENT_VERSION = "a.21";
 
 // ✅ 新增：權限檢查函數
 const isAdmin = (user: any): boolean => {
@@ -710,6 +714,21 @@ function App() {
                 <ContestControlPage />
               </ProtectedRoute>
             } />
+            <Route path="/contest/:contestId/manage-teams" element={
+              <ProtectedRoute requiredRole="admin" currentUser={currentLoggedInUser}>
+                <SubContestTeamManagementPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/contest/subcontest-team/:contestId" element={
+              <ProtectedRoute requiredRole="admin" currentUser={currentLoggedInUser}>
+                <SubContestTeamManagementPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/contest-control/:contestId" element={
+              <ProtectedRoute requiredRole="admin" currentUser={currentLoggedInUser}>
+                <ContestControlPage />
+              </ProtectedRoute>
+            } />
             <Route path="/contest/lineup-editor" element={<LineupEditorPage />} />
             <Route path="/lineup-editor" element={<LineupEditorPage />} />
             <Route path="/new-personal-info" element={
@@ -741,6 +760,31 @@ function App() {
             <Route path="/contest/:contestId/results" element={<ContestResultsPage />} />
             <Route path="/contest/:contestId/lineup-status" element={<LineupStatusPage />} />
             <Route path="/contest/:contestId/table-view" element={<ContestTableView />} />
+            <Route path="/contest/:contestId/bracket" element={
+              <ProtectedRoute requiredRole="admin" currentUser={currentLoggedInUser}>
+                <TournamentBracketPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/contest/bracket/:contestId" element={
+              <TournamentBracketPage />
+            } />
+            <Route path="/contest/:contestId/custom" element={
+              <ProtectedRoute requiredRole="admin" currentUser={currentLoggedInUser}>
+                <CustomTournamentPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/contest/:contestId/lineup-editor" element={<LineupEditorPage />} />
+            <Route path="/contest/:contestId/join" element={<ContestJoinPage />} />
+            <Route path="/contest/:contestId/edit" element={<EditContestPage />} />
+            <Route path="/contest/:contestId" element={<ContestControlPage />} />
+
+            {/* QR碼掃描加入頁面 */}
+            <Route path="/qr-join" element={<QRJoinPage />} />
+
+            {/* 多組競賽儀表板 */}
+
+            {/* 團隊與個人資訊 */}
+            <Route path="/personal-info" element={<NewPersonalInfo />} />
             
             {/* 通用路由 - 必須放在最後 */}
             <Route path="/contest/:contestId" element={<BattleRoomPage />} />
