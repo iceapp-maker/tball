@@ -116,15 +116,17 @@ const ContestJoinPage: React.FC = () => {
       return;
     }
     
-    // 檢查是否為隊長
+    // 檢查是否為隊長或管理員
     const isCaptainOfTeam = allTeamMembers.some(
       (m: any) => m.contest_team_id === targetTeamId && 
            m.member_name === user.name && 
            m.status === 'captain'
     );
 
-    if (!isCaptainOfTeam) {
-      Modal.error({ title: '錯誤', content: '只有隊長可以生成邀請碼' });
+    const isAdmin = user.role === 'admin' || user.role === 'team_admin';
+
+    if (!isCaptainOfTeam && !isAdmin) {
+      Modal.error({ title: '錯誤', content: '只有隊長或管理員可以生成邀請碼' });
       return;
     }
 
@@ -566,7 +568,7 @@ const ContestJoinPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (contest_id && user.name && user.team_id) {
+    if (contest_id && user.name) {
       fetchContestAndStatus();
     }
   }, [contest_id, user.name, user.team_id]);
@@ -930,11 +932,11 @@ const ContestJoinPage: React.FC = () => {
                          m.status === 'reject' ? '謝絕' : m.status}
                       ）
                     </span>
-                    {m.status === 'invited' && allTeamMembers.some(captain => 
+                    {(m.status === 'invited' || m.status === 'rejected') && (allTeamMembers.some(captain => 
                       captain.contest_team_id === joinedTeam.contest_team_id && 
                       captain.member_name === user.name && 
                       captain.status === 'captain'
-                    ) && (
+                    ) || user.role === 'admin' || user.role === 'team_admin') && (
                       <Button 
                         type="link" 
                         size="small"
@@ -1239,11 +1241,11 @@ const ContestJoinPage: React.FC = () => {
                                m.status === 'reject' ? '謝絕' : m.status}
                             ）
                           </span>
-                          {m.status === 'invited' && allTeamMembers.some(captain => 
+                          {(m.status === 'invited' || m.status === 'rejected') && (allTeamMembers.some(captain => 
                             captain.contest_team_id === team.contest_team_id && 
                             captain.member_name === user.name && 
                             captain.status === 'captain'
-                          ) && (
+                          ) || user.role === 'admin' || user.role === 'team_admin') && (
                             <Button 
                               type="link" 
                               size="small"

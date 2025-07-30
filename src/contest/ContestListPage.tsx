@@ -458,7 +458,7 @@ const ContestListPage: React.FC = () => {
               // 查詢 contest_team_member 表
               const { data: fetchedMembers, error: fetchedMembersError } = await supabase
                 .from('contest_team_member')
-                .select('contest_team_id, member_name, status')
+                .select('contest_team_id, member_id, member_name, status')
                 .in('contest_team_id', teamIds); // 使用 in 查詢多個 team_id
 
               if (fetchedMembersError) {
@@ -494,7 +494,7 @@ const ContestListPage: React.FC = () => {
             // 查詢成員資料
             const { data: fetchedMembers, error: fetchedMembersError } = await supabase
               .from('contest_team_member')
-              .select('contest_team_id, member_name, status')
+              .select('contest_team_id, member_id, member_name, status')
               .eq('contest_id', contest.contest_id); // 這裡之前直接用了 contest.contest_id
             if (fetchedMembersError) {
               memberErr = fetchedMembersError;
@@ -582,6 +582,9 @@ const ContestListPage: React.FC = () => {
                   );
                   const canGenerateQR = (user.role === 'admin' || isUserCaptainOfThisTeam) && isInvitedMember;
                   
+                  // 檢查是否為當前用戶自己且狀態為邀請中
+                  const isCurrentUserInvited = (m.member_name === user.name || m.member_id === user.member_id) && isInvitedMember;
+                  
                   if (canGenerateQR) {
                     // 找到當前隊伍的contest_team_id
                     const currentTeamId = Object.keys(teamsMap).find(key => teamsMap[key] === team) || '';
@@ -592,6 +595,18 @@ const ContestListPage: React.FC = () => {
                         style="background: #3b82f6; color: white; border: none; padding: 2px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-left: 8px;"
                       >
                         生成QR碼
+                      </button>
+                    </li>`;
+                  } else if (isCurrentUserInvited) {
+                    // 當前用戶自己的邀請狀態，顯示接受按鈕
+                    const currentTeamId = Object.keys(teamsMap).find(key => teamsMap[key] === team) || '';
+                    msg += `<li style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                      <span>${m.member_name}${statusLabel}</span>
+                      <button 
+                        onclick="window.acceptInviteForMember(${contest.contest_id}, '${currentTeamId}', '${m.member_id || ''}', '${m.member_name}', '${team.name}')"
+                        style="background: #22c55e; color: white; border: none; padding: 2px 8px; border-radius: 4px; font-size: 12px; cursor: pointer; margin-left: 8px;"
+                      >
+                        接受邀請
                       </button>
                     </li>`;
                   } else {
@@ -617,6 +632,55 @@ const ContestListPage: React.FC = () => {
             }
           };
           
+          // 添加接受邀請的全局函數
+          (window as any).acceptInviteForMember = async (contestId: number, teamId: string, memberId: string, memberName: string, teamName: string) => {
+            try {
+              // 更新資料庫中的成員狀態為已接受
+              const { error: updateError } = await supabase
+                .from('contest_team_member')
+                .update({ 
+                  status: 'accepted',
+                  responded_at: new Date().toISOString()
+                })
+                .eq('contest_team_id', teamId)
+                .eq('member_id', memberId);
+
+              if (updateError) {
+                throw updateError;
+              }
+
+              // 關閉成員名單模態框
+              const existingModal = document.querySelector('[data-member-list-modal]');
+              if (existingModal) {
+                document.body.removeChild(existingModal);
+              }
+
+              // 顯示成功訊息
+              Modal.success({
+                title: '加入成功！',
+                content: (
+                  <div>
+                    <p>您已成功加入 {teamName} 隊伍參加 {contest.contest_name}</p>
+                    <p style={{ marginTop: '16px', color: '#1890ff', fontWeight: 'bold' }}>
+                      請登入系統後查看比賽資訊
+                    </p>
+                  </div>
+                ),
+                onOk: () => {
+                  // 重新載入頁面以更新狀態
+                  window.location.reload();
+                }
+              });
+
+            } catch (err: any) {
+              console.error('接受邀請失敗:', err);
+              Modal.error({
+                title: '加入失敗',
+                content: '加入隊伍時發生錯誤: ' + (err.message || '未知錯誤')
+              });
+            }
+          };
+          
           const modal = document.createElement('div');
           modal.setAttribute('data-member-list-modal', 'true');
           modal.style.position = 'fixed';
@@ -635,6 +699,7 @@ const ContestListPage: React.FC = () => {
             document.body.removeChild(modal);
             // 清理全局函數
             delete (window as any).generateQRForMember;
+            delete (window as any).acceptInviteForMember;
           });
         }}
       >

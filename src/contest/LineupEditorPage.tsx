@@ -39,6 +39,7 @@ const LineupEditorPage: React.FC = () => {
     team_id: string;
     contest_id: string;
     team_type: string; // 添加team_type欄位
+    points_config: any; // 添加points_config欄位
   } | null>(null);
   const [captainId, setCaptainId] = useState<string | null>(null);
 
@@ -62,7 +63,7 @@ const LineupEditorPage: React.FC = () => {
             team2_id,
             team1:team1_id (team_name),
             team2:team2_id (team_name),
-            contest:contest_id (contest_name)
+            contest:contest_id (contest_name, points_config)
           `)
           .eq('match_id', match_id)
           .single();
@@ -93,7 +94,8 @@ const LineupEditorPage: React.FC = () => {
           opponent_name: opponentName || '對手隊伍',
           team_id: team_id,
           contest_id: matchData.contest_id,
-          team_type: team_type // 保存team_type
+          team_type: team_type, // 保存team_type
+          points_config: matchData.contest?.points_config // 保存points_config
         });
 
         // 2. 獲取contest_match_detail中的比賽項目
@@ -118,6 +120,12 @@ const LineupEditorPage: React.FC = () => {
         setSelectedMembers(initialSelections);
 
         // 3. 獲取隊伍成員
+        // team_id 從 URL 參數傳來時是字串，但資料庫中的 contest_team_id 是數字，需要轉換型別
+        const teamIdInt = parseInt(team_id, 10);
+        if (isNaN(teamIdInt)) {
+          throw new Error('無效的 Team ID');
+        }
+
         const { data: membersData, error: membersError } = await supabase
           .from('contest_team_member')
           .select(`
@@ -125,13 +133,12 @@ const LineupEditorPage: React.FC = () => {
             member_name,
             status
           `)
-          .eq('contest_team_id', team_id) // 直接使用傳入的team_id
-          .eq('contest_id', matchData.contest_id); // 確保是相同比賽內的隊員
+          .eq('contest_team_id', teamIdInt); // 使用轉換後的數字型別 team_id
         
         if (membersError) throw membersError;
         
         // 格式化隊員資料
-        const formattedMembers = membersData?.map(item => ({
+        const formattedMembers = membersData?.map((item: any) => ({
           member_id: item.member_id,
           name: item.member_name || item.member_id,
           status: item.status
@@ -162,7 +169,7 @@ const LineupEditorPage: React.FC = () => {
       return;
     }
     
-    setSelectedMembers(prev => ({
+    setSelectedMembers((prev: Record<string, string[]>) => ({
       ...prev,
       [matchDetailId]: memberIds
     }));
@@ -176,7 +183,7 @@ const LineupEditorPage: React.FC = () => {
     }
 
     // 檢查是否所有比賽項目都有選擇足夠的選手
-    const insufficientItems = matchDetails.filter(detail => {
+    const insufficientItems = matchDetails.filter((detail: MatchDetail) => {
       const detailKey = `${detail.match_detail_id}`;
       const selectedMemberIds = selectedMembers[detailKey] || [];
       const requiredMembers = detail.match_type === '雙打' ? 2 : 1;
@@ -185,7 +192,7 @@ const LineupEditorPage: React.FC = () => {
 
     if (insufficientItems.length > 0) {
       // 有項目選手不足
-      const warningMessages = insufficientItems.map(item => {
+      const warningMessages = insufficientItems.map((item: MatchDetail) => {
         const detailKey = `${item.match_detail_id}`;
         const currentCount = selectedMembers[detailKey]?.length || 0;
         const requiredCount = item.match_type === '雙打' ? 2 : 1;
@@ -266,8 +273,7 @@ const LineupEditorPage: React.FC = () => {
     <div className="p-4">
       <h2 className="text-xl font-bold mb-2">編排出賽名單</h2>
       
-      {/* Debug 資訊區塊 (已隱藏，需時請移除註解) */}
-      {/*
+      {/* Debug 資訊區塊 */}
       {matchInfo && (
         <div className="mb-4">
           <div className="p-3 bg-gray-100 rounded mb-4 border-2 border-red-500">
@@ -277,6 +283,15 @@ const LineupEditorPage: React.FC = () => {
             <p><strong>Team ID:</strong> {matchInfo.team_id}</p>
             <p><strong>Team Type:</strong> {matchInfo.team_type}</p>
             <p><strong>隊長 ID:</strong> {captainId || '未找到隊長'}</p>
+            <p><strong>Points Config:</strong> {JSON.stringify(matchInfo.points_config)}</p>
+            <div>
+              <p><strong>比賽項目原始類型:</strong></p>
+              <ul>
+                {matchDetails.map((detail: MatchDetail, index: number) => (
+                  <li key={index}>項目 {detail.sequence}: {detail.match_type}</li>
+                ))}
+              </ul>
+            </div>
           </div>
           
           <p><strong>比賽：</strong>{matchInfo.contest_name}</p>
@@ -284,21 +299,77 @@ const LineupEditorPage: React.FC = () => {
           <p><strong>對手隊伍：</strong>{matchInfo.opponent_name}</p>
         </div>
       )}
-      */}
       
       {matchDetails.length === 0 ? (
         <p>沒有找到比賽項目資料</p>
       ) : (
         <>
-          {matchDetails.map((detail) => {
+          {matchDetails.map((detail: MatchDetail) => {
+            // 比賽類型處理
+            console.log(`比賽項目 ${detail.sequence} 原始類型:`, detail.match_type);
+            
+            // 從 points_config 中獲取正確的比賽類型
+            const getMatchTypeFromPointsConfig = (): string | undefined => {
+              if (matchInfo?.points_config && Array.isArray(matchInfo.points_config)) {
+                // 獲取對應序號的配置
+                const index = detail.sequence - 1;
+                if (index < matchInfo.points_config.length) {
+                  const config = matchInfo.points_config[index];
+                  if (config && config.type) {
+                    return config.type; // 使用 points_config 中的類型
+                  }
+                }
+              }
+              return undefined; // 如果找不到配置，返回 undefined
+            };
+            
+            const getMatchTypeDisplay = (type: string): string => {
+              // 首先嘗試從 points_config 獲取類型
+              const configType = getMatchTypeFromPointsConfig();
+              if (configType === '單打' || configType === '雙打') {
+                console.log(`從 points_config 獲取類型: ${configType}`);
+                return configType;
+              }
+              
+              // 如果沒有從配置獲取到，則檢查當前值
+              // 先檢查是否已經是中文格式
+              if (type === '單打' || type === '雙打') {
+                console.log(`類型已是中文格式: ${type}`);
+                return type;
+              }
+              // 如果是英文格式，轉換為中文
+              if (type.toLowerCase() === 'singles') {
+                console.log('英文單打轉中文');
+                return '單打';
+              }
+              if (type.toLowerCase() === 'doubles') {
+                console.log('英文雙打轉中文');
+                return '雙打';
+              }
+              // 如果都不是，則根據內容判斷
+              if (type.includes('單')) {
+                console.log(`包含單字: ${type}`);
+                return '單打';
+              }
+              if (type.includes('雙')) {
+                console.log(`包含雙字: ${type}`);
+                return '雙打';
+              }
+              // 預設為單打
+              console.log('無法識別的比賽類型:', type);
+              return '單打';
+            };
+            
+            const matchTypeDisplay = getMatchTypeDisplay(detail.match_type);
+            
             // 決定可選最大人數
-            const maxMembers = detail.match_type === '雙打' ? 2 : 1;
+            const maxMembers = matchTypeDisplay === '雙打' ? 2 : 1;
             const matchDetailKey = `${detail.match_detail_id}`;
             
             return (
               <div key={detail.match_detail_id} className="mb-6 p-4 border rounded">
                 <h3 className="font-bold mb-2">
-                  比賽項目 {detail.sequence}: {detail.match_type}
+                  比賽項目 {detail.sequence}: {matchTypeDisplay}
                 </h3>
                 
                 <div className="mb-4">
@@ -306,7 +377,7 @@ const LineupEditorPage: React.FC = () => {
                   <select
                     multiple
                     value={selectedMembers[matchDetailKey] || []}
-                    onChange={(e) => {
+                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
                       const selectedOptions = Array.from(
                         e.target.selectedOptions,
                         option => option.value
@@ -316,9 +387,10 @@ const LineupEditorPage: React.FC = () => {
                     className="w-full p-2 border rounded"
                     size={5} // 顯示5行選項
                   >
-                    {teamMembers.map((member) => {
+                    {teamMembers.map((member: TeamMember) => {
                       // 檢查該選手是否已在其他項目中被選中
-                      const isSelectedInOtherItem = Object.entries(selectedMembers).some(
+                      // 由於 TypeScript 環境問題，這裡的類型推斷可能不穩定，因此添加顯式類型斷言
+                      const isSelectedInOtherItem = (Object.entries(selectedMembers) as [string, string[]][]).some(
                         ([key, members]) => key !== matchDetailKey && members.includes(member.member_id)
                       );
                       
@@ -377,5 +449,5 @@ const LineupEditorPage: React.FC = () => {
     </div>
   );
 };
-
+ 
 export default LineupEditorPage;

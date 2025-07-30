@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
-import { finishContest } from './utils/contestFinishAndAdvancement';
 
 interface ContestData {
   contest_id: string;
@@ -86,35 +85,7 @@ const ContestControlPage: React.FC = () => {
 
   const checkAllScoresFilled = async (contestId: string) => {
     try {
-      // 先檢查是否為混合賽主賽事
-      const { data: contestInfo, error: contestInfoError } = await supabase
-        .from('contest')
-        .select('contest_type, parent_contest_id')
-        .eq('contest_id', contestId)
-        .single();
-
-      if (contestInfoError) throw contestInfoError;
-
-      // 如果是混合賽主賽事，檢查所有子賽事是否都已完成
-      if (contestInfo.contest_type === 'league_parent') {
-        const { data: childContests, error: childError } = await supabase
-          .from('contest')
-          .select('contest_status')
-          .eq('parent_contest_id', contestId);
-
-        if (childError) throw childError;
-
-        // 如果沒有子賽事，返回 false
-        if (!childContests || childContests.length === 0) {
-          return false;
-        }
-
-        // 檢查所有子賽事是否都已完成
-        const allChildrenFinished = childContests.every(child => child.contest_status === 'finished');
-        return allChildrenFinished;
-      }
-
-      // 對於一般賽事，檢查所有比賽是否都有獲勝者
+      // 檢查所有比賽是否都有獲勝者
       const { data: matches, error: matchError } = await supabase
         .from('contest_match')
         .select('winner_team_id')
@@ -188,24 +159,288 @@ const ContestControlPage: React.FC = () => {
   };
 
   // 🆕 新增：計算循環賽晉級隊伍（與 ContestResultsPage 相同邏輯）
-// 已移至 contest/utils/contestFinishAndAdvancement.ts
+// 🆕 新增：計算循環賽晉級隊伍（與 ContestResultsPage 相同邏輯）
+const calculateRoundRobinQualifiedTeams = async (contestId: string, advancementCount: number) => {
+  try {
+    console.log(`🔍 開始計算子賽事 ${contestId} 的晉級隊伍，目標晉級數量: ${advancementCount}`);
+    
+    // 獲取比賽記錄
+    const { data: matches, error: matchError } = await supabase
+      .from('contest_match')
+      .select('match_id, team1_id, team2_id, winner_team_id')
+      .eq('contest_id', contestId);
+
+    if (matchError) {
+      console.error('獲取比賽記錄失敗:', matchError);
+      throw matchError;
+    }
+    
+    console.log(`📊 找到 ${matches?.length || 0} 場比賽記錄:`, matches);
+
+    // ✅ 修正：對於子賽事，應該從 contest_group_assignment 表獲取參賽隊伍
+    // 然後再透過 contest_team_id 獲取隊伍名稱
+    const { data: assignments, error: assignmentError } = await supabase
+      .from('contest_group_assignment')
+      .select('contest_team_id')
+      .eq('group_contest_id', contestId);
+
+    if (assignmentError) {
+      console.error('獲取隊伍分配失敗:', assignmentError);
+      throw assignmentError;
+    }
+    
+    console.log(`👥 找到 ${assignments?.length || 0} 支參賽隊伍:`, assignments);
+
+    if (!assignments || assignments.length === 0) {
+      console.warn('⚠️ 沒有找到參賽隊伍');
+      return [];
+    }
+
+    // 獲取隊伍詳細資料（包含隊伍名稱）
+    const teamIds = assignments.map(a => a.contest_team_id);
+    const { data: teams, error: teamError } = await supabase
+      .from('contest_team')
+      .select('contest_team_id, team_name')
+      .in('contest_team_id', teamIds);
+
+    if (teamError) {
+      console.error('獲取隊伍詳細資料失敗:', teamError);
+      throw teamError;
+    }
+    
+    console.log(`🏷️ 隊伍詳細資料:`, teams);
+
+    // 獲取比賽詳情（每局勝負）
+    const matchIds = matches?.map(match => match.match_id) || [];
+    console.log(`🔍 比賽ID列表:`, matchIds);
+    
+    if (matchIds.length === 0) {
+      console.warn('⚠️ 沒有比賽記錄，無法計算晉級隊伍');
+      return [];
+    }
+    
+    const { data: matchDetails, error: detailError } = await supabase
+      .from('contest_match_detail')
+      .select('match_id, winner_team_id')
+      .in('match_id', matchIds);
+
+    if (detailError) {
+      console.error('獲取比賽詳情失敗:', detailError);
+      throw detailError;
+    }
+    
+    console.log(`📋 比賽詳情記錄 ${matchDetails?.length || 0} 筆:`, matchDetails);
+
+    // 使用與 ContestResultsPage 完全相同的排序邏輯
+    const resultsData = {
+      teams: [] as any[],
+      teamIdToIndex: {} as Record<number, number>
+    };
+
+    // 初始化隊伍資料
+    teams?.forEach((team, index) => {
+      resultsData.teams.push({
+        teamId: team.contest_team_id,
+        teamName: team.team_name,
+        wins: 0,
+        matchResults: {},
+        gamesWon: 0,
+        winningGames: 0
+      });
+      resultsData.teamIdToIndex[team.contest_team_id] = index;
+    });
+
+    // 處理比賽結果
+    matches?.forEach(match => {
+      const team1Id = match.team1_id;
+      const team2Id = match.team2_id;
+      
+      if (!team1Id || !team2Id) return;
+      
+      const team1Index = resultsData.teamIdToIndex[team1Id];
+      const team2Index = resultsData.teamIdToIndex[team2Id];
+      
+      if (team1Index === undefined || team2Index === undefined) return;
+      
+      const matchDetailRecords = matchDetails?.filter(detail => detail.match_id === match.match_id) || [];
+      let team1Wins = 0;
+      let team2Wins = 0;
+      
+      matchDetailRecords.forEach(detail => {
+        if (detail.winner_team_id === team1Id) {
+          team1Wins++;
+        } else if (detail.winner_team_id === team2Id) {
+          team2Wins++;
+        }
+      });
+      
+      const scoreStr = `${team1Wins}:${team2Wins}`;
+      resultsData.teams[team1Index].matchResults[team2Id] = scoreStr;
+      
+      const reverseScore = `${team2Wins}:${team1Wins}`;
+      resultsData.teams[team2Index].matchResults[team1Id] = reverseScore;
+      
+      if (team1Wins > team2Wins) {
+        resultsData.teams[team1Index].wins += 1;
+      } else if (team2Wins > team1Wins) {
+        resultsData.teams[team2Index].wins += 1;
+      }
+      
+      resultsData.teams[team1Index].winningGames += team1Wins;
+      resultsData.teams[team2Index].winningGames += team2Wins;
+    });
+
+    // 設置 gamesWon
+    resultsData.teams.forEach(team => {
+      team.gamesWon = team.wins;
+    });
+
+    // 按勝場數分組並排序（與 ContestResultsPage 相同邏輯）
+    const teamsByWins: Record<number, any[]> = {};
+    resultsData.teams.forEach(team => {
+      if (!teamsByWins[team.gamesWon]) {
+        teamsByWins[team.gamesWon] = [];
+      }
+      teamsByWins[team.gamesWon].push(team);
+    });
+
+    const sortedTeams: any[] = [];
+    Object.keys(teamsByWins)
+      .map(Number)
+      .sort((a, b) => b - a)
+      .forEach(wins => {
+        const teamsWithSameWins = teamsByWins[wins];
+        
+        if (teamsWithSameWins.length === 1) {
+          sortedTeams.push(teamsWithSameWins[0]);
+          return;
+        }
+        
+        const sortedGroup = sortTeamsByHeadToHeadAdvancement(teamsWithSameWins);
+        sortedTeams.push(...sortedGroup);
+      });
+
+    console.log(`📋 排序後的隊伍:`, sortedTeams.map(t => `${t.teamName}(${t.wins}勝,${t.winningGames}局)`));
+
+    // 取前N名晉級隊伍
+    const qualifiedTeams = sortedTeams
+      .slice(0, advancementCount)
+      .map((team, index) => ({
+        contest_team_id: team.teamId,
+        team_name: team.teamName,
+        rank: index + 1,
+        wins: team.wins,
+        winning_games: team.winningGames,
+        qualified_at: new Date().toISOString()
+      }));
+
+    console.log(`✅ 計算完成，晉級隊伍 (前${advancementCount}名):`, qualifiedTeams);
+    return qualifiedTeams;
+  } catch (err) {
+    console.error('❌ 計算循環賽晉級隊伍失敗:', err);
+    return [];
+  }
+};
 
   const handleFinishContest = async (contestId: string) => {
     try {
-      // 使用共用函數處理結束賽事邏輯
-      const success = await finishContest(contestId);
+      // 1. 獲取比賽資訊，檢查是否為子賽事
+      const { data: contestInfo, error: contestError } = await supabase
+        .from('contest')
+        .select('parent_contest_id, match_mode, advancement_rules')
+        .eq('contest_id', contestId)
+        .single();
 
-      if (success) {
-        setContests(contests.map((contest: { contest_id: string, contest_status: string }) => 
-          contest.contest_id === contestId 
-            ? { ...contest, contest_status: 'finished' } 
-            : contest
-        ));
-        
-        alert('比賽已成功結束！晉級隊伍已記錄。');
-      } else {
-        throw new Error('結束賽事失敗');
+      if (contestError) {
+        console.error('獲取比賽資訊失敗:', contestError);
+        throw contestError;
       }
+
+      // 🆕 2. 如果是子賽事，先計算並記錄晉級隊伍到 advancement_rules
+      console.log('🚨 DEBUG: 檢查是否為子賽事，parent_contest_id:', contestInfo.parent_contest_id);
+      if (contestInfo.parent_contest_id) {
+        try {
+          console.log(`🔍 開始計算子賽事 ${contestId} 的晉級隊伍...`);
+          console.log('📊 比賽資訊:', contestInfo);
+          
+          // 獲取晉級隊伍數量
+          const advancementCount = contestInfo.advancement_rules?.advancement_count || 
+                                 contestInfo.advancement_rules?.advances || 
+                                 contestInfo.advancement_rules?.advancement_team_count || 1;
+          
+          console.log(`🎯 晉級隊伍數量: ${advancementCount}`);
+
+          let qualifiedTeams: any[] = [];
+
+          if (contestInfo.match_mode === 'round_robin') {
+            console.log('🔄 循環賽模式，開始計算晉級隊伍...');
+            // 使用新的計算函數（與 ContestResultsPage 相同邏輯）
+            qualifiedTeams = await calculateRoundRobinQualifiedTeams(contestId, advancementCount);
+          } else {
+            console.log('🏆 淘汰賽模式，開始計算晉級隊伍...');
+            // 淘汰賽邏輯（暫時保持原有）
+            qualifiedTeams = await getEliminationQualifiedTeams(contestId, advancementCount);
+          }
+
+          console.log(`✅ 計算完成，晉級隊伍:`, qualifiedTeams);
+
+          if (qualifiedTeams.length > 0) {
+            // 🆕 更新 advancement_rules，保留原有內容並新增 qualified_teams
+            const updatedAdvancementRules = {
+              ...contestInfo.advancement_rules,
+              qualified_teams: qualifiedTeams
+            };
+
+            console.log('💾 準備更新資料庫，新的 advancement_rules:', updatedAdvancementRules);
+
+            const { error: updateRulesError } = await supabase
+              .from('contest')
+              .update({ advancement_rules: updatedAdvancementRules })
+              .eq('contest_id', contestId);
+
+            if (updateRulesError) {
+              console.error('❌ 更新晉級隊伍記錄失敗:', updateRulesError);
+              throw updateRulesError;
+            }
+
+            console.log(`✅ 子賽事 ${contestId} 晉級隊伍已成功記錄到資料庫!`);
+          } else {
+            console.warn('⚠️ 沒有計算出晉級隊伍，可能是比賽數據不完整');
+          }
+        } catch (qualifiedError) {
+          console.error('❌ 計算並記錄晉級隊伍失敗:', qualifiedError);
+          alert('警告：比賽結束成功，但晉級隊伍記錄失敗，請手動檢查控制台錯誤訊息');
+        }
+      }
+
+      // 3. 更新比賽狀態為已結束
+      const { error: updateError } = await supabase
+        .from('contest')
+        .update({ contest_status: 'finished' })
+        .eq('contest_id', contestId);
+
+      if (updateError) {
+        console.error('更新比賽狀態失敗:', updateError);
+        throw updateError;
+      }
+
+      // 4. 如果是子賽事，處理晉級隊伍的分組邏輯（移除晉級隊伍從 contest_group_assignment）
+      if (contestInfo.parent_contest_id) {
+        try {
+          await handleSubContestAdvancement(contestId, contestInfo);
+          console.log('晉級處理完成');
+        } catch (advancementError) {
+          console.error('處理晉級失敗，但比賽狀態已更新:', advancementError);
+        }
+      }
+
+      setContests(contests.map((contest: { contest_id: string, contest_status: string }) => 
+        contest.contest_id === contestId 
+          ? { ...contest, contest_status: 'finished' } 
+          : contest
+      ));
+      
+      alert('比賽已成功結束！晉級隊伍已記錄。');
     } catch (err) {
       console.error('更新比賽狀態時出錯:', err);
       alert('更新比賽狀態失敗，請稍後再試！');
@@ -433,7 +668,114 @@ const ContestControlPage: React.FC = () => {
     return qualifiedTeams;
   };
 
-  // 排序邏輯已移至 contest/utils/contestFinishAndAdvancement.ts
+  // 與 ContestResultsPage 相同的排序邏輯（用於晉級計算）
+  const sortTeamsByHeadToHeadAdvancement = (teams: any[]) => {
+    if (teams.length === 2) {
+      const team1 = teams[0];
+      const team2 = teams[1];
+      
+      const matchResult = team1.matchResults[team2.teamId];
+      if (matchResult) {
+        const [team1Score, team2Score] = matchResult.split(':').map(Number);
+        if (team1Score > team2Score) {
+          return [team1, team2];
+        } else if (team1Score < team2Score) {
+          return [team2, team1];
+        }
+      }
+      
+      return [...teams].sort((a, b) => b.winningGames - a.winningGames);
+    }
+    
+    const hasCircularWinning = checkCircularWinningAdvancement(teams);
+    
+    if (hasCircularWinning) {
+      return [...teams].sort((a, b) => b.winningGames - a.winningGames);
+    }
+    
+    const winMatrix: Record<number, Set<number>> = {};
+    teams.forEach(team => {
+      winMatrix[team.teamId] = new Set();
+    });
+    
+    teams.forEach(team => {
+      teams.forEach(opponent => {
+        if (team.teamId === opponent.teamId) return;
+        
+        const matchResult = team.matchResults[opponent.teamId];
+        if (matchResult) {
+          const [teamScore, opponentScore] = matchResult.split(':').map(Number);
+          if (teamScore > opponentScore) {
+            winMatrix[team.teamId].add(opponent.teamId);
+          }
+        }
+      });
+    });
+    
+    const directWins: Record<number, number> = {};
+    teams.forEach(team => {
+      directWins[team.teamId] = winMatrix[team.teamId].size;
+    });
+    
+    return [...teams].sort((a, b) => {
+      const aWins = directWins[a.teamId];
+      const bWins = directWins[b.teamId];
+      
+      if (aWins !== bWins) {
+        return bWins - aWins;
+      }
+      
+      return b.winningGames - a.winningGames;
+    });
+  };
+
+  // 檢查循環勝負關係（與 ContestResultsPage 相同邏輯）
+  const checkCircularWinningAdvancement = (teams: any[]) => {
+    const winGraph: Record<number, number[]> = {};
+    teams.forEach(team => {
+      winGraph[team.teamId] = [];
+    });
+    
+    teams.forEach(team => {
+      teams.forEach(opponent => {
+        if (team.teamId === opponent.teamId) return;
+        
+        const matchResult = team.matchResults[opponent.teamId];
+        if (matchResult) {
+          const [teamScore, opponentScore] = matchResult.split(':').map(Number);
+          if (teamScore > opponentScore) {
+            winGraph[team.teamId].push(opponent.teamId);
+          }
+        }
+      });
+    });
+    
+    const visited = new Set<number>();
+    const recursionStack = new Set<number>();
+    
+    function hasCycle(node: number): boolean {
+      if (recursionStack.has(node)) return true;
+      if (visited.has(node)) return false;
+      
+      visited.add(node);
+      recursionStack.add(node);
+      
+      for (const neighbor of winGraph[node]) {
+        if (hasCycle(neighbor)) return true;
+      }
+      
+      recursionStack.delete(node);
+      return false;
+    }
+    
+    for (const team of teams) {
+      if (!visited.has(team.teamId) && hasCycle(team.teamId)) {
+        return true;
+      }
+    }
+    
+    return false;
+  };
 
   // 獲取淘汰賽晉級隊伍
   const getEliminationQualifiedTeams = async (contestId: string, advancementCount: number) => {
@@ -1123,26 +1465,14 @@ const ContestControlPage: React.FC = () => {
                         <td className="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
                           <div className="flex items-center justify-end space-x-2">
                             {(() => {
-                              // 混合賽主賽事的特殊處理
+                              // 多組競賽主賽事暫不顯示額外按鈕
                               if (contest.contest_type === 'league_parent') {
-                                // 只在ongoing狀態且所有子賽事完成時顯示確認比賽結束按鈕
-                                if (contest.contest_status === 'ongoing' && contestsWithScores[contest.contest_id]) {
-                                  return (
-                                    <button
-                                      onClick={() => handleFinishContest(contest.contest_id)}
-                                      className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-sm"
-                                    >
-                                      確認比賽結束
-                                    </button>
-                                  );
-                                }
                                 return null;
                               }
 
                               switch (contest.contest_status) {
                                 case 'signup':
                                 case 'recruiting':
-                                case 'WaitMatchForm':
                                   if (contest.contest_type === 'group_stage' || contest.parent_contest_id) {
                                     return (
                                       <button

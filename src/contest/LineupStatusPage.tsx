@@ -10,6 +10,7 @@ interface LineupStatus {
   team1_id: number;
   team2_id: number;
   contest_id: number;
+  bracket_round?: number; // 添加 bracket_round 字段
 }
 
 const LineupStatusPage: React.FC = () => {
@@ -26,6 +27,7 @@ const LineupStatusPage: React.FC = () => {
   const [currentUserName, setCurrentUserName] = useState<string>('');
   const [localStorageUser, setLocalStorageUser] = useState<any>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [maxBracketRound, setMaxBracketRound] = useState<number | null>(null); // 添加最大轮次状态
 
   // 控制是否顯示 Debug 資訊的變數
   const showDebug = process.env.NODE_ENV === 'development';
@@ -100,10 +102,10 @@ const LineupStatusPage: React.FC = () => {
       console.log('=== fetchLineupStatus 開始 ===');
       console.log('currentUserId:', currentUserId);
       
-      // 1. 從 vw_lineupstatuspage 取得基本名單狀態
+      // 1. 從 vw_lineupstatuspage 取得基本名單狀態（包含 bracket_round）
       const { data: lineupData, error: lineupError } = await supabase
         .from('vw_lineupstatuspage')
-        .select('team1_name, team2_name, match_id')
+        .select('team1_name, team2_name, match_id, bracket_round')
         .eq('contest_id', contestId);
       
       console.log('lineupData 查詢結果:', lineupData);
@@ -116,8 +118,33 @@ const LineupStatusPage: React.FC = () => {
         return;
       }
 
-      // 2. 從 contest_match 取得完整的比賽資訊
-      const matchIds = lineupData.map((item: any) => item.match_id);
+      // 2. 找出最大的 bracket_round（如果有淘汰賽資料）
+      const bracketRounds = lineupData
+        .map((item: any) => item.bracket_round)
+        .filter((round: any) => round !== null && round !== undefined);
+      
+      let filteredLineupData = lineupData;
+      
+      if (bracketRounds.length > 0) {
+        // 有淘汰賽資料，找出最大輪次
+        const maxRound = Math.max(...bracketRounds);
+        setMaxBracketRound(maxRound);
+        console.log('檢測到淘汰賽，最大輪次:', maxRound);
+        
+        // 只保留最大輪次的比賽，或者沒有 bracket_round 的比賽（循環賽）
+        filteredLineupData = lineupData.filter((item: any) => 
+          item.bracket_round === null || item.bracket_round === maxRound
+        );
+        
+        console.log('過濾後的 lineupData（只保留最大輪次）:', filteredLineupData);
+      } else {
+        // 沒有淘汰賽資料，顯示所有比賽
+        setMaxBracketRound(null);
+        console.log('沒有檢測到淘汰賽資料，顯示所有比賽');
+      }
+
+      // 3. 從 contest_match 取得完整的比賽資訊
+      const matchIds = filteredLineupData.map((item: any) => item.match_id);
       console.log('查詢 contest_match，matchIds:', matchIds);
       
       const { data: matchData, error: matchError } = await supabase
@@ -129,8 +156,8 @@ const LineupStatusPage: React.FC = () => {
       
       if (matchError) throw matchError;
 
-      // 3. 合併資料
-      const combinedData: LineupStatus[] = lineupData.map((lineup: any) => {
+      // 4. 合併資料
+      const combinedData: LineupStatus[] = filteredLineupData.map((lineup: any) => {
         const matchInfo = matchData?.find((match: any) => match.match_id === lineup.match_id);
         return {
           team1_name: lineup.team1_name,
@@ -138,14 +165,15 @@ const LineupStatusPage: React.FC = () => {
           match_id: lineup.match_id,
           team1_id: matchInfo?.team1_id || 0,
           team2_id: matchInfo?.team2_id || 0,
-          contest_id: matchInfo?.contest_id || parseInt(contestId as string)
+          contest_id: matchInfo?.contest_id || parseInt(contestId as string),
+          bracket_round: lineup.bracket_round
         };
       });
 
       console.log('合併後的資料 combinedData:', combinedData);
       setLineups(combinedData);
       
-      // 4. 如果有用戶ID，查詢用戶是哪些隊伍的隊長
+      // 5. 如果有用戶ID，查詢用戶是哪些隊伍的隊長
       console.log('檢查是否調用 fetchUserCaptainTeams:', {
         currentUserId,
         combinedDataLength: combinedData.length
@@ -306,6 +334,15 @@ const LineupStatusPage: React.FC = () => {
     );
   };
 
+  // 取得標題文字
+  const getTitle = () => {
+    let title = contestName ? `${contestName} 名單狀態` : '名單狀態';
+    if (maxBracketRound !== null) {
+      title += ` (第${maxBracketRound}輪)`;
+    }
+    return title;
+  };
+
   return (
     <div className="max-w-3xl mx-auto p-6 bg-gradient-to-br from-blue-50 to-white min-h-screen rounded-xl shadow-xl">
       {/* 用戶資訊區塊 */}
@@ -324,13 +361,14 @@ const LineupStatusPage: React.FC = () => {
           <p><strong>當前用戶 ID:</strong> {currentUserId || '未取得'}</p>
           <p><strong>用戶擔任隊長的隊伍:</strong> {Array.from(userCaptainTeams).join(', ') || '無'}</p>
           <p><strong>比賽資料數量:</strong> {lineups.length}</p>
+          <p><strong>最大淘汰輪次:</strong> {maxBracketRound || '無淘汰賽'}</p>
           <p><strong>localStorage 用戶:</strong> {JSON.stringify(localStorageUser)}</p>
         </div>
       )}
       
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-extrabold tracking-tight text-blue-900">
-          {contestName ? `${contestName} 名單狀態` : '名單狀態'}
+          {getTitle()}
         </h1>
         <button
           onClick={goBackToContest}
@@ -382,6 +420,7 @@ const LineupStatusPage: React.FC = () => {
           <h3 className="font-bold text-blue-800 mb-2">隊長提示</h3>
           <p className="text-sm text-blue-700">
             您是隊長，可以點擊「編輯名單」按鈕來安排尚未編排的隊伍出賽名單。
+            {maxBracketRound !== null && `目前顯示的是淘汰賽第${maxBracketRound}輪的比賽。`}
           </p>
         </div>
       )}
