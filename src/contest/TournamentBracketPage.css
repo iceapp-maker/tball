@@ -1,0 +1,680 @@
+/* 淘汰賽圖表頁面樣式 */
+.tournament-bracket-page {
+  padding: 20px;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* 頁面標題 */
+.tournament-bracket-page h1 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+/* 錯誤和成功訊息 */
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+}
+
+.success-message {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 4px;
+}
+
+/* 加載中提示 */
+.loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  font-size: 18px;
+  color: #666;
+}
+
+/* 控制按鈕區域 */
+.bracket-controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.bracket-controls button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.save-btn {
+  background-color: #4caf50;
+  color: white;
+}
+
+.save-btn:hover {
+  background-color: #388e3c;
+}
+
+.reset-btn {
+  background-color: #f44336;
+  color: white;
+}
+
+.reset-btn:hover {
+  background-color: #d32f2f;
+}
+
+.back-btn {
+  background-color: #2196f3;
+  color: white;
+}
+
+.back-btn:hover {
+  background-color: #1976d2;
+}
+
+.notify-btn {
+  background-color: #ff9800;
+  color: white;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.notify-btn:hover {
+  background-color: #f57c00;
+}
+
+/* 通知按鈕閃爍效果 */
+.notify-btn-flash {
+  animation: flashNotify 2s infinite;
+  box-shadow: 0 0 10px rgba(255, 152, 0, 0.5);
+}
+
+@keyframes flashNotify {
+  0%, 50% {
+    background-color: #ff9800;
+    box-shadow: 0 0 10px rgba(255, 152, 0, 0.5);
+  }
+  25%, 75% {
+    background-color: #ff5722;
+    box-shadow: 0 0 20px rgba(255, 87, 34, 0.8);
+    transform: scale(1.05);
+  }
+}
+
+/* 通知容器 */
+.notify-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+/* 提示文字樣式 */
+.notify-hint {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background-color: #fff3e0;
+  color: #e65100;
+  border: 2px solid #ff9800;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  animation: slideDown 0.3s ease-out;
+  box-shadow: 0 2px 8px rgba(255, 152, 0, 0.2);
+  max-width: 300px;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* 其他按鈕樣式 */
+.config-btn {
+  background-color: #2196f3;
+  color: white;
+}
+
+.config-btn:hover {
+  background-color: #1976d2;
+}
+
+.sync-btn {
+  background-color: #4caf50;
+  color: white;
+}
+
+.sync-btn:hover {
+  background-color: #388e3c;
+}
+
+.status-btn {
+  background-color: #9c27b0;
+  color: white;
+}
+
+.status-btn:hover {
+  background-color: #7b1fa2;
+}
+
+button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* 賽程圖容器 */
+.bracket-container {
+  display: flex;
+  gap: 30px;
+}
+
+/* 未分配隊伍區域 */
+.unassigned-teams {
+  min-width: 250px;
+  max-width: 300px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 15px;
+  background-color: #f9f9f9;
+}
+
+.unassigned-teams h2 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 18px;
+  color: #333;
+}
+
+.teams-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+/* 隊伍卡片 */
+.team-card {
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  cursor: grab;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.team-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.team-card .team-name {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.team-card .team-captain {
+  font-size: 0.9em;
+  color: #666;
+}
+
+/* 賽程圖包裝器 */
+.bracket-wrapper {
+  flex: 1;
+  overflow-x: auto;
+  padding-bottom: 20px;
+}
+
+/* 淘汰賽圖表 */
+.tournament-bracket {
+  display: flex;
+  gap: 40px;
+  min-width: max-content;
+}
+
+/* 輪次 */
+.round {
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+}
+
+.round-header {
+  text-align: center;
+  font-weight: bold;
+  margin-bottom: 15px;
+  padding: 8px;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+}
+
+/* 比賽區域 */
+.matches {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* 第二輪開始的比賽需要更多間距 */
+.round:not(:first-child) .matches {
+  padding-top: 40px;
+}
+
+.round:nth-child(3) .matches {
+  padding-top: 100px;
+}
+
+.round:nth-child(4) .matches {
+  padding-top: 220px;
+}
+
+.round:nth-child(5) .matches {
+  padding-top: 460px;
+}
+
+/* 單場比賽 */
+.match {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  position: relative;
+}
+
+.match::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: -20px;
+  width: 20px;
+  height: 2px;
+  background-color: #ddd;
+  transform: translateY(-50%);
+}
+
+.round:last-child .match::before {
+  display: none;
+}
+
+.match::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: -20px;
+  width: 20px;
+  height: 2px;
+  background-color: #ddd;
+  transform: translateY(-50%);
+}
+
+.round:first-child .match::after {
+  display: none;
+}
+
+.vs {
+  text-align: center;
+  font-weight: bold;
+  color: #999;
+  font-size: 0.9em;
+  margin: 2px 0;
+}
+
+/* 比賽位置 */
+.match-slot {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 10px;
+  min-height: 60px;
+  background-color: #fff;
+  transition: all 0.2s ease;
+}
+
+.match-slot.empty {
+  background-color: #f9f9f9;
+  border-style: dashed;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #999;
+}
+
+.match-slot.winner {
+  background-color: #e8f5e9;
+  border-color: #4caf50;
+}
+
+.match-slot .team-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.match-slot .team-name {
+  font-weight: bold;
+}
+
+.match-slot .team-captain {
+  font-size: 0.9em;
+  color: #666;
+}
+
+.set-winner-btn {
+  margin-top: 5px;
+  padding: 3px 8px;
+  background-color: #ff9800;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.8em;
+}
+
+.set-winner-btn:hover {
+  background-color: #f57c00;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+  .bracket-container {
+    flex-direction: column;
+  }
+  
+  .unassigned-teams {
+    max-width: 100%;
+  }
+  
+  .bracket-wrapper {
+    overflow-x: auto;
+  }
+}
+
+/* 比賽排名相關樣式 */
+.tournament-ranking {
+  width: 250px;
+  padding: 16px;
+  background-color: #f9fafb;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  margin-right: 16px;
+}
+
+.ranking-card {
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ranking-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.ranking-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ranking-list::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 3px;
+}
+
+.ranking-list::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+.ranking-list::-webkit-scrollbar-thumb:hover {
+  background: #a1a1a1;
+}
+
+/* 賽程圖控制區域樣式 */
+.bracket-controls-wrapper {
+  margin-bottom: 20px;
+}
+
+.bracket-suggestion {
+  transition: all 0.3s ease;
+}
+
+.bracket-suggestion:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.bracket-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.bracket-controls button {
+  transition: all 0.2s ease;
+}
+
+.bracket-controls button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.bracket-controls button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* 自動生成按鈕特殊樣式 */
+.auto-generate-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.auto-generate-btn::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(255, 255, 255, 0.1),
+    transparent
+  );
+  transform: rotate(45deg);
+  transition: all 0.3s ease;
+}
+
+.auto-generate-btn:hover::after {
+  transform: rotate(45deg) translate(50%, 50%);
+}
+
+/* 輪次設定面板樣式 */
+.round-settings-panel {
+  background-color: #f3f4f6;
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  border: 1px solid #d1d5db;
+  transition: all 0.3s ease;
+}
+
+.round-settings-panel:hover {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.round-settings-panel input[type="number"] {
+  transition: all 0.2s ease;
+}
+
+.round-settings-panel input[type="number"]:focus {
+  outline: none;
+  border-color: #10b981;
+  box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
+}
+
+/* 比賽卡片樣式 */
+.match-slot:hover {
+  transform: scale(1.02);
+}
+
+.match-slot.winner {
+  box-shadow: 0 0 10px rgba(16, 185, 129, 0.3);
+}
+
+/* 重新分配區樣式 */
+.reassignment-teams {
+  margin-bottom: 20px;
+}
+
+.reassignment-teams h2 {
+  color: #92400e;
+  border-bottom: 2px solid #f59e0b;
+  padding-bottom: 8px;
+  margin-bottom: 16px;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.team-card.reassignment-team {
+  background-color: #fef3c7;
+  border: 2px solid #f59e0b;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+  cursor: move;
+  transition: all 0.2s ease;
+}
+
+.team-card.reassignment-team:hover {
+  background-color: #fde68a;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.team-card.reassignment-team .team-name {
+  font-weight: bold;
+  color: #92400e;
+  margin-bottom: 4px;
+  font-size: 14px;
+}
+
+.team-card.reassignment-team .team-captain {
+  font-size: 12px;
+  color: #a16207;
+}
+
+/* 區域描述樣式 */
+.zone-description {
+  font-size: 12px;
+  padding: 8px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+/* 重新分配區描述 */
+.reassignment-teams .zone-description {
+  background-color: #fef3c7;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+}
+
+/* 待分配區描述 */
+.unassigned-teams .zone-description {
+  background-color: #eff6ff;
+  border: 1px solid #3b82f6;
+  color: #1e40af;
+}
+
+/* 待分配區標題樣式 */
+.unassigned-teams h2 {
+  color: #3b82f6;
+  border-bottom: 2px solid #3b82f6;
+}
+
+/* 比賽狀態區樣式 */
+.tournament-status h2 {
+  color: #1f2937;
+  border-bottom: 2px solid #10b981;
+}
+
+.status-summary {
+  background-color: #ecfdf5;
+  border: 1px solid #10b981;
+  color: #065f46;
+  text-align: center;
+}
+
+/* 多區域容器 */
+.team-zones {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* 區域間距 */
+.team-zones > div {
+  margin-bottom: 20px;
+}
+
+.team-zones > div:last-child {
+  margin-bottom: 0;
+}
+
+/* 隊伍列表容器 */
+.teams-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+  .team-zones {
+    max-height: 60vh;
+  }
+  
+  .teams-list {
+    max-height: 200px;
+  }
+  
+  .team-card.reassignment-team {
+    padding: 8px;
+    font-size: 12px;
+  }
+}
+/* 輪空文本樣式 */
+.bye-text {
+  font-style: italic;
+  color: #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  background-color: #f0f0f0;
+  border-radius: 4px;
+}
+
+/* 調整 team-slot 以便輪空文本居中 */
+.team-slot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 60px; /* 確保有足夠空間 */
+}
