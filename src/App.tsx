@@ -28,7 +28,7 @@ import ContestResultsPage from './contest/ContestResultsPage';
 import LineupStatusPage from './contest/LineupStatusPage';
 import ContestTableView from './contest/ContestTableView';
 import ScoreEditPage from './contest/ScoreEditPage';
-import SubContestTeamManagementPage from './contest/SubContestTeamManagementPage'; // 導入子賽事隊伍管理頁面
+//import SubContestTeamManagementPage from './contest/SubContestTeamManagementPage'; // 導入子賽事隊伍管理頁面
 import QRJoinPage from './QRJoinPage'; // 導入QR碼掃描加入頁面
 // 版本信息
 const CURRENT_VERSION = "a.22";
