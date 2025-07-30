@@ -714,16 +714,7 @@ function App() {
                 <ContestControlPage />
               </ProtectedRoute>
             } />
-            <Route path="/contest/:contestId/manage-teams" element={
-              <ProtectedRoute requiredRole="admin" currentUser={currentLoggedInUser}>
-                <SubContestTeamManagementPage />
-              </ProtectedRoute>
-            } />
-            <Route path="/contest/subcontest-team/:contestId" element={
-              <ProtectedRoute requiredRole="admin" currentUser={currentLoggedInUser}>
-                <SubContestTeamManagementPage />
-              </ProtectedRoute>
-            } />
+                    
             <Route path="/contest-control/:contestId" element={
               <ProtectedRoute requiredRole="admin" currentUser={currentLoggedInUser}>
                 <ContestControlPage />
