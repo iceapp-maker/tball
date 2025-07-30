@@ -179,10 +179,17 @@ const QRJoinPage: React.FC = () => {
 
       Modal.success({
         title: '加入成功！',
-        content: `您已成功加入 ${teamInfo?.team_name} 隊伍參加 ${contestInfo?.contest_name}`,
+        content: (
+          <div>
+            <p>您已成功加入 {teamInfo?.team_name} 隊伍參加 {contestInfo?.contest_name}</p>
+            <p style={{ marginTop: '16px', color: '#1890ff', fontWeight: 'bold' }}>
+              請登入系統後查看比賽資訊
+            </p>
+          </div>
+        ),
         onOk: () => {
-          // 跳轉到比賽頁面
-          navigate(`/contest/${inviteData.contest_id}/join`);
+          // 直接返回首頁
+          window.location.href = '/';
         }
       });
 

@@ -2,8 +2,8 @@ import React, { useState, useEffect, useContext } from 'react';
 import { BellIcon, XIcon, CalendarIcon } from 'lucide-react';
 import ChallengeListPage from './ChallengeListPage';
 import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
-//import TournamentBracketPage from './contest/TournamentBracketPage';
-//import CustomTournamentPage from './contest/CustomTournamentPage';
+import TournamentBracketPage from './contest/TournamentBracketPage';
+import CustomTournamentPage from './contest/CustomTournamentPage';
 import DoubleGame from './double_game';
 import SingleGame from './single_game';
 import MemberManagement from './MemberManagement';
@@ -28,10 +28,10 @@ import ContestResultsPage from './contest/ContestResultsPage';
 import LineupStatusPage from './contest/LineupStatusPage';
 import ContestTableView from './contest/ContestTableView';
 import ScoreEditPage from './contest/ScoreEditPage';
-//import SubContestTeamManagementPage from './contest/SubContestTeamManagementPage'; // 導入子賽事隊伍管理頁面
+import SubContestTeamManagementPage from './contest/SubContestTeamManagementPage'; // 導入子賽事隊伍管理頁面
 import QRJoinPage from './QRJoinPage'; // 導入QR碼掃描加入頁面
 // 版本信息
-const CURRENT_VERSION = "a.22";
+const CURRENT_VERSION = "a.21";
 
 // ✅ 新增：權限檢查函數
 const isAdmin = (user: any): boolean => {
@@ -74,7 +74,7 @@ const ProtectedRoute: React.FC<{
             onClick={() => navigate('/')}
             className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
           >
-            返回主頁~
+            返回主頁
           </button>
         </div>
       </div>
@@ -714,7 +714,16 @@ function App() {
                 <ContestControlPage />
               </ProtectedRoute>
             } />
-                    
+            <Route path="/contest/:contestId/manage-teams" element={
+              <ProtectedRoute requiredRole="admin" currentUser={currentLoggedInUser}>
+                <SubContestTeamManagementPage />
+              </ProtectedRoute>
+            } />
+            <Route path="/contest/subcontest-team/:contestId" element={
+              <ProtectedRoute requiredRole="admin" currentUser={currentLoggedInUser}>
+                <SubContestTeamManagementPage />
+              </ProtectedRoute>
+            } />
             <Route path="/contest-control/:contestId" element={
               <ProtectedRoute requiredRole="admin" currentUser={currentLoggedInUser}>
                 <ContestControlPage />

@@ -17,28 +17,28 @@ export default function LoginModal({ setCurrentLoggedInUser, onClose }: LoginMod
   const [memberData, setMemberData] = useState<any>(null);
   const navigate = useNavigate();
 
-  // 檢查會員狀態
+  // 驗證會員身份並檢查狀態
   const checkMemberStatus = async () => {
     if (!memberId.trim()) {
       setError('請輸入會員編號');
       return;
     }
-
+    
     try {
+      setError('');
+      // 使用不區分大小寫的查詢，直接用會員編號查詢
       const { data, error } = await supabase
         .from('members')
         .select('id, member_id, name, password_hash, must_change_password, role, team_id')
-        .eq('member_id', memberId.trim())
+        .ilike('member_id', memberId.trim()) // 使用 ilike 進行不區分大小寫的匹配
         .single();
-
+        
       if (error || !data) {
-        setError('會員編號不存在');
+        setError('會員編號錯誤');
         return;
       }
-
-      setMemberData(data);
       
-      // 如果 password_hash 為 null，代表首次登入
+      setMemberData(data);
       if (data.password_hash === null) {
         setIsFirstLogin(true);
         setError('');
@@ -61,7 +61,7 @@ export default function LoginModal({ setCurrentLoggedInUser, onClose }: LoginMod
     try {
       // 直接查詢並驗證密碼
       const { data, error } = await supabase.rpc('verify_member_password', {
-        p_member_id: memberId,
+        p_member_id: memberData.member_id,
         p_password: password
       });
 
@@ -134,7 +134,7 @@ export default function LoginModal({ setCurrentLoggedInUser, onClose }: LoginMod
   };
 
   // 重置狀態
-  const resetToMemberId = () => {
+  const resetToInput = () => {
     setIsFirstLogin(false);
     setMemberData(null);
     setPassword('');
@@ -146,22 +146,29 @@ export default function LoginModal({ setCurrentLoggedInUser, onClose }: LoginMod
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-30 z-50">
       <div className="bg-white p-8 rounded-lg shadow-lg w-80">
-        {!memberData ? (
+         {!memberData ? (
           // 步驟1：輸入會員編號
           <>
-            <h2 className="text-xl font-bold mb-4">會員登入</h2>
+            <h2 className="text-xl font-bold mb-4">登入</h2>
             <input
               className="w-full mb-3 p-2 border rounded"
-              placeholder="請輸入會員編號"
+              placeholder="請輸入會員編號（不區分大小寫）"
               value={memberId}
               onChange={e => setMemberId(e.target.value)}
               onKeyPress={e => e.key === 'Enter' && checkMemberStatus()}
+              autoFocus
             />
             {error && <div className="text-red-600 mb-2 text-sm">{error}</div>}
             <div className="flex justify-between">
               <button
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                className={
+                  `px-4 py-2 rounded text-white ` +
+                  (memberId.trim()
+                    ? 'bg-blue-600 hover:bg-blue-700'
+                    : 'bg-gray-400 cursor-not-allowed')
+                }
                 onClick={checkMemberStatus}
+                disabled={!memberId.trim()}
               >
                 繼續
               </button>
@@ -206,7 +213,7 @@ export default function LoginModal({ setCurrentLoggedInUser, onClose }: LoginMod
               </button>
               <button
                 className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500"
-                onClick={resetToMemberId}
+                onClick={resetToInput}
               >
                 重新輸入
               </button>
@@ -239,7 +246,7 @@ export default function LoginModal({ setCurrentLoggedInUser, onClose }: LoginMod
               </button>
               <button
                 className="px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500"
-                onClick={resetToMemberId}
+                onClick={resetToInput}
               >
                 重新輸入
               </button>
