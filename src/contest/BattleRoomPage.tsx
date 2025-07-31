@@ -63,6 +63,7 @@ const BattleRoomPage: React.FC = () => {
   const [searchKeyword, setSearchKeyword] = useState<string>('');
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [allTeams, setAllTeams] = useState<{id: number, name: string}[]>([]);
+  const [showOnlyIncomplete, setShowOnlyIncomplete] = useState<boolean>(false);
   
   // 新增：存儲每個 match_detail_id 對應的選手狀態
   const [playerStatusMap, setPlayerStatusMap] = useState<Record<number, {
@@ -1268,6 +1269,7 @@ const BattleRoomPage: React.FC = () => {
   // 修正 filteredMatches 函數，使用簡單直接的實現方法
   const getFilteredMatches = (roundMatches: MatchDetail[]) => {
     return roundMatches.filter((match: MatchDetail) => {
+      // 關鍵字過濾
       let keywordMatches = true;
       if (searchKeyword !== '') {
         const keyword = searchKeyword.toLowerCase();
@@ -1303,11 +1305,16 @@ const BattleRoomPage: React.FC = () => {
         }
       }
       
+      // 隊伍過濾
       const teamMatches = selectedTeamId === null || 
         match.team1_id === selectedTeamId || 
         match.team2_id === selectedTeamId;
       
-      return keywordMatches && teamMatches;
+      // 未完成比賽過濾
+      const incompleteMatches = !showOnlyIncomplete || 
+        (!match.score || match.score === '' || !match.winner_team_id);
+      
+      return keywordMatches && teamMatches && incompleteMatches;
     });
   };
 
@@ -1343,6 +1350,7 @@ const BattleRoomPage: React.FC = () => {
   const resetFilters = () => {
     setSearchKeyword('');
     setSelectedTeamId(null);
+    setShowOnlyIncomplete(false);
   };
   
   // 新增：處理依桌次排列按鈕點擊，導航到新頁面
@@ -1764,6 +1772,18 @@ const BattleRoomPage: React.FC = () => {
                     title="過濾顯示自己的隊伍"
                   >
                     搜尋自己
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowOnlyIncomplete(!showOnlyIncomplete)}
+                    className={`px-3 py-1.5 rounded text-sm transition duration-200 ${
+                      showOnlyIncomplete 
+                        ? 'bg-orange-500 hover:bg-orange-600 text-white' 
+                        : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                    }`}
+                    title="只顯示未完成的比賽"
+                  >
+                    {showOnlyIncomplete ? '✓ 未完成' : '未完成'}
                   </button>
                   
                   <button
