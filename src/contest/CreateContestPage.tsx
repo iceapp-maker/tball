@@ -382,36 +382,37 @@ const CreateContestPage: React.FC = () => {
           />
         </div>
         
-        <div className="mb-4">
-          <label className="block font-medium mb-1">賽制類型</label>
-          <div className="flex flex-col gap-3">
-            <label className="inline-flex items-center">
-              <input
-                type="radio"
-                className="form-radio h-5 w-5 text-blue-600"
-                name="matchMode"
-                value="round_robin"
-                checked={matchMode === 'round_robin'}
-                onChange={() => setMatchMode('round_robin')}
-              />
-              <span className="ml-2">循環賽</span>
-              <span className="ml-1 text-xs text-gray-500">(每隊都與其他隊伍對戰)</span>
-            </label>
-            <label className={`inline-flex items-center ${contestType === 'league_parent' ? 'opacity-50 cursor-not-allowed' : ''}`}>
-              <input
-                type="radio"
-                className={`form-radio h-5 w-5 ${contestType === 'league_parent' ? 'text-gray-400' : 'text-blue-600'}`}
-                name="matchMode"
-                value="elimination"
-                checked={matchMode === 'elimination'}
-                onChange={() => setMatchMode('elimination')}
-                disabled={contestType === 'league_parent'}
-              />
-              <span className={`ml-2 ${contestType === 'league_parent' ? 'text-gray-500' : ''}`}>淘汰賽</span>
-              <span className={`ml-1 text-xs ${contestType === 'league_parent' ? 'text-gray-400' : 'text-gray-500'}`}>(輸了就淘汰)</span>
-            </label>
+        {contestType !== 'league_parent' && (
+          <div className="mb-4">
+            <label className="block font-medium mb-1">賽制類型</label>
+            <div className="flex flex-col gap-3">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  className="form-radio h-5 w-5 text-blue-600"
+                  name="matchMode"
+                  value="round_robin"
+                  checked={matchMode === 'round_robin'}
+                  onChange={() => setMatchMode('round_robin')}
+                />
+                <span className="ml-2">循環賽</span>
+                <span className="ml-1 text-xs text-gray-500">(每隊都與其他隊伍對戰)</span>
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  className="form-radio h-5 w-5 text-blue-600"
+                  name="matchMode"
+                  value="elimination"
+                  checked={matchMode === 'elimination'}
+                  onChange={() => setMatchMode('elimination')}
+                />
+                <span className="ml-2">淘汰賽</span>
+                <span className="ml-1 text-xs text-gray-500">(輸了就淘汰)</span>
+              </label>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="mb-4">
           <label className="block font-medium mb-1">球桌數</label>
