@@ -44,11 +44,11 @@ const ScoreEditPage: React.FC = () => {
       setAdminName(username);
       
       if (!isUserAdmin) {
-        navigate(`/contest/${contestId}`);
+        navigate(`/contest/${contestId}/battleroom`);
       }
     } catch (err) {
       console.error('獲取管理員資訊錯誤:', err);
-      navigate(`/contest/${contestId}`);
+      navigate(`/contest/${contestId}/battleroom`);
     }
   }, [contestId, navigate]);
 
@@ -380,8 +380,8 @@ const ScoreEditPage: React.FC = () => {
         // 不中斷流程，只記錄錯誤
       }
 
-      // 3. 成功後返回
-      navigate(`/contest/${contestId}`, {
+      // 3. 成功後返回戰況室
+      navigate(`/contest/${contestId}/battleroom`, {
         state: {
           scoreUpdateSuccess: true,
           updatedMatchId: match.match_detail_id,
@@ -398,7 +398,7 @@ const ScoreEditPage: React.FC = () => {
   };
 
   const handleCancel = () => {
-    navigate(`/contest/${contestId}`);
+    navigate(`/contest/${contestId}/battleroom`);
   };
 
   // 渲染邏輯
