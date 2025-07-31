@@ -31,7 +31,7 @@ import ScoreEditPage from './contest/ScoreEditPage';
 import SubContestTeamManagementPage from './contest/SubContestTeamManagementPage'; // 導入子賽事隊伍管理頁面
 import QRJoinPage from './QRJoinPage'; // 導入QR碼掃描加入頁面
 // 版本信息
-const CURRENT_VERSION = "a.22";
+const CURRENT_VERSION = "a.21";
 
 // ✅ 新增：權限檢查函數
 const isAdmin = (user: any): boolean => {
@@ -420,9 +420,13 @@ function AdminArea({ currentLoggedInUser }) {
 // 新增賽程邀約處理頁面
 function ContestInvitationsPage() {
   const { user } = useContext(UserContext) ?? { user: null };
+  const navigate = useNavigate();
   const [invitations, setInvitations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [teamMembers, setTeamMembers] = useState({}); // { contest_team_id: [member_name, ...] }
+  const [loadingStates, setLoadingStates] = useState({}); // 追踪每个邀约的loading状态
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
   useEffect(() => {
     const fetchInvitations = async () => {
@@ -483,52 +487,182 @@ function ContestInvitationsPage() {
 
   // 處理接受邀約
   const handleAccept = async (contest_team_id, member_id) => {
-    await supabase
-      .from('contest_team_member')
-      .update({ status: 'accepted', responded_at: new Date() })
-      .eq('contest_team_id', contest_team_id)
-      .eq('member_id', member_id);
-    setInvitations(invitations.filter(i => !(i.contest_team_id === contest_team_id && i.member_id === member_id)));
+    const loadingKey = `${contest_team_id}_${member_id}`;
+    
+    // 清除之前的消息
+    setSuccessMessage('');
+    setErrorMessage('');
+    
+    // 设置loading状态
+    setLoadingStates(prev => ({...prev, [loadingKey]: true}));
+    
+    try {
+      const { error } = await supabase
+        .from('contest_team_member')
+        .update({ status: 'accepted', responded_at: new Date() })
+        .eq('contest_team_id', contest_team_id)
+        .eq('member_id', member_id);
+      
+      if (error) throw error;
+      
+      // 获取队伍信息用于成功消息
+      const acceptedInvite = invitations.find(i => 
+        i.contest_team_id === contest_team_id && i.member_id === member_id
+      );
+      
+      // 显示成功消息
+      const teamName = acceptedInvite?.contest_team?.team_name || '队伍';
+      const contestName = acceptedInvite?.contest_team?.contest?.contest_name || '比赛';
+      setSuccessMessage(`🎉 成功加入「${teamName}」队伍！比赛：${contestName}`);
+      
+      // 从邀约列表中移除
+      setInvitations(invitations.filter(i => !(i.contest_team_id === contest_team_id && i.member_id === member_id)));
+      
+    } catch (error) {
+      console.error('接受邀约失败:', error);
+      setErrorMessage('❌ 加入队伍失败，请稍后重试或联系管理员');
+      
+      // 5秒后清除错误消息
+      setTimeout(() => setErrorMessage(''), 5000);
+    } finally {
+      // 清除loading状态
+      setLoadingStates(prev => ({...prev, [loadingKey]: false}));
+    }
   };
   // 處理拒絕邀約
   const handleReject = async (contest_team_id, member_id) => {
-    await supabase
-      .from('contest_team_member')
-      .update({ status: 'rejected', responded_at: new Date() })
-      .eq('contest_team_id', contest_team_id)
-      .eq('member_id', member_id);
-    setInvitations(invitations.filter(i => !(i.contest_team_id === contest_team_id && i.member_id === member_id)));
+    // 获取邀约信息用于确认对话框
+    const rejectInvite = invitations.find(i => 
+      i.contest_team_id === contest_team_id && i.member_id === member_id
+    );
+    
+    const teamName = rejectInvite?.contest_team?.team_name || '队伍';
+    const contestName = rejectInvite?.contest_team?.contest?.contest_name || '比赛';
+    
+    // 显示确认对话框
+    const confirmed = window.confirm(
+      `确定要拒绝「${teamName}」队伍的邀约吗？\n比赛：${contestName}\n\n拒绝后将无法再次加入此队伍。`
+    );
+    
+    if (!confirmed) return;
+    
+    const loadingKey = `${contest_team_id}_${member_id}`;
+    
+    // 清除之前的消息
+    setSuccessMessage('');
+    setErrorMessage('');
+    
+    // 设置loading状态
+    setLoadingStates(prev => ({...prev, [loadingKey]: true}));
+    
+    try {
+      const { error } = await supabase
+        .from('contest_team_member')
+        .update({ status: 'rejected', responded_at: new Date() })
+        .eq('contest_team_id', contest_team_id)
+        .eq('member_id', member_id);
+      
+      if (error) throw error;
+      
+      // 显示拒绝成功消息
+      setSuccessMessage(`✅ 已拒绝「${teamName}」队伍的邀约`);
+      
+      // 从邀约列表中移除
+      setInvitations(invitations.filter(i => !(i.contest_team_id === contest_team_id && i.member_id === member_id)));
+      
+    } catch (error) {
+      console.error('拒绝邀约失败:', error);
+      setErrorMessage('❌ 拒绝邀约失败，请稍后重试或联系管理员');
+      
+      // 5秒后清除错误消息
+      setTimeout(() => setErrorMessage(''), 5000);
+    } finally {
+      // 清除loading状态
+      setLoadingStates(prev => ({...prev, [loadingKey]: false}));
+    }
   };
 
   return (
     <div className="p-6 max-w-xl mx-auto">
-      <h2 className="text-2xl font-bold mb-4">我的賽程邀約</h2>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-2xl font-bold">我的賽程邀約</h2>
+        <button
+          onClick={() => navigate('/')}
+          className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded transition-colors"
+        >
+          返回首頁
+        </button>
+      </div>
+      
+      {/* 成功消息 */}
+      {successMessage && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+          {successMessage}
+        </div>
+      )}
+      
+      {/* 错误消息 */}
+      {errorMessage && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+          {errorMessage}
+        </div>
+      )}
+      
       {loading ? <div>載入中...</div> : (
-        invitations.length === 0 ? <div>目前沒有新的賽程邀約。</div> : (
+        invitations.length === 0 ? (
+          <div className="text-center py-8">
+            <div className="text-gray-600 mb-4">目前沒有新的賽程邀約。</div>
+          </div>
+        ) : (
           <ul className="space-y-4">
-            {invitations.map(invite => (
-              <li key={invite.contest_team_id} className="border rounded p-4 flex flex-col gap-2">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <div>邀約隊伍：{invite.contest_team?.team_name || '未知隊伍'}</div>
-                    <div>比賽名稱：{invite.contest_team?.contest?.contest_name || '未知比賽'}</div>
-                    <div>比賽規則：{invite.contest_team?.contest?.rule_text || '無'}</div>
-                    <div>成員：{invite.member_name}</div>
+            {invitations.map(invite => {
+              const loadingKey = `${invite.contest_team_id}_${invite.member_id}`;
+              const isLoading = loadingStates[loadingKey];
+              
+              return (
+                <li key={invite.contest_team_id} className="border rounded p-4 flex flex-col gap-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="font-medium">邀約隊伍：{invite.contest_team?.team_name || '未知隊伍'}</div>
+                      <div>比賽名稱：{invite.contest_team?.contest?.contest_name || '未知比賽'}</div>
+                      <div>比賽規則：{invite.contest_team?.contest?.rule_text || '無'}</div>
+                      <div>成員：{invite.member_name}</div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        className={`px-3 py-1 rounded transition-colors ${
+                          isLoading 
+                            ? 'bg-gray-400 cursor-not-allowed' 
+                            : 'bg-green-500 hover:bg-green-600'
+                        } text-white`}
+                        onClick={() => handleAccept(invite.contest_team_id, invite.member_id)}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? '處理中...' : '接受'}
+                      </button>
+                      <button 
+                        className={`px-3 py-1 rounded transition-colors ${
+                          isLoading 
+                            ? 'bg-gray-400 cursor-not-allowed' 
+                            : 'bg-red-500 hover:bg-red-600'
+                        } text-white`}
+                        onClick={() => handleReject(invite.contest_team_id, invite.member_id)}
+                        disabled={isLoading}
+                      >
+                        {isLoading ? '處理中...' : '拒絕'}
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-2">
-                    <button className="px-3 py-1 bg-green-500 text-white rounded" onClick={() => handleAccept(invite.contest_team_id, invite.member_id)}>接受</button>
-                    <button className="px-3 py-1 bg-red-500 text-white rounded" onClick={() => handleReject(invite.contest_team_id, invite.member_id)}>拒絕</button>
+                  {/* 顯示該隊伍已加入成員 */}
+                  <div className="text-sm text-gray-700 mt-2 p-2 bg-gray-50 rounded">
+                    <span className="font-medium">已加入成員：</span>
+                    {teamMembers[invite.contest_team_id]?.length > 0
+                      ? teamMembers[invite.contest_team_id].join('、')
+                      : '暫無'}
                   </div>
-                </div>
-                {/* 顯示該隊伍已加入成員 */}
-                <div className="text-sm text-gray-700 mt-2">
-                  <span>已加入成員：</span>
-                  {teamMembers[invite.contest_team_id]?.length > 0
-                    ? teamMembers[invite.contest_team_id].join('、')
-                    : '暫無'}
-                </div>
-              </li>
-            ))}
+                </li>
+              );
+            })}
           </ul>
         )
       )}
