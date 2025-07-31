@@ -31,7 +31,7 @@ import ScoreEditPage from './contest/ScoreEditPage';
 import SubContestTeamManagementPage from './contest/SubContestTeamManagementPage'; // 導入子賽事隊伍管理頁面
 import QRJoinPage from './QRJoinPage'; // 導入QR碼掃描加入頁面
 // 版本信息
-const CURRENT_VERSION = "a.21";
+const CURRENT_VERSION = "a.22";
 
 // ✅ 新增：權限檢查函數
 const isAdmin = (user: any): boolean => {
