@@ -267,50 +267,6 @@ export default function ChallengeCreatePage() {
     <div className="max-w-md mx-auto mt-8 bg-white rounded shadow p-6 md:p-10">
       <h2 className="text-2xl font-bold mb-4">建立新挑戰</h2>
       
-      {/* Debug 顯示區域 */}
-      <div className="mb-4 p-2 bg-gray-100 border border-gray-200 rounded text-xs">
-        <div><span className="font-bold">Debug</span>: 約戰資訊</div>
-        {matchDetailId && <div>match_detail_id: <span className="font-mono">{matchDetailId}</span></div>}
-        <div>團隊編號: <span className="font-mono">{teamId || '無'}</span></div>
-        <div>團隊名稱: <span className="font-mono">{teamNameState || '未獲取'}</span></div>
-        
-        {/* 顯示現有約戰記錄 */}
-        {matchDetailId && (
-          <div className="mt-2 border-t pt-1">
-            <div className="flex items-center">
-              <span className="font-bold">現有約戰記錄:</span>
-              {checkingRecords ? (
-                <span className="ml-2 text-gray-500">檢查中...</span>
-              ) : (
-                <button 
-                  onClick={checkExistingChallenges} 
-                  className="ml-2 text-blue-500 text-xs underline"
-                >
-                  重新檢查
-                </button>
-              )}
-            </div>
-            {existingChallenges.length > 0 ? (
-              <div className="mt-1 max-h-40 overflow-y-auto">
-                {existingChallenges.map((challenge: Challenge, idx: number) => (
-                  <div key={idx} className="pl-2 border-l-2 border-yellow-300 mt-1">
-                    ID: {challenge.challenge_id}, 
-                    發起人: {challenge.initiator}, 
-                    日期: {challenge.challenge_date}
-                  </div>
-                ))}
-                <div className="text-red-500 mt-1">
-                  ⚠️ 注意: 點擊「{matchDetailId ? '戰書傳送' : '發起挑戰'}」將會刪除這些記錄
-                </div>
-              </div>
-            ) : (
-              <div className="pl-2 mt-1 text-green-600">
-                {checkingRecords ? '檢查中...' : '未發現現有記錄'}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
       <div className="mb-4">
         <h3 className="font-medium mb-2">參賽球員</h3>
         <div className="grid grid-cols-2 gap-2 w-full">
