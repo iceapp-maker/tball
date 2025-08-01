@@ -273,27 +273,8 @@ const LineupEditorPage: React.FC = () => {
     <div className="p-4">
       <h2 className="text-xl font-bold mb-2">編排出賽名單</h2>
       
-      {/* Debug 資訊區塊 */}
       {matchInfo && (
         <div className="mb-4">
-          <div className="p-3 bg-gray-100 rounded mb-4 border-2 border-red-500">
-            <h3 className="font-bold text-red-600">Debug 資訊:</h3>
-            <p><strong>Match ID:</strong> {match_id}</p>
-            <p><strong>Contest ID:</strong> {matchInfo.contest_id}</p>
-            <p><strong>Team ID:</strong> {matchInfo.team_id}</p>
-            <p><strong>Team Type:</strong> {matchInfo.team_type}</p>
-            <p><strong>隊長 ID:</strong> {captainId || '未找到隊長'}</p>
-            <p><strong>Points Config:</strong> {JSON.stringify(matchInfo.points_config)}</p>
-            <div>
-              <p><strong>比賽項目原始類型:</strong></p>
-              <ul>
-                {matchDetails.map((detail: MatchDetail, index: number) => (
-                  <li key={index}>項目 {detail.sequence}: {detail.match_type}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-          
           <p><strong>比賽：</strong>{matchInfo.contest_name}</p>
           <p><strong>我方隊伍：</strong>{matchInfo.team_name}</p>
           <p><strong>對手隊伍：</strong>{matchInfo.opponent_name}</p>

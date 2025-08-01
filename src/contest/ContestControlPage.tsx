@@ -979,8 +979,15 @@ const ContestControlPage: React.FC = () => {
           text = '待分配隊伍'; // 子系比賽應顯示為待分配隊伍而非人員招募中
           break;
         case 'WaitMatchForm':
-          color = 'bg-orange-500';
-          text = '待管理員產生對戰表';
+          // 檢查是否已分配足夠隊伍
+          const hasEnoughTeamsForStatus = teamCounts[contestId] && teamCounts[contestId] >= 2;
+          if (hasEnoughTeamsForStatus) {
+            color = 'bg-orange-500';
+            text = '待管理員產生對戰表';
+          } else {
+            color = 'bg-orange-500';
+            text = '待分配隊伍';
+          }
           break;
         case 'lineup_arrangement':
           color = 'bg-yellow-500';
@@ -1142,7 +1149,30 @@ const ContestControlPage: React.FC = () => {
                               switch (contest.contest_status) {
                                 case 'signup':
                                 case 'recruiting':
+                                  if (contest.contest_type === 'group_stage' || contest.parent_contest_id) {
+                                    return (
+                                      <button
+                                        onClick={() => navigate(`/contest/${contest.contest_id}/manage-teams`)}
+                                        className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-sm"
+                                      >
+                                        組況查詢
+                                      </button>
+                                    );
+                                  }
+                                  // 對於混合賽主賽事，不顯示產生對戰表按鈕，因為對戰表應該在子賽事中產生
+                                  if (contest.contest_type === 'league_parent') {
+                                    return (
+                                      <button onClick={() => navigate(`/contest/edit/${contest.contest_id}`)} className="text-indigo-600 hover:text-indigo-900">編輯</button>
+                                    );
+                                  }
+                                  // 對於一般賽事，recruiting 狀態只顯示編輯按鈕
+                                  return (
+                                    <button onClick={() => navigate(`/contest/edit/${contest.contest_id}`)} className="text-indigo-600 hover:text-indigo-900">編輯</button>
+                                  );
                                 case 'WaitMatchForm':
+                                  // 檢查是否有足夠的隊伍
+                                  const hasEnoughTeams = teamCounts[contest.contest_id] && teamCounts[contest.contest_id] >= 2;
+                                  
                                   if (contest.contest_type === 'group_stage' || contest.parent_contest_id) {
                                     return (
                                       <button
@@ -1162,13 +1192,20 @@ const ContestControlPage: React.FC = () => {
                                   return (
                                     <>
                                       <button onClick={() => navigate(`/contest/edit/${contest.contest_id}`)} className="text-indigo-600 hover:text-indigo-900">編輯</button>
-                                      <button
-                                        onClick={() => handleGenerateSchedule(contest.contest_id)}
-                                        disabled={generatingContestId === contest.contest_id}
-                                        className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm disabled:bg-gray-400"
-                                      >
-                                        {generatingContestId === contest.contest_id ? '產生中...' : '產生對戰表'}
-                                      </button>
+                                      {/* 只有當隊伍數量足夠時才顯示產生對戰表按鈕 */}
+                                      {hasEnoughTeams && (
+                                        <button
+                                          onClick={() => handleGenerateSchedule(contest.contest_id)}
+                                          disabled={generatingContestId === contest.contest_id}
+                                          className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm disabled:bg-gray-400"
+                                        >
+                                          {generatingContestId === contest.contest_id ? '產生中...' : '產生對戰表'}
+                                        </button>
+                                      )}
+                                      {/* 如果隊伍不足，提示需要更多隊伍 */}
+                                      {!hasEnoughTeams && (
+                                        <span className="text-gray-500 text-sm">需要至少2支隊伍</span>
+                                      )}
                                     </>
                                   );
                                 case 'lineup_arrangement':
@@ -1229,21 +1266,31 @@ const ContestControlPage: React.FC = () => {
                                     // 檢查子賽事是否已分配隊伍
                                     const hasTeams = teamCounts[child.contest_id] && teamCounts[child.contest_id] > 0;
                                     
-                                    if (child.contest_type === 'group_stage' || (child.parent_contest_id && !hasTeams)) {
+                                    // 對於子賽事，recruiting 狀態表示需要分配隊伍
+                                    if (child.parent_contest_id) {
                                       return (
                                         <button
                                           onClick={() => navigate(`/contest/${child.contest_id}/manage-teams`)}
                                           className="bg-green-500 text-white px-3 py-1 rounded hover:bg-green-600 text-sm"
                                         >
-                                          組況查詢
+                                          分配隊伍
                                         </button>
                                       );
                                     }
+                                    
+                                    // 對於一般賽事，recruiting 狀態不應該顯示產生對戰表
+                                    return (
+                                      <button onClick={() => navigate(`/contest/edit/${child.contest_id}`)} className="text-indigo-600 hover:text-indigo-900">編輯</button>
+                                    );
+                                  case 'WaitMatchForm':
+                                    // 檢查是否已分配隊伍
+                                    const hasTeamsForMatch = teamCounts[child.contest_id] && teamCounts[child.contest_id] >= 2;
+                                    
                                     return (
                                       <>
                                         <button onClick={() => navigate(`/contest/edit/${child.contest_id}`)} className="text-indigo-600 hover:text-indigo-900">編輯</button>
-                                        {/* 只有循環賽子賽事才顯示產生對戰表按鈕，淘汰賽子賽事不需要 */}
-                                        {child.match_mode === 'round_robin' && (
+                                        {/* 只有循環賽子賽事且已分配足夠隊伍才顯示產生對戰表按鈕 */}
+                                        {child.match_mode === 'round_robin' && hasTeamsForMatch && (
                                           <button
                                             onClick={() => handleGenerateSchedule(child.contest_id)}
                                             disabled={generatingContestId === child.contest_id}
@@ -1252,20 +1299,13 @@ const ContestControlPage: React.FC = () => {
                                             {generatingContestId === child.contest_id ? '產生中...' : '產生對戰表'}
                                           </button>
                                         )}
-                                      </>
-                                    );
-                                  case 'WaitMatchForm':
-                                    return (
-                                      <>
-                                        <button onClick={() => navigate(`/contest/edit/${child.contest_id}`)} className="text-indigo-600 hover:text-indigo-900">編輯</button>
-                                        {/* 只有循環賽子賽事才顯示產生對戰表按鈕，淘汰賽子賽事不需要 */}
-                                        {child.match_mode === 'round_robin' && (
+                                        {/* 如果隊伍不足，顯示分配隊伍按鈕 */}
+                                        {child.match_mode === 'round_robin' && !hasTeamsForMatch && (
                                           <button
-                                            onClick={() => handleGenerateSchedule(child.contest_id)}
-                                            disabled={generatingContestId === child.contest_id}
-                                            className="bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 text-sm disabled:bg-gray-400"
+                                            onClick={() => navigate(`/contest/${child.contest_id}/manage-teams`)}
+                                            className="bg-orange-500 text-white px-3 py-1 rounded hover:bg-orange-600 text-sm"
                                           >
-                                            {generatingContestId === child.contest_id ? '產生中...' : '產生對戰表'}
+                                            分配隊伍
                                           </button>
                                         )}
                                       </>
