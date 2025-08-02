@@ -53,10 +53,23 @@ const BattleRoomPage: React.FC = () => {
 
   // 新增：檢查用戶是否可以操作比賽的函數
   const canUserOperateMatch = (match: MatchDetail): boolean => {
+    console.log('=== canUserOperateMatch 檢查 ===');
+    console.log('  - match.match_detail_id:', match.match_detail_id);
+    console.log('  - isAdmin:', isAdmin);
+    console.log('  - currentContestTeamId:', currentContestTeamId);
+    console.log('  - match.team1_id:', match.team1_id);
+    console.log('  - match.team2_id:', match.team2_id);
+    
     if (isAdmin) {
+      console.log('  - ✅ 用戶是管理員，可以操作');
       return true;
     }
-    return currentContestTeamId !== null;
+    
+    const canOperate = currentContestTeamId !== null;
+    console.log('  - 用戶是否參與比賽:', canOperate);
+    console.log('  - 結果:', canOperate ? '✅ 可以操作' : '❌ 不能操作');
+    
+    return canOperate;
   };
 
   // 搜尋和過濾相關狀態
@@ -229,12 +242,29 @@ const BattleRoomPage: React.FC = () => {
   
   // 新增：檢查是否應該禁用約戰按鈕
   const shouldDisableChallengeButton = (match: MatchDetail): boolean => {
+    console.log('=== shouldDisableChallengeButton 檢查 ===');
+    console.log('  - match.match_detail_id:', match.match_detail_id);
+    console.log('  - playerStatusMap 中是否有此比賽:', !!playerStatusMap[match.match_detail_id || 0]);
+    
     if (!match.match_detail_id || !playerStatusMap[match.match_detail_id]) {
+      console.log('  - 沒有 match_detail_id 或狀態映射，按鈕不禁用');
       return false;
     }
+    
     const statusMap = playerStatusMap[match.match_detail_id];
-    const hasRejection = Object.values(statusMap).includes('已拒絕');
-    return !hasRejection;
+    console.log('  - 狀態映射:', statusMap);
+    
+    const statusValues = Object.values(statusMap);
+    console.log('  - 所有狀態值:', statusValues);
+    
+    const hasRejection = statusValues.includes('已拒絕');
+    console.log('  - 是否有拒絕狀態:', hasRejection);
+    
+    const shouldDisable = !hasRejection;
+    console.log('  - 按鈕是否應該禁用:', shouldDisable);
+    console.log('  - 邏輯: 如果沒有拒絕狀態，則禁用按鈕（邀請可能已發送）');
+    
+    return shouldDisable;
   };
 
   useEffect(() => {
@@ -1362,11 +1392,35 @@ const BattleRoomPage: React.FC = () => {
 
   // 直接前往約戰頁面的按鈕處理函數
   const navigateToChallenge = async (match: MatchDetail) => {
+    console.log('=== 約戰按鈕點擊調試開始 ===');
+    console.log('點擊時間:', new Date().toISOString());
+    
     try {
+      // 1. 檢查基本參數
+      console.log('1. 檢查基本參數:');
+      console.log('  - match對象:', match);
+      console.log('  - localStorageUser:', localStorageUser);
+      console.log('  - navigate函數類型:', typeof navigate);
+      
       const userTeamId = localStorageUser?.team_id || '';
+      console.log('2. 用戶團隊ID檢查:');
+      console.log('  - userTeamId:', userTeamId);
+      console.log('  - localStorageUser.team_id:', localStorageUser?.team_id);
+      
+      if (!userTeamId) {
+        console.error('❌ 錯誤: 用戶團隊ID為空，無法發起約戰');
+        alert('錯誤: 找不到您的團隊ID，無法發起約戰');
+        return;
+      }
       
       let playerIds: string[] = [];
       let playerNames: string[] = [];
+      
+      console.log('3. 解析團隊成員ID:');
+      console.log('  - match.team1_member_ids:', match.team1_member_ids);
+      console.log('  - match.team2_member_ids:', match.team2_member_ids);
+      console.log('  - typeof team1_member_ids:', typeof match.team1_member_ids);
+      console.log('  - typeof team2_member_ids:', typeof match.team2_member_ids);
       
       const team1Ids = typeof match.team1_member_ids === 'string' 
         ? JSON.parse(match.team1_member_ids) 
@@ -1376,75 +1430,108 @@ const BattleRoomPage: React.FC = () => {
         ? JSON.parse(match.team2_member_ids) 
         : match.team2_member_ids || [];
       
+      console.log('  - 解析後的 team1Ids:', team1Ids);
+      console.log('  - 解析後的 team2Ids:', team2Ids);
+      
+      console.log('4. 檢查比賽類型:', match.match_type);
+      
       if (match.match_type === 'single' || match.match_type === '單打') {
+        console.log('5. 處理單打比賽:');
         if (team1Ids.length > 0) {
           playerIds = [...playerIds, ...team1Ids];
           if (match.team1_members) {
             playerNames = [...playerNames, ...match.team1_members];
           }
+          console.log('  - 添加team1成員:', team1Ids, match.team1_members);
         }
         if (team2Ids.length > 0) {
           playerIds = [...playerIds, ...team2Ids];
           if (match.team2_members) {
             playerNames = [...playerNames, ...match.team2_members];
           }
+          console.log('  - 添加team2成員:', team2Ids, match.team2_members);
         }
       } else {
+        console.log('5. 處理雙打比賽:');
         if (team1Ids.length > 0) {
           playerIds = [...playerIds, ...team1Ids];
           if (match.team1_members) {
             playerNames = [...playerNames, ...match.team1_members];
           }
+          console.log('  - 添加team1成員:', team1Ids, match.team1_members);
         }
         if (team2Ids.length > 0) {
           playerIds = [...playerIds, ...team2Ids];
           if (match.team2_members) {
             playerNames = [...playerNames, ...match.team2_members];
           }
+          console.log('  - 添加team2成員:', team2Ids, match.team2_members);
         }
       }
       
+      console.log('  - 最終 playerIds:', playerIds);
+      console.log('  - 最終 playerNames:', playerNames);
+      
       if (playerIds.length === 0) {
-        console.warn('無法發起約戰，因為沒有成員 IDs');
+        console.error('❌ 錯誤: 無法發起約戰，因為沒有成員 IDs');
+        console.log('  - team1Ids:', team1Ids);
+        console.log('  - team2Ids:', team2Ids);
+        console.log('  - match.team1_members:', match.team1_members);
+        console.log('  - match.team2_members:', match.team2_members);
+        alert('錯誤: 找不到比賽成員資料，無法發起約戰');
         return;
       }
       
+      console.log('6. 確定團隊名稱:');
       let correctTeamName = localStorageUser?.team_name || '';
+      console.log('  - 初始 correctTeamName:', correctTeamName);
       
       if (!correctTeamName && userTeamId) {
+        console.log('  - 嘗試從比賽數據獲取團隊名稱');
+        console.log('  - userTeamId:', userTeamId);
+        console.log('  - match.team1_id:', match.team1_id);
+        console.log('  - match.team2_id:', match.team2_id);
+        
         if (userTeamId === match.team1_id?.toString()) {
           correctTeamName = match.team1_name;
+          console.log('  - 匹配到team1:', correctTeamName);
         } else if (userTeamId === match.team2_id?.toString()) {
           correctTeamName = match.team2_name;
+          console.log('  - 匹配到team2:', correctTeamName);
         }
       }
       
       correctTeamName = correctTeamName || userTeamId;
+      console.log('  - 最終 correctTeamName:', correctTeamName);
       
-      console.log('約戰資訊:', {
-        playerIds,
-        playerNames,
-        match_detail_id: match.match_detail_id.toString(),
-        teamId: userTeamId,
+      const navigationState = {
+        teamId: userTeamId, 
         teamName: correctTeamName,
-        matchTeam1: match.team1_name,
-        matchTeam2: match.team2_name
+        playerIds: playerIds,
+        playerNames: playerNames,
+        matchDetailId: match.match_detail_id.toString()
+      };
+      
+      console.log('7. 準備導航:');
+      console.log('  - 導航路徑: /create-challenge');
+      console.log('  - 導航狀態:', navigationState);
+      
+      console.log('8. 執行導航...');
+      navigate('/create-challenge', { 
+        state: navigationState
       });
       
-      navigate('/create-challenge', { 
-        state: {
-          teamId: userTeamId, 
-          teamName: correctTeamName,
-          playerIds: playerIds,
-          playerNames: playerNames,
-          matchDetailId: match.match_detail_id.toString()
-        }
-      });
+      console.log('✅ 導航執行完成');
       
     } catch (err: any) {
-      console.error('導航到約戰頁面失敗:', err);
+      console.error('❌ navigateToChallenge 函數執行錯誤:', err);
+      console.error('  - 錯誤訊息:', err.message);
+      console.error('  - 錯誤堆疊:', err.stack);
       setError(err.message);
+      alert(`約戰失敗: ${err.message}`);
     }
+    
+    console.log('=== 約戰按鈕點擊調試結束 ===');
   };
 
   // 新增：渲染單個比賽卡片的函數
@@ -1647,19 +1734,40 @@ const BattleRoomPage: React.FC = () => {
                         : 'bg-green-500 hover:bg-green-600 text-white'
                   }`}
                   onClick={() => {
+                    console.log('=== 約戰按鈕被點擊 ===');
+                    console.log('  - 點擊時間:', new Date().toISOString());
+                    console.log('  - match.match_detail_id:', match.match_detail_id);
+                    console.log('  - canUserOperateMatch(match):', canUserOperateMatch(match));
+                    console.log('  - shouldDisableChallengeButton(match):', shouldDisableChallengeButton(match));
+                    console.log('  - localStorageUser:', localStorageUser);
+                    console.log('  - currentContestTeamId:', currentContestTeamId);
+                    console.log('  - isAdmin:', isAdmin);
+                    
+                    const canOperate = canUserOperateMatch(match);
+                    const shouldDisable = shouldDisableChallengeButton(match);
+                    const isDisabled = !canOperate || shouldDisable;
+                    
+                    console.log('  - 按鈕是否禁用:', isDisabled);
+                    console.log('    - 不能操作原因:', !canOperate ? '用戶無權限操作比賽' : '');
+                    console.log('    - 按鈕禁用原因:', shouldDisable ? '邀請已發送或其他限制' : '');
+                    
                     if (canUserOperateMatch(match) && !shouldDisableChallengeButton(match)) {
-                      const roundGroups: {[key: number]: MatchDetail[]} = {};
-                  
-                  // 根據比賽數量和對戰樹結構推算輪次
-                  filteredMatches.forEach((match) => {
-                    // 處理不同數據結構中的輪次屬性
-                    // 優先使用 round 屬性，然後嘗試 bracket_round，最後默認為 1
-                    const round = match.round || match.bracket_round || 1;
-                    if (!roundGroups[round]) roundGroups[round] = [];
-                    roundGroups[round].push(match);
-                  });
+                      console.log('  - ✅ 條件滿足，執行 navigateToChallenge');
+                      
                       navigateToChallenge(match);
+                    } else {
+                      console.log('  - ❌ 條件不滿足，按鈕點擊被忽略');
+                      if (!canUserOperateMatch(match)) {
+                        console.log('    - 原因: 用戶無權限操作此比賽');
+                        alert('您不是此場比賽的參賽者，無法發起約戰');
+                      }
+                      if (shouldDisableChallengeButton(match)) {
+                        console.log('    - 原因: 按鈕被禁用（可能邀請已發送）');
+                        alert('邀請已發送，等待回應中');
+                      }
                     }
+                    
+                    console.log('=== 約戰按鈕點擊處理結束 ===');
                   }}
                   title={
                     !canUserOperateMatch(match)
