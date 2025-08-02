@@ -97,6 +97,7 @@ const ContestJoinPage: React.FC = () => {
   const [removeLoading, setRemoveLoading] = useState(false);
   const [qrCodeModalOpen, setQrCodeModalOpen] = useState(false);
   const [qrCodeData, setQrCodeData] = useState('');
+  const [currentInviteMemberName, setCurrentInviteMemberName] = useState('');
 
   // 假設有user context
   const user = JSON.parse(localStorage.getItem('loginUser') || '{}');
@@ -161,6 +162,7 @@ const ContestJoinPage: React.FC = () => {
     });
     
     setQrCodeData(qrCodeUrl);
+    setCurrentInviteMemberName(memberName);
     setQrCodeModalOpen(true);
   };
 
@@ -1438,7 +1440,9 @@ const ContestJoinPage: React.FC = () => {
         centered
       >
         <div style={{ textAlign: 'center', padding: '20px' }}>
-          <p style={{ marginBottom: '20px' }}>請讓隊員掃描此QR碼加入隊伍</p>
+          <p style={{ marginBottom: '20px' }}>
+            請讓隊員 <strong style={{ color: '#1890ff' }}>{currentInviteMemberName}</strong> 掃描此QR碼加入隊伍
+          </p>
           {qrCodeData && (
             <img 
               src={qrCodeData} 
