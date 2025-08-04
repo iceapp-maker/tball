@@ -973,362 +973,368 @@ function DoubleGame() {
   
   // 即時更新顯示比分資訊
   useEffect(() => {
-  // 取得目前勝場
-  const currentTopWins = getWins(true);
-  const currentBottomWins = getWins(false);
-
-  if (currentTopWins === 0 && currentBottomWins === 0) {
-    setFinalScoreInfo('寫入資料表比分: 0:0');
-    return;
-  }
-
-  let displayTeam1Score, displayTeam2Score;
-  const currentIsTopWinner = currentTopWins > currentBottomWins;
-
-  if (team1Members.length > 0 && team2Members.length > 0) {
-    // 判斷 team1 是否在上方
-    let isTeam1OnTop;
-    if (isContestMode) {
-      isTeam1OnTop = true;
+    // 判斷交換狀態
+    const isSwapped = positionSwapCount % 2 === 1;
+    
+    // 根據交換狀態確定比分格式
+    let tempFormattedScore = "";
+    if (isSwapped) {
+      // 已交換狀態，比分格式應為 bottomWins:topWins
+      tempFormattedScore = `${bottomWins}:${topWins}`;
     } else {
-      isTeam1OnTop = positionSwapCount % 2 === 0;
+      // 未交換狀態，比分格式應為 topWins:bottomWins
+      tempFormattedScore = `${topWins}:${bottomWins}`;
     }
     
-    if (isTeam1OnTop) {
-      displayTeam1Score = currentTopWins;
-      displayTeam2Score = currentBottomWins;
-    } else {
-      displayTeam1Score = currentBottomWins;
-      displayTeam2Score = currentTopWins;
-    }
-  } else {
-    displayTeam1Score = currentTopWins;
-    displayTeam2Score = currentBottomWins;
-  }
-   setFinalScoreInfo(`寫入資料表比分: ${displayTeam1Score}:${displayTeam2Score}`);
-}, [topWins, bottomWins, positionSwapCount, team1Members, team2Members, isContestMode]);
+    // 更新比分顯示
+    setFinalScoreInfo(`寫入資料表比分: ${tempFormattedScore}`);
+  }, [topWins, bottomWins, positionSwapCount]);
 
   // 彈窗控制狀態
   const [showPostSaveModal, setShowPostSaveModal] = useState(false);
 
   // 提交比賽結果到後端
-// *** ✏️ 修改：submitGameResult 函数 - 完整修正版本 ***
-// 找到 submitGameResult 函数并完全替换为以下代码：
-
-const submitGameResult = async () => {
-  // 如果已经储存过或无有效胜利次数，或比赛已完成，不执行
-  if (hasSaved || isMatchCompleted) {
-    console.log('已储存过或比赛已有记录，不再储存');
-    return; // 避免重复储存
-  }
-
-  // 检查所有会员是否已选择
-  if (!redMember || !greenMember || !blueMember || !yellowMember) {
-    setSubmitStatus('error');
-    setSubmitMessage('请选择所有位置的会员');
-    setShowSubmitMessage(true);
-    setTimeout(() => setShowSubmitMessage(false), 3000);
-    return;
-  }
-
-  try {
-    setSubmitStatus('loading');
-    setSubmitMessage('储存中...');
-    setShowSubmitMessage(true);
-
-    // 取得登入者名称
-    const loginUserName = currentLoggedInUser?.name ?? '访客';
-
-    // 取得基础胜场数据
-    const topWins = getWins(true);  // 上方获胜场次
-    const bottomWins = getWins(false);  // 下方获胜场次
-
-    console.log('实际获胜场次:', { topWins, bottomWins });
-    console.log('游戏历史:', gameHistory);
-
-    // 根据现有逻辑确定获胜选手
-    let win1_name, win2_name;
-    const isTopWinner = topWins > bottomWins;
-    const isSwapped = positionSwapCount % 2 === 1;
-  
-    const red = getMemberById(redMember);
-    const green = getMemberById(greenMember);
-    const blue = getMemberById(blueMember);
-    const yellow = getMemberById(yellowMember);
-
-    // 使用现有的获胜选手判定逻辑
-    if (!isContestMode) {
-      // 一般挑战赛：根据交换状态调整获胜选手判断
-      if (isSwapped) {
-        // 已交换状态：蓝黄在上，红绿在下
-        if (isTopWinner) {
-          win1_name = blue?.name;   
-          win2_name = yellow?.name; 
-        } else {
-          win1_name = red?.name;    
-          win2_name = green?.name;  
-        }
-      } else {
-        // 未交换状态：红绿在上，蓝黄在下
-        if (isTopWinner) {
-          win1_name = red?.name;    
-          win2_name = green?.name;  
-        } else {
-          win1_name = blue?.name;   
-          win2_name = yellow?.name; 
-        }
-      }
-    } else {
-      // 战况室模式：使用原始逻辑
-      if (isTopWinner) {
-        win1_name = red?.name;    
-        win2_name = green?.name;  
-      } else {
-        win1_name = blue?.name;   
-        win2_name = yellow?.name; 
-      }
+  const submitGameResult = async () => {
+    // 組建要儲存的資料
+    // 如果已經儲存過或無有效勝利次數，或比賽已完成，不執行
+    if (hasSaved || isMatchCompleted) {
+      console.log('已儲存過或比賽已有記錄，不再儲存');
+      return; // 避免重複儲存
     }
 
-    // *** 关键修正：根据获胜选手判定team1和team2的比分 ***
-    let team1Score, team2Score;
-    
-    // 检查获胜选手是否属于team1
-    const isTeam1Winner = team1Members.some(name => 
-      name === win1_name || name === win2_name
-    );
-
-    if (isTeam1Winner) {
-      // team1获胜：team1分数 > team2分数
-      team1Score = Math.max(topWins, bottomWins);  // 获胜方的分数（较大值）
-      team2Score = Math.min(topWins, bottomWins);  // 失败方的分数（较小值）
-    } else {
-      // team2获胜：team2分数 > team1分数
-      team1Score = Math.min(topWins, bottomWins);  // 失败方的分数（较小值）
-      team2Score = Math.max(topWins, bottomWins);  // 获胜方的分数（较大值）
-    }
-
-    // *** 修正后的比分格式：始终为 team1:team2 ***
-    const formattedScore = `${team1Score}:${team2Score}`;
-
-    console.log('DEBUG: 比分计算结果:', {
-      topWins,
-      bottomWins,
-      获胜选手: `${win1_name} + ${win2_name}`,
-      isTeam1Winner,
-      team1Score,
-      team2Score,
-      formattedScore,
-      说明: '比分格式已修正为 team1:team2，确保正确反映队伍间的胜负关系'
-    });
-
-    // 详细记录交换前后的选手分布和队伍对应
-    console.log('DEBUG: 选手队伍对应详情:', {
-      交换次数: positionSwapCount,
-      交换状态: isSwapped ? '已交换' : '未交换',
-      当前选手分布: {
-        上方红色区块: { 选手: red?.name, ID: redMember },
-        上方绿色区块: { 选手: green?.name, ID: greenMember },
-        下方蓝色区块: { 选手: blue?.name, ID: blueMember },
-        下方黄色区块: { 选手: yellow?.name, ID: yellowMember }
-      },
-      队伍归属: {
-        team1成员: team1Members,
-        team2成员: team2Members,
-        红色区块选手归属: team1Members.includes(red?.name) ? 'team1' : (team2Members.includes(red?.name) ? 'team2' : '未知'),
-        绿色区块选手归属: team1Members.includes(green?.name) ? 'team1' : (team2Members.includes(green?.name) ? 'team2' : '未知'),
-        蓝色区块选手归属: team1Members.includes(blue?.name) ? 'team1' : (team2Members.includes(blue?.name) ? 'team2' : '未知'),
-        黄色区块选手归属: team1Members.includes(yellow?.name) ? 'team1' : (team2Members.includes(yellow?.name) ? 'team2' : '未知')
-      },
-      胜负统计: {
-        上方胜场: topWins,
-        下方胜场: bottomWins,
-        判定上方获胜: isTopWinner,
-        最终比分格式: formattedScore
-      }
-    });
-
-    // 创建显示用的信息字符串
-    const scoreInfo = `写入资料表比分: ${formattedScore}`;
-    console.log('DEBUG:', scoreInfo);
-    setFinalScoreInfo(scoreInfo);
-
-    // 送出团队id与名字（不送id）
-    const gameData = {
-      player1: red?.name,
-      player2: green?.name,
-      player3: blue?.name,
-      player4: yellow?.name,
-      team_id: currentLoggedInUser?.team_id || 'T',
-      score: formattedScore, // 使用修正后的比分格式
-      win1_name,  // 使用修正后的获胜选手判断
-      win2_name,  // 使用修正后的获胜选手判断
-      notes: `${new Date().toISOString()} - Auto recorded, 场次数:${gameHistory.length}`,
-      created_by_name: loginUserName,
-      source_type: isContestMode ? 'contest' : 'challenge',
-      source_id: isContestMode && matchDetailId ? matchDetailId : null,
-    };
-
-    console.log('DEBUG: 最终要储存的资料:', gameData);
-
-    const { data, error: insertError } = await supabase
-      .from('g_double_game')
-      .insert([gameData])
-      .select();
-      
-    if (insertError) {
-      console.error('储存比赛结果失败:', insertError);
+    // 檢查所有會員是否已選擇
+    if (!redMember || !greenMember || !blueMember || !yellowMember) {
       setSubmitStatus('error');
-      setSubmitMessage(`储存失败: ${insertError.code} - ${insertError.message || '请重试'}`);
-      setTimeout(() => setShowSubmitMessage(false), 5000);
+      setSubmitMessage('請選擇所有位置的會員');
+      setShowSubmitMessage(true);
+      setTimeout(() => setShowSubmitMessage(false), 3000);
       return;
     }
 
-    console.log('储存成功, 回应:', data);
-    setSubmitStatus('success');
-    setSubmitMessage('比赛结果已成功储存！');
-    // 设置为已储存，禁用储存按钮
-    setHasSaved(true);
-    
-    // 如果是从战况室或比赛进入，更新 contest_match_detail 表并自动返回
-    if (isContestMode && matchDetailId) {
-      try {
-        console.log('DEBUG: 开始更新战况室比赛结果...');
-        console.log('DEBUG: 当前状态:', {
-          isFromBattleroom,
-          matchDetailId,
-          redMember, greenMember, blueMember, yellowMember
-        });
-        
-        // 获取获胜选手姓名
-        const winnerName1 = gameData.win1_name;
-        const winnerName2 = gameData.win2_name;
-        
-        console.log('DEBUG: 获胜选手:', { winnerName1, winnerName2 });
-        console.log('DEBUG: 队伍成员列表:', {
-          team1Members,
-          team2Members,
-          team1Id,
-          team2Id
-        });
-        
-        // 判断获胜队伍
-        let winnerTeamId = null;
-        
-        // 手动检查整个比对状况
-        if (!team1Members.length || !team2Members.length) {
-          console.warn('DEBUG: 队伍成员列表为空，改用备用比对方法');
-          
-          // 备用方法：根据team1Score和team2Score判断
-          const isTeam1WinnerByScore = team1Score > team2Score;
-          winnerTeamId = isTeam1WinnerByScore ? team1Id : team2Id;
-          
-          console.log('DEBUG: 备用方法判断获胜队伍:', {
-            team1Score,
-            team2Score,
-            isTeam1WinnerByScore,
-            winnerTeamId
-          });
-        } else {
-          // 检查获胜选手是否在队伍1
-          const checkIsTeam1Winner = team1Members.some(name => 
-            name === winnerName1 || name === winnerName2
-          );
-          
-          console.log('DEBUG: 检查获胜选手在哪个队伍:', {
-            checkIsTeam1Winner,
-            check: team1Members.map(name => ({ 
-              name, 
-              matchWinner1: name === winnerName1,
-              matchWinner2: name === winnerName2
-            }))
-          });
-          
-          if (checkIsTeam1Winner) {
-            winnerTeamId = team1Id;
-            console.log('DEBUG: 队伍1获胜, ID:', winnerTeamId);
+    try {
+      setSubmitStatus('loading');
+      setSubmitMessage('儲存中...');
+      setShowSubmitMessage(true);
+
+      // 取得登入者名稱
+      const loginUserName = currentLoggedInUser?.name ?? '訪客';
+
+      // *** 修正：比分格式始終為 上方:下方 ***
+      const topWins = getWins(true);  // 上方獲勝場次
+      const bottomWins = getWins(false);  // 下方獲勝場次
+
+      console.log('實際獲勝場次:', { topWins, bottomWins });
+      console.log('遊戲歷史:', gameHistory);
+
+      const formattedScore = `${topWins}:${bottomWins}`;
+
+      console.log('DEBUG: 比分計算結果:', {
+        topWins,
+        bottomWins,
+        formattedScore,
+        說明: '比分格式為 上方勝場:下方勝場，不考慮隊伍交換'
+      });
+
+      // 判斷哪一方獲勝（基於目前顯示的上下位置）
+      const isTopWinner = topWins > bottomWins;
+
+      // 判斷是否有交換過場地，用於後續的獲勝選手判斷
+      const isSwapped = positionSwapCount % 2 === 1;
+
+      // 詳細記錄交換前後的選手分佈和隊伍對應
+      const getMemberById = (id: string): Member | undefined => {
+        return members.find((member: Member) => member.id === id);
+      };
+      const red = getMemberById(redMember);
+      const green = getMemberById(greenMember);
+      const blue = getMemberById(blueMember);
+      const yellow = getMemberById(yellowMember);
+
+      console.log('DEBUG: 選手隊伍對應詳情:', {
+        交換次數: positionSwapCount,
+        交換狀態: isSwapped ? '已交換' : '未交換',
+        當前選手分佈: {
+          上方紅色區塊: { 選手: red?.name, ID: redMember },
+          上方綠色區塊: { 選手: green?.name, ID: greenMember },
+          下方藍色區塊: { 選手: blue?.name, ID: blueMember },
+          下方黃色區塊: { 選手: yellow?.name, ID: yellowMember }
+        },
+        隊伍歸屬: {
+          team1成員: team1Members,
+          team2成員: team2Members,
+          紅色區塊選手歸屬: team1Members.includes(red?.name) ? 'team1' : (team2Members.includes(red?.name) ? 'team2' : '未知'),
+          綠色區塊選手歸屬: team1Members.includes(green?.name) ? 'team1' : (team2Members.includes(green?.name) ? 'team2' : '未知'),
+          藍色區塊選手歸屬: team1Members.includes(blue?.name) ? 'team1' : (team2Members.includes(blue?.name) ? 'team2' : '未知'),
+          黃色區塊選手歸屬: team1Members.includes(yellow?.name) ? 'team1' : (team2Members.includes(yellow?.name) ? 'team2' : '未知')
+        },
+        勝負統計: {
+          上方勝場: topWins,
+          下方勝場: bottomWins,
+          判定上方獲勝: isTopWinner,
+          比分格式: formattedScore
+        }
+      });
+
+      // *** 獲勝選手判斷邏輯保持不變 ***
+      let win1_name, win2_name;
+      if (!isContestMode) {
+        // 一般挑戰賽：根據交換狀態調整獲勝選手判斷
+        if (isSwapped) {
+          // 已交換狀態：藍黃在上，紅綠在下
+          if (isTopWinner) {
+            win1_name = blue?.name;   // 藍色選手
+            win2_name = yellow?.name; // 黃色選手
           } else {
-            winnerTeamId = team2Id;
-            console.log('DEBUG: 队伍2获胜, ID:', winnerTeamId);
+            win1_name = red?.name;    // 紅色選手
+            win2_name = green?.name;  // 綠色選手
+          }
+        } else {
+          // 未交換狀態：紅綠在上，藍黃在下
+          if (isTopWinner) {
+            win1_name = red?.name;    // 紅色選手
+            win2_name = green?.name;  // 綠色選手
+          } else {
+            win1_name = blue?.name;   // 藍色選手
+            win2_name = yellow?.name; // 黃色選手
           }
         }
-        
-        // 强制转换为整数类型
-        const numericMatchDetailId = parseInt(matchDetailId, 10);
-        const numericWinnerTeamId = parseInt(String(winnerTeamId), 10);
-
-        console.log('DEBUG: 准备更新 contest_match_detail，参数(转换后):', {
-          numericMatchDetailId,
-          score: formattedScore,
-          numericWinnerTeamId,
-          originalValues: { matchDetailId, winnerTeamId }
-        });
-        
-        // 使用标准API更新
-        const { data: updateData, error: updateError } = await supabase
-          .from('contest_match_detail')
-          .update({
-            score: formattedScore,
-            winner_team_id: numericWinnerTeamId
-          })
-          .eq('match_detail_id', numericMatchDetailId)
-          .select();
-        
-        if (updateError) {
-          console.error('DEBUG: 更新失败:', updateError);
+      } else {
+        // 戰況室模式：使用原始邏輯
+        if (isTopWinner) {
+          win1_name = red?.name;    // 紅色選手
+          win2_name = green?.name;  // 綠色選手
         } else {
-          console.log('DEBUG: 更新成功', updateData);
+          win1_name = blue?.name;   // 藍色選手
+          win2_name = yellow?.name; // 黃色選手
         }
+      }
+
+      console.log('DEBUG: 獲勝選手判斷:', {
+        模式: isContestMode ? '戰況室模式' : '一般挑戰賽',
+        isSwapped,
+        isTopWinner,
+        獲勝選手: {
+          win1_name,
+          win2_name
+        },
+        最終結果: {
+          比分: formattedScore,
+          獲勝方: isTopWinner ? '上方' : '下方',
+          獲勝選手: `${win1_name} + ${win2_name}`
+        }
+      });
+
+      // 創建顯示用的資訊字串
+      const scoreInfo = `寫入資料表比分: ${formattedScore}`;
+      console.log('DEBUG:', scoreInfo);
+      setFinalScoreInfo(scoreInfo);
+
+      // 送出團隊id與名字（不送id）
+      const gameData = {
+        player1: red?.name,
+        player2: green?.name,
+        player3: blue?.name,
+        player4: yellow?.name,
+        team_id: currentLoggedInUser?.team_id || 'T',
+        score: formattedScore,
+        win1_name,  // 使用修正後的獲勝選手判斷
+        win2_name,  // 使用修正後的獲勝選手判斷
+        notes: `${new Date().toISOString()} - Auto recorded, 場次數:${gameHistory.length}`,
+        created_by_name: loginUserName,
+        source_type: isContestMode ? 'contest' : 'challenge',
+        source_id: isContestMode && matchDetailId ? matchDetailId : null,
+      };
+
+      console.log('DEBUG: 最終要儲存的資料:', gameData);
+
+      const { data, error: insertError } = await supabase
+        .from('g_double_game')
+        .insert([gameData])
+        .select();
         
-        // 比赛模式：直接自动返回战况室，不显示后续选择弹窗
-        console.log('准备返回战况室页面...');
-        setTimeout(() => {
-          navigate(-1);
-        }, 1500);
-        
-        // 比赛模式下不需要显示后续弹窗，直接返回
-        setTimeout(() => setShowSubmitMessage(false), 1500);
-        return; // 重要：在比赛模式下直接返回，不执行后面的弹窗显示
-        
-      } catch (error) {
-        console.error('更新战况室比赛结果失败:', error);
-        // 即使更新失败，仍然跳转回战况室
-        setTimeout(() => {
-          navigate(-1);
-        }, 1500);
-        setTimeout(() => setShowSubmitMessage(false), 1500);
+      if (insertError) {
+        console.error('儲存比賽結果失敗:', insertError);
+        setSubmitStatus('error');
+        setSubmitMessage(`儲存失敗: ${insertError.code} - ${insertError.message || '請重試'}`);
+        setTimeout(() => setShowSubmitMessage(false), 5000);
         return;
       }
-    }
-    
-    // 只有非比赛模式才显示后续选择弹窗
-    setShowPostSaveModal(true);
-    setTimeout(() => setShowSubmitMessage(false), 3000);
-    
-  } catch (error) {
-    console.error('储存过程发生未预期的错误:', error);
-    setSubmitStatus('error');
-    setSubmitMessage(`储存时发生错误: ${error instanceof Error ? error.message : '未知错误'}`);
-    setTimeout(() => setShowSubmitMessage(false), 5000);
-  }
-};
 
-// *** 📝 发现的问题总结 ***
-// 
-// 需要修正的问题：
-// 1. ❌ 重复的变量声明和逻辑判断
-// 2. ❌ 重复的 getMemberById 函数定义
-// 3. ❌ 重复的比分计算逻辑
-// 4. ❌ 重复的 debug 输出
-// 5. ❌ 混乱的获胜选手判定流程
-// 6. ❌ 复杂的SQL更新逻辑（已简化为标准API）
-//
-// 修正内容：
-// ✅ 删除所有重复的代码段
-// ✅ 整合获胜选手判定逻辑
-// ✅ 简化比分计算流程  
-// ✅ 使用新的 team1:team2 比分格式
-// ✅ 简化战况室更新逻辑
-// ✅ 清理重复的debug输出
+      console.log('儲存成功, 回應:', data);
+      setSubmitStatus('success');
+      setSubmitMessage('比賽結果已成功儲存！');
+      // 設置為已儲存，禁用儲存按鈕
+      setHasSaved(true);
+      
+      // 如果是從戰況室或比賽進入，更新 contest_match_detail 表並自動返回
+      if (isContestMode && matchDetailId) {
+        try {
+          console.log('DEBUG: 開始更新戰況室比賽結果...');
+          console.log('DEBUG: 當前狀態:', {
+            isFromBattleroom,
+            matchDetailId,
+            redMember, greenMember, blueMember, yellowMember
+          });
+          
+          // 獲取獲勝選手姓名
+          const winnerName1 = gameData.win1_name;
+          const winnerName2 = gameData.win2_name;
+          
+          console.log('DEBUG: 獲勝選手:', { winnerName1, winnerName2 });
+          console.log('DEBUG: 隊伍成員列表:', {
+            team1Members,
+            team2Members,
+            team1Id,
+            team2Id
+          });
+          
+          console.log('DEBUG: 選手名稱: ', {
+            red: red?.name,
+            green: green?.name,
+            blue: blue?.name,
+            yellow: yellow?.name
+          });
+          
+          // 判斷獲勝隊伍
+          let winnerTeamId = null;
+          
+          // 手動檢查整個比對狀況
+          if (!team1Members.length || !team2Members.length) {
+            console.warn('DEBUG: 隊伍成員列表為空，改用備用比對方法');
+            
+            // 備用方法：直接檢查紅綠 vs 藍黃
+            const topTeamWins = topWins > bottomWins;
+            winnerTeamId = topTeamWins ? team1Id : team2Id;
+            
+            console.log('DEBUG: 備用方法判斷獲勝隊伍:', {
+              topWins,
+              bottomWins,
+              topTeamWins,
+              winnerTeamId
+            });
+          } else {
+            // 檢查獲勝選手是否在隊伍1
+            const isTeam1Winner = team1Members.some(name => 
+              name === winnerName1 || name === winnerName2
+            );
+            
+            console.log('DEBUG: 檢查獲勝選手在哪個隊伍:', {
+              isTeam1Winner,
+              check: team1Members.map(name => ({ 
+                name, 
+                matchWinner1: name === winnerName1,
+                matchWinner2: name === winnerName2
+              }))
+            });
+            
+            if (isTeam1Winner) {
+              winnerTeamId = team1Id;
+              console.log('DEBUG: 隊伍1獲勝, ID:', winnerTeamId);
+            } else {
+              winnerTeamId = team2Id;
+              console.log('DEBUG: 隊伍2獲勝, ID:', winnerTeamId);
+            }
+          }
+          
+          // 強制轉換為整數類型
+          const numericMatchDetailId = parseInt(matchDetailId, 10);
+          const numericWinnerTeamId = parseInt(String(winnerTeamId), 10);
+
+          console.log('DEBUG: 準備更新 contest_match_detail，參數(轉換後):', {
+            numericMatchDetailId,
+            score: formattedScore,
+            numericWinnerTeamId,
+            originalValues: { matchDetailId, winnerTeamId }
+          });
+          
+          // 使用 SQL 直接更新
+          // Supabase的SQL API可能比RPC更直接
+          const sqlQuery = `
+            UPDATE contest_match_detail 
+            SET score = '${formattedScore}', winner_team_id = ${numericWinnerTeamId} 
+            WHERE match_detail_id = ${numericMatchDetailId}
+          `;
+
+          console.log('DEBUG: 將執行的SQL:', sqlQuery);
+          
+          try {
+            const { data: updateData, error: updateError } = await supabase
+              .rpc('execute_sql', { sql_query: sqlQuery });
+            
+            if (updateError) {
+              console.error('DEBUG: SQL更新失敗:', updateError);
+              
+              // 備用方案：使用標準API再試一次
+              console.log('DEBUG: 嘗試使用標準API更新');
+              const { data: backupData, error: backupError } = await supabase
+                .from('contest_match_detail')
+                .update({
+                  score: formattedScore,
+                  winner_team_id: numericWinnerTeamId
+                })
+                .eq('match_detail_id', numericMatchDetailId)
+                .select();
+              
+              if (backupError) {
+                console.error('DEBUG: 標準API更新也失敗:', backupError);
+              } else {
+                console.log('DEBUG: 標準API更新成功', backupData);
+              }
+            } else {
+              console.log('DEBUG: SQL更新成功', updateData);
+            }
+          } catch (sqlError) {
+            console.error('DEBUG: SQL執行出錯:', sqlError);
+            
+            // 備用方案：使用標準update API
+            const { data: fallbackData, error: fallbackError } = await supabase
+              .from('contest_match_detail')
+              .update({
+                score: formattedScore,
+                winner_team_id: numericWinnerTeamId
+              })
+              .eq('match_detail_id', numericMatchDetailId)
+              .select();
+            
+            if (fallbackError) {
+              console.error('DEBUG: 備用更新失敗:', fallbackError);
+            } else {
+              console.log('DEBUG: 備用更新成功', fallbackData);
+            }
+          }
+          
+          // 比賽模式：直接自動返回戰況室，不顯示後續選擇彈窗
+          console.log('準備返回戰況室頁面...');
+          setTimeout(() => {
+            navigate(-1);
+          }, 1500);
+          
+          // 比賽模式下不需要顯示後續彈窗，直接返回
+          setTimeout(() => setShowSubmitMessage(false), 1500);
+          return; // 重要：在比賽模式下直接返回，不執行後面的彈窗顯示
+          
+        } catch (error) {
+          console.error('更新戰況室比賽結果失敗:', error);
+          // 即使更新失敗，仍然跳轉回戰況室
+          setTimeout(() => {
+            navigate(-1);
+          }, 1500);
+          setTimeout(() => setShowSubmitMessage(false), 1500);
+          return;
+        }
+      }
+      
+      // 只有非比賽模式才顯示後續選擇彈窗
+      setShowPostSaveModal(true);
+      setTimeout(() => setShowSubmitMessage(false), 3000);
+      
+    } catch (error) {
+      console.error('儲存過程發生未預期的錯誤:', error);
+      setSubmitStatus('error');
+      setSubmitMessage(`儲存時發生錯誤: ${error instanceof Error ? error.message : '未知錯誤'}`);
+      setTimeout(() => setShowSubmitMessage(false), 5000);
+    }
+  };
 
   // 約戰相關狀態
   const [isChallengeMode, setIsChallengeMode] = useState(false);
