@@ -277,17 +277,8 @@ const NewTodoBlock: React.FC = () => {
       // 獲取所有相關的 contest_id
       const contestIds = [...new Set(captainMatches.map(match => match.contest_id))];
       
-      // 獲取這些 contest 的所有比賽
-      const { data: allContestMatches, error: allMatchesError } = await supabase
-        .from('contest_match')
-        .select('match_id, contest_id, team1_id, team2_id, winner_team_id')
-        .in('contest_id', contestIds);
-        
-      if (allMatchesError || !allContestMatches) {
-        console.error('獲取賽事所有比賽失敗:', allMatchesError);
-        setCaptainPendingLineups([]);
-        return;
-      }
+      // 直接使用隊長參與的比賽，而不是查詢整個賽事的所有比賽
+      const allContestMatches = captainMatches;
       
       // 獲取所有比賽的陣容詳情，用於判斷雙方是否已安排名單
       const matchIds = allContestMatches.map((match: any) => match.match_id);
