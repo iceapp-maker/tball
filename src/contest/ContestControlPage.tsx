@@ -52,6 +52,12 @@ const ContestControlPage: React.FC = () => {
   const user = JSON.parse(localStorage.getItem('loginUser') || '{}');
   const currentUserTeamId = user.team_id;
   const currentUserTeamName = user.team_name; // 從登入者資訊中取得團隊名稱
+  
+  // 🔒 新增：根據 member_id 前綴獲取登入團隊
+  const getLoginTeam = (memberId: string): string => {
+    if (!memberId) return '';
+    return memberId.charAt(0).toUpperCase(); // 取第一個字母作為登入團隊識別
+  };
 
   useEffect(() => {
     // 檢查是否有登入使用者和團隊資訊
@@ -1173,6 +1179,13 @@ const ContestControlPage: React.FC = () => {
                                   // 檢查是否有足夠的隊伍
                                   const hasEnoughTeams = teamCounts[contest.contest_id] && teamCounts[contest.contest_id] >= 2;
                                   
+                                  // 🔒 新增：對於淘汰賽，還需要檢查 bracket_structure 是否已配置
+                                  const canGenerateSchedule = hasEnoughTeams && (
+                                    contest.match_mode === 'round_robin' || // 循環賽可以直接產生
+                                    (contest.match_mode === 'elimination' && contest.bracket_structure && 
+                                     Object.keys(contest.bracket_structure).length > 0) // 淘汰賽需要先配置 bracket_structure
+                                  );
+                                  
                                   if (contest.contest_type === 'group_stage' || contest.parent_contest_id) {
                                     return (
                                       <button
@@ -1192,8 +1205,8 @@ const ContestControlPage: React.FC = () => {
                                   return (
                                     <>
                                       <button onClick={() => navigate(`/contest/edit/${contest.contest_id}`)} className="text-indigo-600 hover:text-indigo-900">編輯</button>
-                                      {/* 只有當隊伍數量足夠時才顯示產生對戰表按鈕 */}
-                                      {hasEnoughTeams && (
+                                      {/* 只有當條件滿足時才顯示產生對戰表按鈕 */}
+                                      {canGenerateSchedule && (
                                         <button
                                           onClick={() => handleGenerateSchedule(contest.contest_id)}
                                           disabled={generatingContestId === contest.contest_id}
@@ -1205,6 +1218,11 @@ const ContestControlPage: React.FC = () => {
                                       {/* 如果隊伍不足，提示需要更多隊伍 */}
                                       {!hasEnoughTeams && (
                                         <span className="text-gray-500 text-sm">需要至少2支隊伍</span>
+                                      )}
+                                      {/* 🔒 新增：如果是淘汰賽但未配置對戰結構，顯示提示 */}
+                                      {hasEnoughTeams && contest.match_mode === 'elimination' && 
+                                       (!contest.bracket_structure || Object.keys(contest.bracket_structure).length === 0) && (
+                                        <span className="text-orange-600 text-sm">請先配置淘汰賽對戰結構</span>
                                       )}
                                     </>
                                   );

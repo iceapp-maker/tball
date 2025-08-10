@@ -3,6 +3,80 @@ import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "../supabaseClient";
 import { finishContest } from './utils/contestFinishAndAdvancement';
 
+// 改進的主賽事狀態管理
+async function syncMainContestStatus(contestId: string): Promise<void> {
+  try {
+    // 1. 獲取當前狀態和子賽事情況
+    const { data: currentContest, error: currentError } = await supabase
+      .from('contest')
+      .select('contest_status, contest_type')
+      .eq('contest_id', contestId)
+      .single();
+
+    if (currentError || currentContest.contest_type !== 'league_parent') return;
+
+    // 2. 檢查子賽事狀態
+    const { data: subContests, error: subError } = await supabase
+      .from('contest')
+      .select('contest_id, contest_status')
+      .eq('parent_contest_id', contestId);
+
+    if (subError) throw subError;
+
+    // 3. 檢查待排清單
+    const { data: allTeams, error: teamsError } = await supabase
+      .from('contest_team')
+      .select('contest_team_id')
+      .eq('contest_id', contestId);
+
+    if (teamsError) throw teamsError;
+
+    const subContestIds = subContests?.map(s => s.contest_id) || [];
+    let assignedTeamsCount = 0;
+    
+    if (subContestIds.length > 0) {
+      const { count } = await supabase
+        .from('contest_group_assignment')
+        .select('contest_team_id', { count: 'exact' })
+        .in('group_contest_id', subContestIds);
+      assignedTeamsCount = count || 0;
+    }
+
+    const pendingTeamsCount = (allTeams?.length || 0) - assignedTeamsCount;
+
+    // 4. 根據實際條件決定狀態
+    let targetStatus = 'WaitMatchForm';
+    
+    const hasSubContests = (subContests?.length || 0) > 0;
+    const hasOngoingSubContests = subContests?.some(s => s.contest_status === 'ongoing') || false;
+    const hasFinishedSubContests = subContests?.some(s => s.contest_status === 'finished') || false;
+    const allSubContestsFinished = hasSubContests && subContests?.every(s => s.contest_status === 'finished') || false;
+
+    // 移除自動設為 finished 的邏輯 - 主賽事結束應由管理者手動決定
+    if (hasOngoingSubContests || (hasFinishedSubContests && !allSubContestsFinished)) {
+      targetStatus = 'ongoing';
+    } else if (hasSubContests) {
+      // 有子賽事存在就保持 ongoing 狀態，讓管理者決定是否結束或創建下一階段
+      targetStatus = 'ongoing';
+    }
+
+    // 5. 更新狀態（如果需要）
+    if (currentContest.contest_status !== targetStatus) {
+      const { error: updateError } = await supabase
+        .from('contest')
+        .update({ contest_status: targetStatus })
+        .eq('contest_id', contestId);
+
+      if (updateError) throw updateError;
+      
+      console.log(`主賽事狀態同步: ${currentContest.contest_status} → ${targetStatus}`);
+    }
+
+  } catch (error) {
+    console.error('同步主賽事狀態失敗:', error);
+  }
+}
+
 // 類型定義
 interface TeamData {
   contest_team_id: number;
@@ -70,28 +144,32 @@ const CustomTournamentPage: React.FC = () => {
   // 獲取登錄用戶信息
   const user = JSON.parse(localStorage.getItem('loginUser') || '{}');
 
-  // 檢查主賽事完成條件
-  const checkMainContestCompletion = () => {
-    // 條件1：待排清單沒有隊伍（或只有1隊冠軍）
-    const noPendingTeams = pendingTeams.length <= 1;
+  // 檢查是否可以顯示「確定比賽結束」按鈕
+  const canShowFinishButton = () => {
+    // 條件1：有子賽事存在
+    const hasSubContests = subContests.length > 0;
     
-    // 條件2：當前階段所有子賽事都已完成
-    const allSubContestsFinished = subContests.length > 0 && 
-      subContests.every(sub => sub.contest_status === 'finished');
+    // 條件2：所有子賽事都已完成
+    const allSubContestsFinished = subContests.every(sub => sub.contest_status === 'finished');
     
     // 條件3：主賽事尚未結束
     const mainContestNotFinished = contestData?.contest_status !== 'finished';
     
-    console.log('檢查主賽事完成條件:', {
-      noPendingTeams,
-      pendingTeamsCount: pendingTeams.length,
-      allSubContestsFinished,
-      subContestsCount: subContests.length,
-      mainContestNotFinished,
-      mainContestStatus: contestData?.contest_status
-    });
+    // 🔍 詳細調試信息
+    console.log('=== 🔍 按鈕顯示條件檢查 ===');
+    console.log('子賽事列表:', subContests.map(s => ({ 
+      id: s.contest_id, 
+      name: s.contest_name, 
+      status: s.contest_status 
+    })));
+    console.log('條件1 - 有子賽事存在:', hasSubContests, `(${subContests.length}個)`);
+    console.log('條件2 - 所有子賽事都已完成:', allSubContestsFinished);
+    console.log('條件3 - 主賽事尚未結束:', mainContestNotFinished, `(當前狀態: ${contestData?.contest_status})`);
+    console.log('最終結果 - 顯示按鈕:', hasSubContests && allSubContestsFinished && mainContestNotFinished);
+    console.log('========================');
     
-    return noPendingTeams && allSubContestsFinished && mainContestNotFinished;
+    // 只有當所有子賽事都完成且主賽事未結束時才顯示按鈕
+    return hasSubContests && allSubContestsFinished && mainContestNotFinished;
   };
 
   // 獲取子賽事的隊伍列表
@@ -452,8 +530,11 @@ const CustomTournamentPage: React.FC = () => {
           .eq('contest_id', contestId);
       }
       
+      // 🆕 同步主賽事狀態 - 隊伍分配可能影響主賽事狀態
+      await syncMainContestStatus(contestId!);
+      
       setPendingTeams(updatedPendingTeams);
-      setSuccessMessage('隊伍分配成功！');
+      setSuccessMessage('隊伍分配成功！主賽事狀態已同步');
       
       // 重新獲取子賽事資料
       await fetchSubContests();
@@ -556,7 +637,10 @@ const CustomTournamentPage: React.FC = () => {
 
       console.log(`成功刪除子賽事記錄:`, deletedContest);
 
-      setSuccessMessage(`子賽事「${subContest.contest_name}」已成功刪除，已釋放 ${deletedAssignments?.length || 0} 支隊伍回待排清單`);
+      // 🆕 同步主賽事狀態 - 刪除子賽事可能影響主賽事狀態
+      await syncMainContestStatus(contestId!);
+
+      setSuccessMessage(`子賽事「${subContest.contest_name}」已成功刪除，已釋放 ${deletedAssignments?.length || 0} 支隊伍回待排清單，主賽事狀態已同步`);
 
       // 重新獲取資料
       await fetchSubContests();
@@ -594,6 +678,9 @@ const CustomTournamentPage: React.FC = () => {
         } else {
           setSuccessMessage('子賽事已成功完成！');
         }
+        
+        // 🆕 同步主賽事狀態 - 子賽事完成可能影響主賽事狀態
+        await syncMainContestStatus(contestId!);
         
         // 重新獲取資料
         await fetchSubContests();
@@ -747,6 +834,9 @@ const CustomTournamentPage: React.FC = () => {
         .eq('contest_id', subContestId);
 
       if (updateError) throw updateError;
+
+      // 🆕 同步主賽事狀態 - 不管當前狀態，根據實際條件更新
+      await syncMainContestStatus(contestId!);
 
       // 7. 重新獲取子賽事資料
       await fetchSubContests();
@@ -1618,8 +1708,9 @@ const CustomTournamentPage: React.FC = () => {
           }}>
             <h3 style={{ margin: '0 0 15px 0', color: '#333' }}>🏁 賽事完成確認</h3>
             <p style={{ margin: '0 0 20px 0', color: '#666', lineHeight: '1.5' }}>
-              所有子賽事已完成，且待排清單中沒有隊伍。<br/>
-              是否要結束主賽事？
+              所有子賽事已完成。<br/>
+              確定要結束主賽事嗎？<br/>
+              <small style={{ color: '#999' }}>注意：結束後將無法再新增子賽事階段</small>
             </p>
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
               <button
@@ -1702,6 +1793,24 @@ const CustomTournamentPage: React.FC = () => {
         >
           查看整體結果
         </button>
+        
+        {/* 🆕 條件式顯示「確定比賽結束」按鈕 */}
+        {canShowFinishButton() && (
+          <button
+            onClick={() => setShowFinishPrompt(true)}
+            style={{
+              padding: '8px 16px',
+              backgroundColor: '#dc2626',
+              color: 'white',
+              border: 'none',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 'bold'
+            }}
+          >
+            🏁 確定比賽結束
+          </button>
+        )}
       </div>
 
       {/* 待排清單 */}
