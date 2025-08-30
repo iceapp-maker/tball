@@ -21,7 +21,7 @@ interface MatchDetail {
 }
 
 const ScoreEditPage: React.FC = () => {
-  const { contestId } = useParams<{ contestId: string }>();
+  const { contestId, matchId } = useParams<{ contestId: string; matchId?: string }>();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -77,12 +77,25 @@ const ScoreEditPage: React.FC = () => {
         return;
       }
       
-      // 從 URL 參數獲取
+      // 從 URL 參數獲取 - 支援 matchId 參數
+      if (matchId && matchId !== 'new') {
+        // 如果有 matchId，先獲取該比賽的詳細資料
+        fetchMatchByMatchId(parseInt(matchId));
+        return;
+      }
+      
+      // 從 URL 查詢參數獲取
       const urlParams = new URLSearchParams(location.search);
       const matchDetailId = urlParams.get('matchDetailId');
       
       if (matchDetailId) {
         fetchMatchData(parseInt(matchDetailId));
+        return;
+      }
+      
+      // 如果是 'new'，創建新的比賽詳細資料
+      if (matchId === 'new') {
+        setError('創建新比賽功能尚未實現');
         return;
       }
       
@@ -92,6 +105,70 @@ const ScoreEditPage: React.FC = () => {
       setError('初始化失敗');
     }
   }, [location, isAdmin]);
+
+  // 根據 match_id 獲取比賽資料
+  const fetchMatchByMatchId = async (matchId: number) => {
+    try {
+      setIsLoading(true);
+      setError('');
+      
+      // 先獲取比賽基本資料
+      const { data: matchData, error: matchError } = await supabase
+        .from('contest_match')
+        .select('match_id, team1_id, team2_id')
+        .eq('match_id', matchId)
+        .single();
+
+      if (matchError) throw matchError;
+
+      // 獲取比賽詳細資料（如果存在）
+      const { data: detailData, error: detailError } = await supabase
+        .from('contest_match_detail')
+        .select('*')
+        .eq('match_id', matchId)
+        .maybeSingle();
+
+      // 如果沒有詳細資料，創建一個基本的 match 對象
+      if (!detailData) {
+        // 獲取隊伍名稱
+        const teamIds = [matchData.team1_id, matchData.team2_id].filter(Boolean);
+        const { data: teamData, error: teamError } = await supabase
+          .from('contest_team')
+          .select('contest_team_id, team_name')
+          .in('contest_team_id', teamIds);
+
+        if (teamError) throw teamError;
+
+        const team1 = teamData?.find(t => t.contest_team_id === matchData.team1_id);
+        const team2 = teamData?.find(t => t.contest_team_id === matchData.team2_id);
+
+        setMatch({
+          match_detail_id: 0, // 新比賽
+          match_id: matchId,
+          team1_member_ids: [],
+          team2_member_ids: [],
+          winner_team_id: null,
+          score: null,
+          sequence: 1,
+          match_type: 'single',
+          table_no: null,
+          team1_name: team1?.team_name || '隊伍1',
+          team2_name: team2?.team_name || '隊伍2',
+          team1_id: matchData.team1_id,
+          team2_id: matchData.team2_id
+        });
+      } else {
+        // 有詳細資料，繼續原有邏輯
+        await fetchMatchData(detailData.match_detail_id);
+      }
+      
+    } catch (err) {
+      console.error('獲取比賽資料失敗:', err);
+      setError('獲取比賽資料失敗');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   // 數據獲取函數
   const fetchMatchData = async (matchDetailId: number) => {

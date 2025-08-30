@@ -79,13 +79,14 @@ const ContestControlPage: React.FC = () => {
 
   // 處理查看賽程按鈕點擊
   const handleViewSchedule = (contestId: string, contestType?: string, matchMode?: string) => {
+    // 🔧 修正：只有混合賽主賽事才跳轉到混合賽管理頁面
     if (contestType === 'league_parent') {
       navigate(`/contest/${contestId}/custom`);
     } else if (matchMode === 'round_robin') {
       // 循環賽跳轉到戰況室（與一般單循環賽保持一致）
       navigate(`/contest/${contestId}/battleroom`);
     } else {
-      // 淘汰賽跳轉到淘汰賽圖表
+      // 🔧 修正：淘汰賽（包括子賽事的淘汰賽）跳轉到淘汰賽圖表
       navigate(`/contest/${contestId}/bracket`);
     }
   };
@@ -101,23 +102,12 @@ const ContestControlPage: React.FC = () => {
 
       if (contestInfoError) throw contestInfoError;
 
-      // 如果是混合賽主賽事，檢查所有子賽事是否都已完成
+      // 如果是混合賽主賽事，不自動檢查子賽事完成狀態
+      // 混合賽事的結束應該完全由管理者手動決定
       if (contestInfo.contest_type === 'league_parent') {
-        const { data: childContests, error: childError } = await supabase
-          .from('contest')
-          .select('contest_status')
-          .eq('parent_contest_id', contestId);
-
-        if (childError) throw childError;
-
-        // 如果沒有子賽事，返回 false
-        if (!childContests || childContests.length === 0) {
-          return false;
-        }
-
-        // 檢查所有子賽事是否都已完成
-        const allChildrenFinished = childContests.every(child => child.contest_status === 'finished');
-        return allChildrenFinished;
+        // 混合賽主賽事永遠不自動顯示「確認比賽結束」按鈕
+        // 管理者需要在混合賽管理頁面手動結束比賽
+        return false;
       }
 
       // 對於一般賽事，檢查所有比賽是否都有獲勝者
@@ -198,10 +188,15 @@ const ContestControlPage: React.FC = () => {
 
   const handleFinishContest = async (contestId: string) => {
     try {
+      console.log(`🚀 開始結束比賽: ${contestId}`);
+      
       // 使用共用函數處理結束賽事邏輯
       const success = await finishContest(contestId);
 
       if (success) {
+        console.log(`✅ 比賽 ${contestId} 結束成功`);
+        
+        // 更新本地狀態
         setContests(contests.map((contest: { contest_id: string, contest_status: string }) => 
           contest.contest_id === contestId 
             ? { ...contest, contest_status: 'finished' } 
@@ -209,12 +204,22 @@ const ContestControlPage: React.FC = () => {
         ));
         
         alert('比賽已成功結束！晉級隊伍已記錄。');
+        
+        // 重新載入比賽列表以確保狀態同步
+        await fetchContests();
       } else {
         throw new Error('結束賽事失敗');
       }
-    } catch (err) {
-      console.error('更新比賽狀態時出錯:', err);
-      alert('更新比賽狀態失敗，請稍後再試！');
+    } catch (err: any) {
+      console.error('❌ 更新比賽狀態時出錯:', err);
+      
+      // 提供更詳細的錯誤信息
+      let errorMessage = '更新比賽狀態失敗，請稍後再試！';
+      if (err?.message) {
+        errorMessage = `更新比賽狀態失敗: ${err.message}`;
+      }
+      
+      alert(errorMessage);
     }
   };
 
@@ -1138,17 +1143,8 @@ const ContestControlPage: React.FC = () => {
                             {(() => {
                               // 混合賽主賽事的特殊處理
                               if (contest.contest_type === 'league_parent') {
-                                // 只在ongoing狀態且所有子賽事完成時顯示確認比賽結束按鈕
-                                if (contest.contest_status === 'ongoing' && contestsWithScores[contest.contest_id]) {
-                                  return (
-                                    <button
-                                      onClick={() => handleFinishContest(contest.contest_id)}
-                                      className="bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded text-sm"
-                                    >
-                                      確認比賽結束
-                                    </button>
-                                  );
-                                }
+                                // 混合賽主賽事不顯示自動的「確認比賽結束」按鈕
+                                // 管理者需要在混合賽管理頁面手動結束比賽
                                 return null;
                               }
 
@@ -1359,7 +1355,8 @@ const ContestControlPage: React.FC = () => {
                                   onClick={() => handleViewSchedule(child.contest_id, child.contest_type, child.match_mode)}
                                   className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded text-sm"
                                 >
-                                  {child.contest_type === 'league_parent' ? '混合賽管理' : '淘汰賽圖表'}
+                                  {/* 🔧 修正：子賽事永遠不會是 league_parent，所以一律顯示淘汰賽圖表 */}
+                                  淘汰賽圖表
                                 </button>
                               )}
                             </div>

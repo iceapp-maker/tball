@@ -492,7 +492,7 @@ const BattleRoomPage: React.FC = () => {
         const { data: contestData } = await supabase
           .from('contest')
           .select('parent_contest_id')
-          .eq('contest_id', parseInt(contestId))
+          .eq('contest_id', String(contestId))
           .single();
         parentContestId = contestData?.parent_contest_id;
       } catch (err) {
@@ -504,7 +504,7 @@ const BattleRoomPage: React.FC = () => {
         .from('contest_team_member')
         .select('contest_team_id')
         .eq('member_id', memberId)
-        .eq('contest_id', parseInt(contestId));
+        .eq('contest_id', String(contestId));
         
       if (memberError) {
         console.log('查詢當前賽事的 contest_team_member 表錯誤:', memberError);
@@ -618,7 +618,7 @@ const BattleRoomPage: React.FC = () => {
       const { data: matchData, error: matchError } = await supabase
         .from('contest_match')
         .select('match_id, team1_id, team2_id')
-        .eq('contest_id', parseInt(contestId));
+        .eq('contest_id', String(contestId));
 
       if (matchError) throw matchError;
 
@@ -637,11 +637,11 @@ const BattleRoomPage: React.FC = () => {
         if (detailError) throw detailError;
 
         // 獲取團隊和成員數據，確保使用當前子賽事ID
-        console.log('獲取當前子賽事ID的團隊數據:', parseInt(contestId));
+        console.log('獲取當前子賽事ID的團隊數據:', String(contestId));
         const { data: teamsData } = await supabase
           .from('contest_team')
           .select('*')
-          .eq('contest_id', parseInt(contestId));
+          .eq('contest_id', String(contestId));
         
         // 詳細記錄所有團隊數據
         console.log('從數據庫獲取的全部團隊數據:', teamsData);
@@ -662,11 +662,33 @@ const BattleRoomPage: React.FC = () => {
         
         console.log('找到的團隊數量:', teamsData?.length || 0);
         
-        // 獲取全部contest_team_member資料，不做過濾
-        console.log('獲取全部contest_team_member資料');
+        // 獲取成員資料，需要考慮混合賽的情況
+        console.log('獲取成員資料，檢查是否為混合賽子賽事');
+        
+        // 首先獲取當前賽事的父賽事ID
+        let memberContestId = String(contestId);
+        try {
+          const { data: contestInfo } = await supabase
+            .from('contest')
+            .select('parent_contest_id')
+            .eq('contest_id', String(contestId))
+            .single();
+          
+          // 如果是子賽事，使用父賽事ID查詢成員
+          if (contestInfo?.parent_contest_id) {
+            memberContestId = String(contestInfo.parent_contest_id);
+            console.log('檢測到子賽事，使用父賽事ID查詢成員:', memberContestId);
+          } else {
+            console.log('單一賽事，使用當前賽事ID查詢成員:', memberContestId);
+          }
+        } catch (err) {
+          console.log('獲取父賽事ID失敗，使用當前賽事ID:', err);
+        }
+        
         const { data: allMemberData } = await supabase
           .from('contest_team_member')
-          .select('*');
+          .select('*')
+          .eq('contest_id', memberContestId);
         
         console.log('找到的所有成員數量:', allMemberData?.length || 0);
         
@@ -763,8 +785,15 @@ const BattleRoomPage: React.FC = () => {
               return false;
             }
           };
-          const team1MembersSubmitted = isNonEmptyArray(detail.team1_member_ids) || isNonEmptyStringArray(detail.team1_member_ids);
-          const team2MembersSubmitted = isNonEmptyArray(detail.team2_member_ids) || isNonEmptyStringArray(detail.team2_member_ids);
+          // 修正：在淘汰賽模式下，如果比賽已有結果，則視為已提交名單
+          let team1MembersSubmitted = isNonEmptyArray(detail.team1_member_ids) || isNonEmptyStringArray(detail.team1_member_ids);
+          let team2MembersSubmitted = isNonEmptyArray(detail.team2_member_ids) || isNonEmptyStringArray(detail.team2_member_ids);
+          
+          // 如果是淘汰賽且比賽已有獲勝者，則強制視為已提交名單以顯示結果
+          if (matchMode === 'elimination' && detail.winner_team_id) {
+            team1MembersSubmitted = true;
+            team2MembersSubmitted = true;
+          }
           
           if (team1MembersSubmitted) {
             team1Ids = typeof detail.team1_member_ids === 'string' 
@@ -779,7 +808,7 @@ const BattleRoomPage: React.FC = () => {
           }
           
           // 從具體ID映射到成員名稱
-          const team1Members = team1MembersSubmitted ? team1Ids.map(memberId => {
+          const team1Members = team1MembersSubmitted ? (team1Ids.length > 0 ? team1Ids.map(memberId => {
             // 1. 直接使用映射表查找成員名稱
             if (memberIdToNameMap[memberId]) {
               console.log('找到成員名稱(從映射表):', memberIdToNameMap[memberId], '對應ID:', memberId);
@@ -806,7 +835,7 @@ const BattleRoomPage: React.FC = () => {
             
             // 如果依然找不到，返回成員ID
             return memberId;
-          }) : [];
+          }) : ['成員名單未詳']) : [];
           
           // 同樣處理team2成員
           const team2Members = team2MembersSubmitted ? team2Ids.map(memberId => {
@@ -1273,7 +1302,7 @@ const BattleRoomPage: React.FC = () => {
       const { data: teamsData, error: teamsError } = await supabase
         .from('contest_team')
         .select('contest_team_id, team_name')
-        .eq('contest_id', contestId);
+        .eq('contest_id', String(contestId));
         
       console.log('查詢參賽隊伍返回:', teamsData, teamsError);
         

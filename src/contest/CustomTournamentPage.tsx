@@ -175,7 +175,9 @@ const CustomTournamentPage: React.FC = () => {
   // 獲取子賽事的隊伍列表
   const fetchSubContestTeams = async (subContestId: string) => {
     try {
-      // 從 contest_group_assignment 獲取分配給該子賽事的隊伍ID
+      console.log(`🔄 重新載入待排清單，父賽事ID: ${contestId}`);
+      
+      // 獲取父賽事的所有隊伍
       const { data: groupAssignments, error: groupError } = await supabase
         .from('contest_group_assignment')
         .select('contest_team_id')
@@ -258,13 +260,23 @@ const CustomTournamentPage: React.FC = () => {
         return;
       }
       
+      // 🔧 修正：先設置 contestData，確保 fetchPendingTeams 能正確讀取狀態
       setContestData(contestData);
       
-      // 獲取子賽事列表
-      await fetchSubContests();
-      
-      // 獲取待排清單
-      await fetchPendingTeams();
+      // 🔧 修正：等待狀態更新後再獲取其他數據
+      // 使用 setTimeout 確保 React 狀態更新完成
+      setTimeout(async () => {
+        try {
+          // 獲取子賽事列表
+          await fetchSubContests();
+          
+          // 獲取待排清單 - 此時 contestData 狀態已更新
+          await fetchPendingTeams();
+        } catch (err: any) {
+          console.error('獲取子數據失敗:', err);
+          setError('獲取子數據失敗: ' + err.message);
+        }
+      }, 100); // 短暫延遲確保狀態更新
       
     } catch (err: any) {
       console.error('獲取比賽資料失敗:', err);
@@ -327,6 +339,47 @@ const CustomTournamentPage: React.FC = () => {
   const fetchPendingTeams = async () => {
     try {
       if (!contestId) return;
+      
+      // 🔧 修正：重新獲取最新的賽事狀態，確保數據一致性
+      const { data: latestContestData, error: contestError } = await supabase
+        .from('contest')
+        .select('contest_status, advancement_rules')
+        .eq('contest_id', contestId)
+        .single();
+      
+      if (contestError) {
+        console.error('獲取最新賽事狀態失敗:', contestError);
+        // 如果獲取失敗，使用現有的 contestData
+      } else {
+        // 🔧 檢查主賽事是否已結束，如果已結束則顯示最終排名
+        if (latestContestData?.contest_status === 'finished' && latestContestData?.advancement_rules?.final_ranking) {
+          console.log('主賽事已結束，顯示最終排名');
+          const finalRanking = latestContestData.advancement_rules.final_ranking;
+          
+          // 將最終排名轉換為待排清單格式以便顯示
+          const finalRankingTeams = finalRanking.map((team: any) => ({
+            contest_team_id: team.contest_team_id,
+            team_name: team.team_name,
+            source: 'final_ranking',
+            qualified_rank: team.final_rank,
+            points: team.points,
+            source_info: team.source_info || `第${team.final_rank}名`
+          }));
+          
+          setPendingTeams(finalRankingTeams);
+          
+          // 🆕 同步更新本地的 contestData 狀態
+          if (contestData && contestData.contest_status !== latestContestData.contest_status) {
+            setContestData(prev => prev ? {
+              ...prev,
+              contest_status: latestContestData.contest_status,
+              advancement_rules: latestContestData.advancement_rules
+            } : null);
+          }
+          
+          return;
+        }
+      }
       
       // 1. 獲取主賽事的所有隊伍
       const { data: allTeams, error: teamsError } = await supabase
@@ -467,8 +520,14 @@ const CustomTournamentPage: React.FC = () => {
         parallel_group: ''
       });
       
-      // 重新獲取子賽事列表
+      // 重新獲取子賽事列表和待排清單
       await fetchSubContests();
+      // 立即刷新待排清單，然後再延遲刷新一次確保數據同步
+      await fetchPendingTeams();
+      setTimeout(async () => {
+        await fetchPendingTeams();
+        console.log('子賽事完成後二次刷新待排清單完成');
+      }, 2000);
       
     } catch (err: any) {
       console.error('創建子賽事失敗:', err);
@@ -682,9 +741,14 @@ const CustomTournamentPage: React.FC = () => {
         // 🆕 同步主賽事狀態 - 子賽事完成可能影響主賽事狀態
         await syncMainContestStatus(contestId!);
         
-        // 重新獲取資料
+        // 重新獲取子賽事列表和待排清單
         await fetchSubContests();
-        await fetchPendingTeams(); // 重新獲取待排清單以確保同步
+        // 立即刷新待排清單，然後再延遲刷新一次確保數據同步
+        await fetchPendingTeams();
+        setTimeout(async () => {
+          await fetchPendingTeams();
+          console.log('子賽事完成後二次刷新待排清單完成');
+        }, 2000);
       } else {
         throw new Error('結束子賽事失敗');
       }
@@ -698,21 +762,235 @@ const CustomTournamentPage: React.FC = () => {
   // 處理主賽事結束
   const handleFinishMainContest = async () => {
     try {
-      const { error } = await supabase
+      console.log('🏆 開始結束混合賽主賽事...');
+      console.log('當前待排清單:', pendingTeams);
+
+      // 🆕 步驟1：計算最終排名
+      // 從最後階段的淘汰賽結果獲取正確的排名，而不是簡單按待排清單順序
+      const finalRanking = await calculateFinalRankingFromLastStage();
+
+      console.log('🏅 計算出的最終排名:', finalRanking);
+
+      // 🆕 步驟2：更新主賽事的 advancement_rules
+      const updatedAdvancementRules = {
+        ...contestData?.advancement_rules,
+        qualified_teams: finalRanking,
+        final_ranking: finalRanking,
+        total_teams: contestData?.expected_teams || 0,
+        completed_at: new Date().toISOString()
+      };
+
+      console.log('📝 準備更新的 advancement_rules:', updatedAdvancementRules);
+
+      // 🆕 步驟3：更新主賽事狀態和排名資料
+      const { error: updateError } = await supabase
         .from('contest')
-        .update({ contest_status: 'finished' })
+        .update({ 
+          contest_status: 'finished',
+          advancement_rules: updatedAdvancementRules
+        })
         .eq('contest_id', contestId);
 
-      if (error) throw error;
+      if (updateError) throw updateError;
 
-      setContestData(prev => prev ? { ...prev, contest_status: 'finished' } : null);
-      setShowFinishPrompt(false);
-      setSuccessMessage('主賽事已成功結束！');
+      // 🆕 步驟4：清理 contest_group_assignment 表
+      // 將所有相關記錄標記為最終狀態，而不是刪除
+      const { error: cleanupError } = await supabase
+        .from('contest_group_assignment')
+        .update({ 
+          status: 'final_completed',
+          updated_at: new Date().toISOString()
+        })
+        .eq('main_contest_id', parseInt(contestId!));
+
+      if (cleanupError) {
+        console.warn('清理 contest_group_assignment 表失敗:', cleanupError);
+        // 不阻止主流程，只記錄警告
+      } else {
+        console.log('✅ 成功清理 contest_group_assignment 表');
+      }
+
+      // 🆕 步驟5：更新本地狀態
+      setContestData(prev => prev ? { 
+        ...prev, 
+        contest_status: 'finished',
+        advancement_rules: updatedAdvancementRules
+      } : null);
       
-      console.log('主賽事已結束');
+      setShowFinishPrompt(false);
+
+      // 🆕 步驟6：顯示詳細的成功訊息
+      const rankingText = finalRanking.slice(0, 3).map((team, index) => {
+        const medals = ['🏆', '🥈', '🥉'];
+        const titles = ['冠軍', '亞軍', '季軍'];
+        return `${medals[index]} ${titles[index]}: ${team.team_name}`;
+      }).join(' | ');
+
+      setSuccessMessage(`🎉 混合賽已成功結束！最終排名：${rankingText}`);
+      
+      console.log('🎊 混合賽主賽事結束完成');
+      console.log('📊 最終排名:', finalRanking);
+
+      // 🆕 步驟7：重新獲取資料以更新顯示
+      await fetchPendingTeams(); // 這會更新待排清單的顯示模式
+
     } catch (error) {
       console.error('結束主賽事失敗:', error);
       setError('結束主賽事失敗: ' + (error as Error).message);
+    }
+  };
+
+  // 🆕 從最後階段的子賽事結果計算正確的最終排名
+  // 🔧 修正：確保主賽事的最終排名與最後一場子賽事的晉級隊伍邏輯完全一致
+  const calculateFinalRankingFromLastStage = async () => {
+    try {
+      console.log('🔍 ===== 開始混合賽最終排名計算 =====');
+      console.log('當前所有子賽事:', subContests);
+      
+      // 1. 找到最後階段的子賽事
+      const maxStage = Math.max(...subContests.map(s => s.stage_order || 1));
+      const lastStageSubContests = subContests.filter(s => s.stage_order === maxStage);
+      
+      console.log(`📊 最後階段 (第${maxStage}階段) 的子賽事數量: ${lastStageSubContests.length}`);
+      console.log('最後階段子賽事詳情:', lastStageSubContests.map(s => ({
+        contest_id: s.contest_id,
+        contest_name: s.contest_name,
+        contest_status: s.contest_status,
+        parallel_group: s.parallel_group
+      })));
+      
+      if (lastStageSubContests.length === 0) {
+        console.warn('⚠️ 找不到最後階段的子賽事，使用待排清單順序');
+        return pendingTeams.map((team, index) => ({
+          contest_team_id: team.contest_team_id,
+          team_name: team.team_name,
+          final_rank: index + 1,
+          points: 100 - index * 10,
+          source_info: '待排清單順序'
+        }));
+      }
+      
+      // 2. 收集所有最後階段子賽事的 qualified_teams
+      const allFinalRankings: any[] = [];
+      
+      for (const subContest of lastStageSubContests) {
+        console.log(`\n🔍 檢查子賽事 ${subContest.contest_id} (${subContest.contest_name}) 的晉級結果...`);
+        
+        const { data: subContestData, error } = await supabase
+          .from('contest')
+          .select('advancement_rules')
+          .eq('contest_id', subContest.contest_id)
+          .single();
+        
+        console.log(`子賽事 ${subContest.contest_id} 查詢結果:`, { error, data: subContestData });
+        
+        if (!error && subContestData?.advancement_rules?.qualified_teams) {
+          const qualifiedTeams = subContestData.advancement_rules.qualified_teams;
+          console.log(`✅ 子賽事 ${subContest.contest_id} 的原始晉級隊伍:`, qualifiedTeams);
+          
+          // 🔧 關鍵修正：完全保持子賽事的排名順序和分數，不做任何修改
+          qualifiedTeams.forEach((team: any, index: number) => {
+            console.log(`保持原始排名 ${index + 1}: ${team.team_name}, 原始分數: ${team.points}`);
+            
+            const teamRankingInfo = {
+              contest_team_id: team.contest_team_id,
+              team_name: team.team_name,
+              points: team.points || (100 - index * 10), // 保持原始分數，如果沒有則用預設值
+              source_contest_id: subContest.contest_id,
+              source_contest_name: subContest.contest_name,
+              source_rank: index + 1, // 在該子賽事中的排名
+              parallel_group: subContest.parallel_group || 'main',
+              // 🆕 新增：記錄這是來自子賽事的原始排名
+              is_original_ranking: true,
+              original_index: index // 保持原始索引順序
+            };
+            
+            console.log(`  -> 保持原始排名信息:`, teamRankingInfo);
+            allFinalRankings.push(teamRankingInfo);
+          });
+        } else {
+          console.warn(`⚠️ 子賽事 ${subContest.contest_id} 沒有晉級結果`, { error, advancement_rules: subContestData?.advancement_rules });
+        }
+      }
+      
+      console.log('\n📋 收集到的所有最後階段排名:');
+      allFinalRankings.forEach((team, index) => {
+        console.log(`  ${index + 1}. ${team.team_name} - 來源: ${team.source_contest_name} 第${team.source_rank}名, 分數: ${team.points}`);
+      });
+      
+      // 3. 🔧 關鍵修正：如果只有一個子賽事（決賽），完全保持其排名順序
+      if (lastStageSubContests.length === 1) {
+        console.log('\n🏆 只有一個決賽子賽事，完全保持其排名順序');
+        const finalRanking = allFinalRankings.map((team, index) => ({
+          contest_team_id: team.contest_team_id,
+          team_name: team.team_name,
+          final_rank: index + 1, // 保持原始順序
+          points: team.points,
+          source_info: `${team.source_contest_name} 第${team.source_rank}名`
+        }));
+        
+        console.log('🏅 單一決賽的最終排名（保持原始順序）:');
+        finalRanking.forEach((team, index) => {
+          console.log(`  第${team.final_rank}名: ${team.team_name} (${team.points}分) - ${team.source_info}`);
+        });
+        
+        return finalRanking;
+      }
+      
+      // 4. 🔧 修正：多個平行組時，按照預定規則合併，不重新排序
+      console.log('\n🔄 有多個平行組，按照預定規則合併排名...');
+      
+      // 按照平行組和原始索引排序，保持每個子賽事內部的排名順序
+      allFinalRankings.sort((a, b) => {
+        // 首先按照在各自子賽事中的排名排序（第1名優先於第2名）
+        if (a.source_rank !== b.source_rank) {
+          return a.source_rank - b.source_rank;
+        }
+        
+        // 相同排名時，按照平行組排序（保持一致性）
+        if (a.parallel_group !== b.parallel_group) {
+          return (a.parallel_group || '').localeCompare(b.parallel_group || '');
+        }
+        
+        // 最後按照原始索引排序（保持子賽事內部順序）
+        return a.original_index - b.original_index;
+      });
+      
+      console.log('\n合併後的隊伍列表（保持子賽事排名邏輯）:');
+      allFinalRankings.forEach((team, index) => {
+        console.log(`  ${index + 1}. ${team.team_name} - 組別: ${team.parallel_group}, 組內排名: ${team.source_rank}, 分數: ${team.points}`);
+      });
+      
+      // 5. 🔧 修正：生成最終排名，完全按照合併後的順序
+      const finalRanking = allFinalRankings.map((team, index) => ({
+        contest_team_id: team.contest_team_id,
+        team_name: team.team_name,
+        final_rank: index + 1, // 按照合併後的順序分配排名
+        points: team.points,
+        source_info: `${team.source_contest_name} 第${team.source_rank}名`
+      }));
+      
+      console.log('\n🏅 ===== 混合賽最終排名計算完成 =====');
+      console.log('最終排名結果（保持子賽事邏輯）:');
+      finalRanking.forEach((team, index) => {
+        console.log(`  🏆 第${team.final_rank}名: ${team.team_name} (${team.points}分) - ${team.source_info}`);
+      });
+      console.log('=====================================\n');
+      
+      return finalRanking;
+      
+    } catch (error) {
+      console.error('❌ 計算最終排名失敗:', error);
+      console.error('錯誤堆疊:', error.stack);
+      // 發生錯誤時，回退到待排清單順序
+      console.log('🔄 回退到待排清單順序');
+      return pendingTeams.map((team, index) => ({
+        contest_team_id: team.contest_team_id,
+        team_name: team.team_name,
+        final_rank: index + 1,
+        points: 100 - index * 10,
+        source_info: '系統回退排序'
+      }));
     }
   };
 
@@ -873,9 +1151,10 @@ const CustomTournamentPage: React.FC = () => {
             {contestData?.contest_status === 'finished' ? '最終排名' : '待排清單'} ({pendingTeams.length} 支隊伍)
           </h3>
           <button
-            onClick={() => {
+            onClick={async () => {
               console.log('手動刷新待排清單...');
-              fetchPendingTeams();
+              await fetchPendingTeams();
+              console.log('待排清單刷新完成');
             }}
             style={{
               padding: '6px 12px',
@@ -904,40 +1183,64 @@ const CustomTournamentPage: React.FC = () => {
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
-            {pendingTeams.map((team, index) => (
-              <div key={team.contest_team_id} style={{
-                padding: '12px',
-                border: '2px solid #e0e0e0',
-                borderRadius: '8px',
-                backgroundColor: '#f8f9fa',
-                transition: 'all 0.2s ease'
-              }}>
-                <div style={{ fontWeight: 'bold', marginBottom: '4px' }}>
-                  {contestData?.contest_status === 'finished' ? (
-                    <>
-                      {index === 0 && '🏆 '}
-                      {index === 1 && '🥈 '}
-                      {index === 2 && '🥉 '}
-                      {team.team_name}
-                      {index === 0 && ' (冠軍)'}
-                      {index === 1 && ' (亞軍)'}
-                      {index === 2 && ' (季軍)'}
-                      {index >= 3 && ` (第${index + 1}名)`}
-                    </>
-                  ) : (
-                    team.team_name
+            {pendingTeams.map((team, index) => {
+              // 🆕 改進的排名顯示邏輯
+              const isFinished = contestData?.contest_status === 'finished';
+              const medals = ['🏆', '🥈', '🥉'];
+              const titles = ['冠軍', '亞軍', '季軍'];
+              const rankColors = ['#ffd700', '#c0c0c0', '#cd7f32', '#4caf50']; // 金、銀、銅、綠
+              
+              return (
+                <div key={team.contest_team_id} style={{
+                  padding: '12px',
+                  border: isFinished ? `3px solid ${rankColors[Math.min(index, 3)]}` : '2px solid #e0e0e0',
+                  borderRadius: '8px',
+                  backgroundColor: isFinished ? (index === 0 ? '#fffbf0' : index === 1 ? '#f8f9fa' : index === 2 ? '#fdf6e3' : '#f0f9ff') : '#f8f9fa',
+                  transition: 'all 0.2s ease',
+                  boxShadow: isFinished ? '0 4px 8px rgba(0,0,0,0.1)' : 'none'
+                }}>
+                  <div style={{ fontWeight: 'bold', marginBottom: '4px', fontSize: isFinished ? '16px' : '14px' }}>
+                    {isFinished ? (
+                      <>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '20px' }}>
+                            {index < 3 ? medals[index] : `🏅`}
+                          </span>
+                          <div>
+                            <div style={{ color: rankColors[Math.min(index, 3)], fontWeight: 'bold' }}>
+                              {index < 3 ? titles[index] : `第${index + 1}名`}
+                            </div>
+                            <div style={{ color: '#333', fontSize: '14px' }}>
+                              {team.team_name}
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      team.team_name
+                    )}
+                  </div>
+                  
+                  {!isFinished && (
+                    <div style={{ fontSize: '12px', color: '#666' }}>
+                      來源: {team.source === 'main' ? '主賽事' : team.source === 'qualified' ? '子賽事晉級' : `子賽事 #${team.source}`}
+                    </div>
+                  )}
+                  
+                  {isFinished && (
+                    <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                      🏆 混合賽最終排名
+                    </div>
+                  )}
+                  
+                  {team.qualified_rank && !isFinished && (
+                    <div style={{ fontSize: '12px', color: '#4caf50' }}>
+                      排名: 第{team.qualified_rank}名
+                    </div>
                   )}
                 </div>
-                <div style={{ fontSize: '12px', color: '#666' }}>
-                  來源: {team.source === 'main' ? '主賽事' : team.source === 'qualified' ? '子賽事晉級' : `子賽事 #${team.source}`}
-                </div>
-                {team.qualified_rank && (
-                  <div style={{ fontSize: '12px', color: '#4caf50' }}>
-                    排名: 第{team.qualified_rank}名
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

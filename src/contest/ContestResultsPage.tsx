@@ -289,6 +289,7 @@ const ContestResultsPage: React.FC = () => {
     return matchId;
   };
 
+
   // 獲取比賽比分的輔助函數
   const getMatchScore = (teamId: number, otherTeamId: number) => {
     // 優先使用新的 matchResults 數據
@@ -2000,139 +2001,212 @@ const checkAndUpdateNextRound = async (bracketStructure: any, matches: any[]) =>
     losingGames?: number;
   };
 
-  // 尋找最終排名的隊伍
-  const findFinalRanking = (rank: number): ExtendedTeamResult | undefined => {
+  // 根據隊伍ID獲取隊伍名稱的輔助函數
+  const getTeamNameById = (teamId: number): string => {
+    // 優先從 bracketData.teamNames 獲取
+    if (bracketData?.teamNames && bracketData.teamNames.has(teamId)) {
+      return bracketData.teamNames.get(teamId);
+    }
     
-    // 如果沒有bracketData或者沒有rounds或者rounds長度為0，則返回undefined
+    // 從 resultsData.teams 獲取
+    const team = resultsData?.teams?.find(t => t.teamId === teamId);
+    if (team) {
+      return team.teamName;
+    }
+    
+    // 從 teams 狀態獲取
+    const teamData = teams?.find(t => t.contest_team_id === teamId);
+    if (teamData) {
+      return teamData.team_name;
+    }
+    
+    return `隊伍 ${teamId}`;
+  };
+
+
+  // 尋找最終排名的隊伍（改進的淘汰賽排名邏輯）
+  const findFinalRanking = (rank: number): { teamId: number; teamName: string } | null => {
+    
+    // 如果沒有bracketData或者沒有rounds或者rounds長度為0，則返回null
     if (!bracketData || !bracketData.rounds || !Array.isArray(bracketData.rounds) || bracketData.rounds.length === 0) {
-      return undefined;
+      return null;
     }
     
     try {
-      // 首先確認我們有隊伍資料
-      if (!resultsData || !resultsData.teams || !Array.isArray(resultsData.teams) || resultsData.teams.length === 0) {
-        console.log('沒有隊伍資料可用來計算排名');
-        return undefined;
-      }
+      // 🆕 改進的淘汰賽排名邏輯：基於淘汰賽的結構而非單純勝場數
+      // 在淘汰賽中，排名應該基於：
+      // 1. 冠軍：最後一輪的獲勝者
+      // 2. 亞軍：最後一輪的失敗者
+      // 3. 季軍：倒數第二輪被淘汰的隊伍中排名最高的
       
-      // 決賽應該在最後一輪
-      const finalRound = bracketData.rounds[bracketData.rounds.length - 1];
+      // 找到最後一輪（決賽）
+      const maxRound = Math.max(...bracketData.rounds.map((round: any) => round.roundNumber || round.round || 0));
+      const finalRound = bracketData.rounds.find((round: any) => (round.roundNumber || round.round) === maxRound);
+      
       if (!finalRound || !finalRound.matches || finalRound.matches.length === 0) {
-        return undefined;
+        console.warn('⚠️ 找不到決賽輪次或決賽比賽');
+        return null;
       }
+
+      console.log(`🏆 決賽輪次: ${maxRound}, 決賽比賽:`, finalRound.matches);
+
+      // 找到決賽比賽（通常是最後一輪的第一場比賽）
+      const finalMatch = finalRound.matches[0];
       
-      // 找到決賽結果
-      const finalMatches = finalRound.matches.filter(match => match.winnerId !== null);
-      
-      // 如果有決賽結果
-      if (finalMatches.length > 0) {
-        // 找到冠軍賽（通常是最後一場）
-        const championshipMatch = finalMatches[0];
+      if (!finalMatch) {
+        console.warn('⚠️ 找不到決賽比賽');
+        return null;
+      }
+
+      // 從 matchResults 中找到對應的比賽結果
+      const finalMatchResult = matchResults.find(match => 
+        (match.team1_id === finalMatch.team1Id && match.team2_id === finalMatch.team2Id) ||
+        (match.team1_id === finalMatch.team2Id && match.team2_id === finalMatch.team1Id)
+      );
+
+      if (!finalMatchResult || !finalMatchResult.winner_team_id) {
+        console.warn('⚠️ 決賽比賽尚未完成或找不到獲勝者');
+        return null;
+      }
+
+      console.log(`🏆 決賽結果:`, {
+        team1_id: finalMatchResult.team1_id,
+        team2_id: finalMatchResult.team2_id,
+        winner_team_id: finalMatchResult.winner_team_id,
+        score: finalMatchResult.score
+      });
+
+      // 確定冠軍和亞軍
+      const championId = finalMatchResult.winner_team_id;
+      const runnerUpId = finalMatchResult.team1_id === championId ? finalMatchResult.team2_id : finalMatchResult.team1_id;
+
+      // 根據請求的排名返回對應的隊伍
+      if (rank === 1) {
+        // 冠軍
+        console.log(`🥇 第1名 (冠軍): ${getTeamNameById(championId)} (ID: ${championId})`);
+        return {
+          teamId: championId,
+          teamName: getTeamNameById(championId)
+        };
+      } else if (rank === 2) {
+        // 亞軍
+        console.log(`🥈 第2名 (亞軍): ${getTeamNameById(runnerUpId)} (ID: ${runnerUpId})`);
+        return {
+          teamId: runnerUpId,
+          teamName: getTeamNameById(runnerUpId)
+        };
+      } else if (rank === 3) {
+        // 季軍：優先檢查季軍戰，否則找半決賽中被淘汰的隊伍
+        console.log(`🥉 尋找季軍...`);
         
-        // 第1名：決賽勝者
-        if (rank === 1 && championshipMatch.winnerId) {
-          const champion = resultsData.teams.find((t: TeamResult) => t.teamId === championshipMatch.winnerId);
-          if (champion) {
-            console.log(`冠軍: ${champion.teamName}`);
-            return champion as ExtendedTeamResult;
+        // 🔧 修正：優先檢查是否有季軍戰
+        const thirdPlaceMatch = finalRound.matches.find((match: any) => 
+          match.match_type === 'third_place' || match.ranking_match === 'third_place'
+        );
+        
+        if (thirdPlaceMatch) {
+          console.log(`🏆 找到季軍戰:`, thirdPlaceMatch);
+          
+          // 從 matchResults 中找到季軍戰結果
+          const thirdPlaceResult = matchResults.find(match => 
+            (match.team1_id === thirdPlaceMatch.team1Id && match.team2_id === thirdPlaceMatch.team2Id) ||
+            (match.team1_id === thirdPlaceMatch.team2Id && match.team2_id === thirdPlaceMatch.team1Id)
+          );
+          
+          if (thirdPlaceResult && thirdPlaceResult.winner_team_id) {
+            console.log(`🥉 第3名 (季軍戰獲勝者): ${getTeamNameById(thirdPlaceResult.winner_team_id)} (ID: ${thirdPlaceResult.winner_team_id})`);
+            return {
+              teamId: thirdPlaceResult.winner_team_id,
+              teamName: getTeamNameById(thirdPlaceResult.winner_team_id)
+            };
           }
         }
         
-        // 第2名：決賽敗者
-        if (rank === 2) {
-          if (!championshipMatch.winnerId || !championshipMatch.team1Id || !championshipMatch.team2Id) return undefined;
-          
-          const secondPlaceTeamId = championshipMatch.team1Id === championshipMatch.winnerId ? 
-              championshipMatch.team2Id : championshipMatch.team1Id;
-          
-          const runnerUp = resultsData.teams.find((t: TeamResult) => t.teamId === secondPlaceTeamId);
-          if (runnerUp) {
-            console.log(`亞軍: ${runnerUp.teamName}`);
-            return runnerUp as ExtendedTeamResult;
-          }
-        }
+        // 如果沒有季軍戰或季軍戰未完成，則找半決賽中被淘汰的隊伍
+        console.log(`🔍 沒有季軍戰或季軍戰未完成，查找半決賽被淘汰隊伍`);
+        const semiRound = bracketData.rounds.find((round: any) => (round.roundNumber || round.round) === maxRound - 1);
         
-        // 第3名和第4名：半決賽敗者
-        if (rank === 3 || rank === 4) {
-          // 找到半決賽輪次（倒數第二輪）
-          if (bracketData.rounds.length >= 2) {
-            const semiRound = bracketData.rounds[bracketData.rounds.length - 2];
-            if (semiRound && semiRound.matches) {
-              const semiLosers: number[] = [];
+        if (semiRound && semiRound.matches) {
+          // 找到所有半決賽中被淘汰的隊伍
+          const eliminatedInSemi: number[] = [];
+          
+          for (const semiMatch of semiRound.matches) {
+            const semiMatchResult = matchResults.find(match => 
+              (match.team1_id === semiMatch.team1Id && match.team2_id === semiMatch.team2Id) ||
+              (match.team1_id === semiMatch.team2Id && match.team2_id === semiMatch.team1Id)
+            );
+            
+            if (semiMatchResult && semiMatchResult.winner_team_id) {
+              const loserId = semiMatchResult.team1_id === semiMatchResult.winner_team_id 
+                ? semiMatchResult.team2_id 
+                : semiMatchResult.team1_id;
+              eliminatedInSemi.push(loserId);
+            }
+          }
+          
+          console.log('半決賽被淘汰的隊伍ID:', eliminatedInSemi);
+          
+          // 🔧 修正：如果有多個半決賽失敗者，選擇較好的排名
+          if (eliminatedInSemi.length > 0) {
+            // 如果有多個失敗者，按勝場數排序選擇最佳的
+            if (eliminatedInSemi.length > 1) {
+              const semiFinalistStats = eliminatedInSemi.map(teamId => {
+                const wins = matchResults.filter(m => m.winner_team_id === teamId).length;
+                return { teamId, wins };
+              }).sort((a, b) => b.wins - a.wins);
               
-              // 收集半決賽的敗者
-              semiRound.matches.forEach(match => {
-                if (match.winnerId && match.team1Id && match.team2Id) {
-                  const loserId = match.team1Id === match.winnerId ? match.team2Id : match.team1Id;
-                  semiLosers.push(loserId);
-                }
-              });
+              console.log('半決賽失敗者統計:', semiFinalistStats);
               
-              console.log('半決賽敗者ID列表:', semiLosers);
-              
-              // 如果有兩個半決賽敗者，需要確定季軍和第四名
-              if (semiLosers.length >= 2) {
-                // 檢查是否有3-4名決定賽
-                let thirdPlaceWinnerId: number | null = null;
-                let fourthPlaceId: number | null = null;
-                
-                // 在決賽輪次中尋找3-4名決定賽（通常是position 2的比賽）
-                const finalRound = bracketData.rounds[bracketData.rounds.length - 1];
-                if (finalRound && finalRound.matches) {
-                  const thirdPlaceMatch = finalRound.matches.find(match => 
-                    match.position === 2 || 
-                    (match.team1Id && match.team2Id && 
-                     semiLosers.includes(match.team1Id) && semiLosers.includes(match.team2Id))
-                  );
-                  
-                  if (thirdPlaceMatch && thirdPlaceMatch.winnerId) {
-                    thirdPlaceWinnerId = thirdPlaceMatch.winnerId;
-                    fourthPlaceId = thirdPlaceMatch.team1Id === thirdPlaceWinnerId ? 
-                                   thirdPlaceMatch.team2Id : thirdPlaceMatch.team1Id;
-                    console.log('找到3-4名決定賽結果:', { thirdPlaceWinnerId, fourthPlaceId });
-                  }
-                }
-                
-                // 如果沒有3-4名決定賽，則按半決賽敗者的順序或其他邏輯排序
-                if (!thirdPlaceWinnerId && semiLosers.length >= 2) {
-                  // 可以根據半決賽的比分或其他邏輯來決定季軍和第四名
-                  // 這裡暫時按照ID順序，實際應用中可能需要更複雜的邏輯
-                  thirdPlaceWinnerId = semiLosers[0];
-                  fourthPlaceId = semiLosers[1];
-                  console.log('沒有3-4名決定賽，按默認順序:', { thirdPlaceWinnerId, fourthPlaceId });
-                }
-                
-                // 返回對應排名的隊伍
-                if (rank === 3 && thirdPlaceWinnerId) {
-                  const thirdPlace = resultsData.teams.find((t: TeamResult) => t.teamId === thirdPlaceWinnerId);
-                  if (thirdPlace) {
-                    console.log(`季軍: ${thirdPlace.teamName}`);
-                    return thirdPlace as ExtendedTeamResult;
-                  }
-                }
-                
-                if (rank === 4 && fourthPlaceId) {
-                  const fourthPlace = resultsData.teams.find((t: TeamResult) => t.teamId === fourthPlaceId);
-                  if (fourthPlace) {
-                    console.log(`第四名: ${fourthPlace.teamName}`);
-                    return fourthPlace as ExtendedTeamResult;
-                  }
-                }
-              }
+              const bestSemiFinalist = semiFinalistStats[0];
+              console.log(`🥉 第3名 (最佳半決賽失敗者): ${getTeamNameById(bestSemiFinalist.teamId)} (ID: ${bestSemiFinalist.teamId}, ${bestSemiFinalist.wins}勝)`);
+              return {
+                teamId: bestSemiFinalist.teamId,
+                teamName: getTeamNameById(bestSemiFinalist.teamId)
+              };
+            } else {
+              // 只有一個半決賽失敗者
+              const thirdPlaceId = eliminatedInSemi[0];
+              console.log(`🥉 第3名 (半決賽失敗者): ${getTeamNameById(thirdPlaceId)} (ID: ${thirdPlaceId})`);
+              return {
+                teamId: thirdPlaceId,
+                teamName: getTeamNameById(thirdPlaceId)
+              };
             }
           }
         }
+        
+        // 如果找不到半決賽，則找所有未進入決賽的隊伍中的第一個
+        const allTeamIds = new Set<number>();
+        bracketData.rounds.forEach((round: any) => {
+          round.matches.forEach((match: any) => {
+            if (match.team1Id) allTeamIds.add(match.team1Id);
+            if (match.team2Id) allTeamIds.add(match.team2Id);
+          });
+        });
+        
+        const nonFinalistIds = Array.from(allTeamIds).filter(id => id !== championId && id !== runnerUpId);
+        if (nonFinalistIds.length > 0) {
+          const thirdPlaceId = nonFinalistIds[0];
+          console.log(`🥉 第3名 (季軍): ${getTeamNameById(thirdPlaceId)} (ID: ${thirdPlaceId})`);
+          return {
+            teamId: thirdPlaceId,
+            teamName: getTeamNameById(thirdPlaceId)
+          };
+        }
       }
+
+      console.log(`⚠️ 無法確定第${rank}名`);
+      return null;
       
-      return undefined;
-    } catch (err) {
-      console.error('尋找最終排名時出錯:', err);
-      return undefined;
+    } catch (error) {
+      console.error('計算排名時發生錯誤:', error);
+      return null;
     }
   };
+
   
   // 渲染最終排名卡片
-  const renderFinalRankingCard = (title: string, team: ExtendedTeamResult | undefined, color: string) => {
+  const renderFinalRankingCard = (title: string, teamData: { teamId: number; teamName: string } | null, color: string) => {
     return (
       <div style={{
         width: '200px',
@@ -2154,21 +2228,14 @@ const checkAndUpdateNextRound = async (bracketStructure: any, matches: any[]) =>
         }}>
           {title}
         </div>
-        {team ? (
+        {teamData ? (
           <>
             <div style={{ 
               fontWeight: 'bold', 
               fontSize: '1.2rem',
               marginTop: '5px'
             }}>
-              {team.teamName}
-            </div>
-            <div style={{ 
-              marginTop: '5px',
-              color: '#666',
-              fontSize: '0.9rem'
-            }}>
-              勝場：{team.winningGames || 0} | 負場：{team.losingGames || 0}
+              {teamData.teamName}
             </div>
           </>
         ) : (
@@ -2606,7 +2673,16 @@ const checkAndUpdateNextRound = async (bracketStructure: any, matches: any[]) =>
                         {(() => {
                           // 計算總輪次數
                           const totalRounds = bracketData.rounds.length;
-                          // 根據輪次與總輪次的關係顯示合適的階段名稱
+                          
+                          // 檢查是否為混合賽事的子賽事
+                          const isSubContest = contestData?.parent_contest_id != null;
+                          
+                          if (isSubContest) {
+                            // 混合賽事的子賽事只顯示輪次，不顯示八強賽/準決賽/決賽
+                            return `第 ${roundIndex + 1} 輪`;
+                          }
+                          
+                          // 單純的淘汰賽才顯示傳統名稱
                           if (roundIndex === totalRounds - 1) {
                             return '決賽';
                           } else if (roundIndex === totalRounds - 2) {
@@ -2894,24 +2970,6 @@ const checkAndUpdateNextRound = async (bracketStructure: any, matches: any[]) =>
                         </td>
                       </tr>
                     ))}
-                    <tr className="bg-gray-50">
-                      <td className="py-3 px-4 border font-bold text-blue-600">勝場(隊)數</td>
-                      {resultsData.teams.map(team => (
-                        <td key={`wins-${team.teamId}`} className="py-3 px-4 border text-center font-bold text-blue-600">
-                          {team.gamesWon}
-                        </td>
-                      ))}
-                      <td className="py-3 px-4 border">—</td>
-                    </tr>
-                    <tr className="bg-gray-50">
-                      <td className="py-3 px-4 border font-bold text-green-600">勝局(點)數</td>
-                      {resultsData.teams.map(team => (
-                        <td key={`winning-games-${team.teamId}`} className="py-3 px-4 border text-center font-bold text-green-600">
-                          {team.winningGames}
-                        </td>
-                      ))}
-                      <td className="py-3 px-4 border">—</td>
-                    </tr>
                   </tbody>
                 </table>
               </div>
@@ -3094,7 +3152,7 @@ const checkAndUpdateNextRound = async (bracketStructure: any, matches: any[]) =>
                   <li>每場比賽的獲勝者晉級下一輪，敗者被淘汰。</li>
                   <li>比賽狀態顯示為「已完成」或「未開始」。</li>
                   <li>獲勝隊伍以綠色背景和🏆圖標標示。</li>
-                  <li>最終排名顯示冠軍、亞軍、季軍和第四名。</li>
+                  <li>最終排名根據勝場數判定：勝場最多者為冠軍，如有同分者則顯示待定。</li>
                   <li>比分顯示各隊在該場比賽中獲勝的局數。</li>
                   {isContestFinished && (
                     <li className="text-blue-700 font-medium">比賽結束後可展開查看詳細個人對戰記錄，包含每局選手對戰情況。</li>

@@ -315,6 +315,117 @@ const SubContestTeamManagementPage: React.FC = () => {
     }
   };
 
+  // 全部分配功能
+  const handleAssignAllTeams = async () => {
+    if (availableTeams.length === 0) {
+      setError('沒有可分配的隊伍');
+      return;
+    }
+
+    try {
+      setError('');
+      setUpdatingTeamId('all'); // 使用特殊標識表示正在批量操作
+
+      // 獲取當前分組的父賽事ID
+      const { data: groupData, error: groupError } = await supabase
+        .from('contest')
+        .select('parent_contest_id')
+        .eq('contest_id', contestId)
+        .single();
+
+      if (groupError) {
+        console.error('獲取分組父賽事ID失敗:', groupError);
+        throw new Error(`獲取分組信息失敗: ${groupError.message}`);
+      }
+
+      if (!groupData) {
+        throw new Error('無法找到分組信息');
+      }
+
+      const parentContestId = groupData.parent_contest_id;
+
+      if (!currentUser || !currentUser.id) {
+        throw new Error('無法獲取用戶資訊，請重新登入後再試');
+      }
+
+      // 準備批量插入的資料
+      const assignmentsToInsert = availableTeams.map(team => ({
+        main_contest_id: parentContestId,
+        group_contest_id: parseInt(contestId as string),
+        contest_team_id: team.contest_team_id,
+        team_name: team.team_name,
+        created_by: currentUser.name || currentUser.member_id || currentUser.id,
+        status: 'active'
+      }));
+
+      console.log('準備批量插入的資料:', assignmentsToInsert);
+
+      // 批量插入
+      const { data: insertData, error: insertError } = await supabase
+        .from('contest_group_assignment')
+        .insert(assignmentsToInsert)
+        .select();
+
+      if (insertError) {
+        console.error('批量添加隊伍到分組失敗:', insertError);
+        throw new Error(`批量分配失敗: ${insertError.message}`);
+      }
+
+      console.log('所有隊伍成功添加到分組，返回資料:', insertData);
+
+      // 更新UI狀態
+      setAssignedTeams(prev => [...prev, ...availableTeams]);
+      setAvailableTeams([]);
+
+      // 動態更新子賽事的 expected_teams 欄位
+      await updateExpectedTeams();
+    } catch (err: any) {
+      console.error('批量分配隊伍時出錯:', err);
+      setError(`批量分配失敗: ${err.message}`);
+    } finally {
+      setUpdatingTeamId(null);
+    }
+  };
+
+  // 全部移除功能
+  const handleRemoveAllTeams = async () => {
+    if (assignedTeams.length === 0) {
+      setError('沒有已分配的隊伍');
+      return;
+    }
+
+    try {
+      setError('');
+      setUpdatingTeamId('all'); // 使用特殊標識表示正在批量操作
+
+      // 批量移除所有已分配的隊伍
+      const { data: deleteData, error: deleteError } = await supabase
+        .from('contest_group_assignment')
+        .delete()
+        .eq('group_contest_id', parseInt(contestId as string))
+        .select();
+
+      if (deleteError) {
+        console.error('批量移除隊伍失敗:', deleteError);
+        throw new Error(`批量移除失敗: ${deleteError.message}`);
+      }
+
+      console.log('所有隊伍成功從分組中移除，返回資料:', deleteData);
+
+      // 更新UI狀態
+      setAvailableTeams(prev => [...prev, ...assignedTeams]);
+      setAssignedTeams([]);
+
+      // 動態更新子賽事的 expected_teams 欄位
+      await updateExpectedTeams();
+    } catch (err: any) {
+      console.error('批量移除隊伍時出錯:', err);
+      setError(`批量移除失敗: ${err.message}`);
+    } finally {
+      setUpdatingTeamId(null);
+    }
+  };
+
   if (loading) return <div className="p-8 text-center">載入分組資訊中...</div>;
 
   return (
@@ -373,38 +484,74 @@ const SubContestTeamManagementPage: React.FC = () => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-4">可分配的隊伍 ({availableTeams.length})</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">可分配的隊伍 ({availableTeams.length})</h2>
+            {availableTeams.length > 0 && (
+              <button 
+                onClick={handleAssignAllTeams}
+                disabled={updatingTeamId === 'all'}
+                className="bg-blue-500 text-white px-4 py-2 rounded-md hover:bg-blue-600 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium text-sm"
+                title="將所有可分配的隊伍一次性分配到右側"
+              >
+                {updatingTeamId === 'all' ? '分配中...' : '全部分配 →'}
+              </button>
+            )}
+          </div>
           <ul className="space-y-2 h-96 overflow-y-auto">
-            {availableTeams.map((team: Team) => (
-              <li key={team.contest_team_id + '_' + team.team_name} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
-                <span>{team.team_name}</span>
-                <button 
-                  onClick={() => handleTeamUpdate(team, 'add')} 
-                  disabled={updatingTeamId === team.contest_team_id} 
-                  className="bg-green-500 text-white p-2 rounded-full hover:bg-green-600 disabled:bg-gray-300"
-                >
-                  →
-                </button>
+            {availableTeams.length === 0 ? (
+              <li className="text-center text-gray-500 py-8">
+                沒有可分配的隊伍
               </li>
-            ))}
+            ) : (
+              availableTeams.map((team: Team) => (
+                <li key={team.contest_team_id + '_' + team.team_name} className="flex justify-between items-center p-3 bg-gray-50 rounded-md">
+                  <span>{team.team_name}</span>
+                  <button 
+                    onClick={() => handleTeamUpdate(team, 'add')} 
+                    disabled={updatingTeamId === team.contest_team_id || updatingTeamId === 'all'} 
+                    className="bg-green-500 text-white p-2 rounded-full hover:bg-green-600 disabled:bg-gray-300"
+                  >
+                    →
+                  </button>
+                </li>
+              ))
+            )}
           </ul>
         </div>
         
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-xl font-semibold mb-4">已分配的隊伍 ({assignedTeams.length})</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">已分配的隊伍 ({assignedTeams.length})</h2>
+            {assignedTeams.length > 0 && (
+              <button 
+                onClick={handleRemoveAllTeams}
+                disabled={updatingTeamId === 'all'}
+                className="bg-red-500 text-white px-4 py-2 rounded-md hover:bg-red-600 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium text-sm"
+                title="將所有已分配的隊伍一次性移除到左側"
+              >
+                {updatingTeamId === 'all' ? '移除中...' : '← 全部移除'}
+              </button>
+            )}
+          </div>
           <ul className="space-y-2 h-96 overflow-y-auto">
-            {assignedTeams.map((team: Team) => (
-              <li key={team.contest_team_id + '_' + team.team_name} className="flex justify-between items-center p-3 bg-blue-50 rounded-md">
-                <span>{team.team_name}</span>
-                <button 
-                  onClick={() => handleTeamUpdate(team, 'remove')} 
-                  disabled={updatingTeamId === team.contest_team_id} 
-                  className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 disabled:bg-gray-300"
-                >
-                  &times;
-                </button>
+            {assignedTeams.length === 0 ? (
+              <li className="text-center text-gray-500 py-8">
+                沒有已分配的隊伍
               </li>
-            ))}
+            ) : (
+              assignedTeams.map((team: Team) => (
+                <li key={team.contest_team_id + '_' + team.team_name} className="flex justify-between items-center p-3 bg-blue-50 rounded-md">
+                  <span>{team.team_name}</span>
+                  <button 
+                    onClick={() => handleTeamUpdate(team, 'remove')} 
+                    disabled={updatingTeamId === team.contest_team_id || updatingTeamId === 'all'} 
+                    className="bg-red-500 text-white p-2 rounded-full hover:bg-red-600 disabled:bg-gray-300"
+                  >
+                    &times;
+                  </button>
+                </li>
+              ))
+            )}
           </ul>
         </div>
       </div>
