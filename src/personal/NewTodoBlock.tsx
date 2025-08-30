@@ -3,6 +3,35 @@ import { useNavigate } from 'react-router-dom';
 import { UserContext } from '../UserContext';
 import { supabase } from '../supabaseClient';
 
+// 🔒 新增：根據 member_id 前綴獲取登入團隊ID
+const getLoginTeamId = (memberId: string): string => {
+  if (!memberId) return '';
+  return memberId.charAt(0).toUpperCase(); // 取第一個字母作為登入團隊識別
+};
+
+// 🔒 新增：根據團隊ID獲取團隊名稱
+const getTeamNameByTeamId = async (teamId: string): Promise<string> => {
+  if (!teamId) return '';
+  
+  try {
+    const { data, error } = await supabase
+      .from('courts')
+      .select('name')
+      .eq('team_id', teamId)
+      .maybeSingle();
+    
+    if (error || !data) {
+      console.error('查詢團隊名稱失敗:', error);
+      return '';
+    }
+    
+    return data.name || '';
+  } catch (err) {
+    console.error('獲取團隊名稱時出錯:', err);
+    return '';
+  }
+};
+
 const NewTodoBlock: React.FC = () => {
   const { user } = useContext(UserContext) ?? { user: null };
   const navigate = useNavigate();
@@ -77,18 +106,27 @@ const NewTodoBlock: React.FC = () => {
   // 🎯 新增：查詢待確認結束的比賽
   const fetchPendingContestFinish = async () => {
     // 只有登入用戶才需要查詢
-    if (!user?.team_name) {
+    if (!user?.member_id) {
       setPendingContestFinish([]);
       return;
     }
 
     try {
-      // 1. 先獲取用戶主辦且狀態為 'ongoing' 的比賽
+      const loginTeamId = getLoginTeamId(user.member_id);
+      const loginTeamName = await getTeamNameByTeamId(loginTeamId);
+      
+      if (!loginTeamName) {
+        console.error('無法獲取登入團隊名稱');
+        setPendingContestFinish([]);
+        return;
+      }
+      
+      // 1. 先獲取該登入團隊主辦且狀態為 'ongoing' 的比賽
       const { data: ongoingContests, error: contestsError } = await supabase
         .from('contest')
-        .select('contest_id, contest_name')
-        .eq('team_name', user.team_name)  // 只查詢用戶主辦的比賽
+        .select('contest_id, contest_name, team_name')
         .eq('contest_status', 'ongoing')  // 只查詢進行中的比賽
+        .eq('team_name', loginTeamName)  // 🔒 只查詢同登入團隊主辦的比賽
         .order('contest_id', { ascending: false });
 
       if (contestsError) {
@@ -125,17 +163,42 @@ const NewTodoBlock: React.FC = () => {
   // 查詢管理員待產生對戰表的比賽
   const fetchPendingMatchGeneration = async () => {
     // 只有管理員才需要查詢
-    if (!user?.role || user.role !== 'admin') {
+    if (!user?.role || user.role !== 'admin' || !user?.member_id) {
+      console.log('🔍 [fetchPendingMatchGeneration] 不符合管理員條件:', { role: user?.role, member_id: user?.member_id });
       setPendingMatchGeneration([]);
       return;
     }
 
     try {
+      const loginTeamId = getLoginTeamId(user.member_id);
+      const loginTeamName = await getTeamNameByTeamId(loginTeamId);
+      
+      if (!loginTeamName) {
+        console.error('無法獲取登入團隊名稱');
+        setPendingMatchGeneration([]);
+        return;
+      }
+      
+      console.log('🔍 [fetchPendingMatchGeneration] 開始查詢:', { 
+        member_id: user.member_id, 
+        loginTeamId: loginTeamId,
+        loginTeamName: loginTeamName,
+        role: user.role 
+      });
+      
+      // 只查詢該登入團隊管理員主辦的比賽
       const { data: waitingContests, error } = await supabase
         .from('contest')
-        .select('contest_id, contest_name')
+        .select('contest_id, contest_name, team_name')
         .eq('contest_status', 'WaitMatchForm')
+        .eq('team_name', loginTeamName)  // 🔒 只查詢同登入團隊主辦的比賽
         .order('contest_id', { ascending: false });
+
+      console.log('🔍 [fetchPendingMatchGeneration] 查詢結果:', { 
+        waitingContests, 
+        error,
+        queryFilter: `team_name = '${loginTeamName}'`
+      });
 
       if (error) {
         console.error('查詢待產生對戰表的比賽失敗:', error);
@@ -144,6 +207,7 @@ const NewTodoBlock: React.FC = () => {
       }
 
       setPendingMatchGeneration(waitingContests || []);
+      console.log('🔍 [fetchPendingMatchGeneration] 設置待產生對戰表比賽:', waitingContests?.length || 0, '筆');
     } catch (err) {
       console.error('查詢待產生對戰表錯誤:', err);
       setPendingMatchGeneration([]);
@@ -207,15 +271,25 @@ const NewTodoBlock: React.FC = () => {
 
   // 查詢隊長待處理出賽名單
   const fetchCaptainPendingLineups = async () => {
-    if (!user?.member_id) {
+    if (!user?.member_id || !user?.team_name) {
       setCaptainPendingLineups([]);
       return;
     }
 
     try {
-      console.log('查詢隊長待處理名單開始, member_id:', user.member_id);
+      console.log('查詢隊長待處理名單開始, member_id:', user.member_id, 'team_name:', user.team_name);
       
-      // 重要：先查詢用戶是哪些隊伍的隊長
+      // 🔒 獲取登入團隊標識和名稱
+      const loginTeamId = getLoginTeamId(user.member_id);
+      const loginTeamName = await getTeamNameByTeamId(loginTeamId);
+      
+      if (!loginTeamName) {
+        console.error('無法獲取登入團隊名稱');
+        setCaptainPendingLineups([]);
+        return;
+      }
+      
+      // 🔒 重要：先查詢用戶是哪些隊伍的隊長
       const { data: captainTeams, error: captainTeamsError } = await supabase
         .from('contest_team_member')
         .select(`contest_team_id`)
@@ -232,53 +306,81 @@ const NewTodoBlock: React.FC = () => {
       const userTeamIds = captainTeams.map(team => team.contest_team_id);
       console.log('用戶是這些隊伍的隊長:', userTeamIds);
       
-      // 獲取隊長所有參與的比賽
-      interface CaptainMatch {
-        match_id: string;
-        contest_id: string | number;
-        team1_id: string | number;
-        team2_id: string | number;
-        winner_team_id: string | number | null;
-      }
+      // 🔒 修正：同時查詢主賽事和子賽事的 contest_id
       
-      let captainMatches: CaptainMatch[] = [];
-      
-      // 查詢隊長所在team1的比賽
-      for (const teamId of userTeamIds) {
-        const { data: team1Matches, error: team1Error } = await supabase
-          .from('contest_match')
-          .select('match_id, contest_id, team1_id, team2_id, winner_team_id')
-          .eq('team1_id', teamId);
-          
-        if (!team1Error && team1Matches) {
-          captainMatches = [...captainMatches, ...team1Matches];
-        }
-      }
-      
-      // 查詢隊長所在team2的比賽
-      for (const teamId of userTeamIds) {
-        const { data: team2Matches, error: team2Error } = await supabase
-          .from('contest_match')
-          .select('match_id, contest_id, team1_id, team2_id, winner_team_id')
-          .eq('team2_id', teamId);
-          
-        if (!team2Error && team2Matches) {
-          captainMatches = [...captainMatches, ...team2Matches];
-        }
-      }
-      
-      // 如果沒有找到任何比賽，退出
-      if (!captainMatches.length) {
-        console.log('沒有找到隊長相關的比賽');
+      // 1. 先獲取隊長參與的主賽事 contest_id
+      const { data: teamContests, error: teamContestsError } = await supabase
+        .from('contest_team')
+        .select(`
+          contest_id,
+          contest:contest_id (
+            team_name
+          )
+        `)
+        .in('contest_team_id', userTeamIds);
+
+      if (teamContestsError) {
+        console.error('查詢隊伍所屬比賽失敗:', teamContestsError);
         setCaptainPendingLineups([]);
         return;
       }
+
+      // 🔒 過濾出同登入團隊主辦的主賽事
+      const filteredMainContests = (teamContests || []).filter((tc: any) => {
+        const contestTeamName = tc.contest?.team_name;
+        return contestTeamName === loginTeamName;
+      });
       
-      // 獲取所有相關的 contest_id
-      const contestIds = [...new Set(captainMatches.map(match => match.contest_id))];
+      // 獲取主賽事的 contest_id
+      const mainContestIds = [...new Set(filteredMainContests.map((tc: any) => tc.contest_id))];
+      console.log('隊長參與的主賽事 contest_id:', mainContestIds);
+
+      // 2. 🆕 查詢子賽事：透過 contest_group_assignment 找出隊長參與的子賽事
+      let subContestIds: any[] = [];
+      if (mainContestIds.length > 0) {
+        // 查詢所有相關的子賽事
+        const { data: allSubContests, error: subContestsError } = await supabase
+          .from('contest')
+          .select('contest_id, parent_contest_id, team_name')
+          .in('parent_contest_id', mainContestIds)
+          .eq('team_name', loginTeamName); // 同登入團隊主辦
+
+        if (!subContestsError && allSubContests) {
+          // 檢查隊長的隊伍是否被分配到這些子賽事
+          for (const subContest of allSubContests) {
+            const { data: assignments, error: assignError } = await supabase
+              .from('contest_group_assignment')
+              .select('contest_team_id')
+              .eq('group_contest_id', subContest.contest_id)
+              .in('contest_team_id', userTeamIds);
+
+            if (!assignError && assignments && assignments.length > 0) {
+              subContestIds.push(subContest.contest_id);
+            }
+          }
+        }
+      }
       
-      // 直接使用隊長參與的比賽，而不是查詢整個賽事的所有比賽
-      const allContestMatches = captainMatches;
+      console.log('隊長參與的子賽事 contest_id:', subContestIds);
+      
+      // 3. 合併主賽事和子賽事的 contest_id
+      const captainContestIds = [...mainContestIds, ...subContestIds];
+      console.log('隊長參與的所有比賽 contest_id:', captainContestIds);
+
+      // 🔒 只查詢隊長參與的隊伍的比賽（有團隊區隔）
+      const { data: allContestMatches, error: allMatchesError } = await supabase
+        .from('contest_match')
+        .select('match_id, contest_id, team1_id, team2_id, winner_team_id')
+        .in('contest_id', captainContestIds)
+        .or(`team1_id.in.(${userTeamIds.join(',')}),team2_id.in.(${userTeamIds.join(',')})`);
+
+      if (allMatchesError || !allContestMatches || allContestMatches.length === 0) {
+        console.error('查詢比賽失敗:', allMatchesError);
+        setCaptainPendingLineups([]);
+        return;
+      }
+
+      console.log('找到的所有比賽:', allContestMatches.length, '場');
       
       // 獲取所有比賽的陣容詳情，用於判斷雙方是否已安排名單
       const matchIds = allContestMatches.map((match: any) => match.match_id);
@@ -296,33 +398,18 @@ const NewTodoBlock: React.FC = () => {
       if (matchDetails) {
         matchDetails.forEach((detail: any) => {
           matchDetailMap.set(detail.match_id.toString(), {
-            team1_member_ids: detail.team1_member_ids || [],
-            team2_member_ids: detail.team2_member_ids || []
+            // 🔧 確保 JSONB 陣列正確處理
+            team1_member_ids: Array.isArray(detail.team1_member_ids) ? detail.team1_member_ids : [],
+            team2_member_ids: Array.isArray(detail.team2_member_ids) ? detail.team2_member_ids : []
           });
         });
       }
       
       console.log('各比賽陣容狀態:', matchDetailMap);
       
-      // 獲取未安排的比賽（用於標記"未安排"）
-      const { data: pendingMatches, error: pendingError } = await supabase
-        .from('vw_captains_with_pending_lineups')
-        .select('*')
-        .eq('member_id', user.member_id);
-        
-      console.log('未安排的比賽資訊:', pendingMatches);
-        
-      // 建立未安排比賽的映射
-      const pendingMatchMap = new Map<string, boolean>();
-      if (!pendingError && pendingMatches && pendingMatches.length > 0) {
-        pendingMatches.forEach((match: any) => {
-          // 將match_id作為鍵，加入映射中
-          pendingMatchMap.set(match.match_id.toString(), true);
-          console.log('加入未安排名單:', match.match_id);
-        });
-      } else {
-        console.log('無未安排的比賽或查詢失敗:', pendingError);
-      }
+      // 🔒 不使用視圖，完全依靠 contest_match_detail 來判斷狀態
+      // 如果 contest_match_detail 表中無記錄，表示還沒產出對戰單，不需要通知
+      console.log('完全依靠 contest_match_detail 表來判斷比賽狀態，不使用視圖過濾');
       
       // 獲取所有相關隊伍的資訊
       const allTeamIds = [...new Set([
@@ -351,7 +438,7 @@ const NewTodoBlock: React.FC = () => {
       const { data: contestsData, error: contestsError } = await supabase
         .from('contest')
         .select('contest_id, contest_name, contest_status')
-        .in('contest_id', contestIds);
+        .in('contest_id', captainContestIds);
         
       if (contestsError || !contestsData) {
         console.error('獲取比賽資訊失敗:', contestsError);
@@ -371,16 +458,24 @@ const NewTodoBlock: React.FC = () => {
       // 處理要顯示的名單
       const displayLineups = [];
       
-      // 過濾掉隊長不相關的比賽，只保留隊長參與的賽事中的比賽
+      // 🔒 只處理隊長參與的比賽，並且有 contest_match_detail 記錄的比賽
       for (const match of allContestMatches) {
         // 只過濾已結束的賽事，不考慮其他條件
         const contestInfo = contestInfoMap.get(match.contest_id);
         if (!contestInfo || contestInfo.contest_status === 'finished') {
           continue;
         }
+        
+        // 🔒 檢查是否有 contest_match_detail 記錄，沒有記錄表示還沒產出對戰單
+        const matchDetail = matchDetailMap.get(match.match_id.toString());
+        if (!matchDetail) {
+          console.log(`比賽 ${match.match_id} 沒有對戰單記錄，跳過`);
+          continue;
+        }
+        
         console.log(`判斷比賽 ${match.match_id} (賽事=${match.contest_id}) 狀態：${contestInfo.contest_status}`);
         
-        // 查找隊長在此比賽的隊伍ID
+        // 🔒 查找隊長在此比賽的隊伍ID
         let captainTeamId = null;
         let teamType = null;
         
@@ -405,43 +500,36 @@ const NewTodoBlock: React.FC = () => {
         const opponentTeamId = teamType === 'team1' ? match.team2_id : match.team1_id;
         const opponentTeamName = teamNameMap.get(opponentTeamId) || '未知隊伍';
         
-        // 獲取比賽的陣容詳情
-        const matchDetail = matchDetailMap.get(match.match_id.toString());
-        let team1HasLineup = false;
-        let team2HasLineup = false;
+        // 🔒 分析比賽的陣容詳情（已經在上面檢查過 matchDetail 存在）
+        // 🔧 修正：正確處理 JSONB 陣列（可能是空陣列 [] 而不是 null）
+        const team1HasLineup = Array.isArray(matchDetail.team1_member_ids) && matchDetail.team1_member_ids.length > 0;
+        const team2HasLineup = Array.isArray(matchDetail.team2_member_ids) && matchDetail.team2_member_ids.length > 0;
+        console.log(`比賽 ${match.match_id} 陣容狀態: team1=${team1HasLineup}, team2=${team2HasLineup}`);
         
-        if (matchDetail) {
-          team1HasLineup = matchDetail.team1_member_ids && matchDetail.team1_member_ids.length > 0;
-          team2HasLineup = matchDetail.team2_member_ids && matchDetail.team2_member_ids.length > 0;
-          console.log(`比賽 ${match.match_id} 陣容狀態: team1=${team1HasLineup}, team2=${team2HasLineup}`);
-        }
-        
-        // 檢查是否在待處理名單中（用於標記"未安排"）
-        const isPending = pendingMatchMap.has(match.match_id.toString());
-        console.log(`檢查比賽 ${match.match_id} 是否在未安排列表中:`, isPending);
+        // 🔒 完全基於 contest_match_detail 判斷狀態
+        // 檢查隊長隊伍和對手隊伍的安排狀態
+        const captainTeamHasLineup = teamType === 'team1' ? team1HasLineup : team2HasLineup;
+        const opponentTeamHasLineup = teamType === 'team1' ? team2HasLineup : team1HasLineup;
         
         // 確定名單狀態
         let readyStatus: 'not_ready' | 'ready' | 'both_ready' = 'not_ready';
+        let isPending = false;
         
-        if (isPending) {
-          // 如果在待處理名單中，則為未安排
+        if (!captainTeamHasLineup) {
+          // 隊長隊伍未安排
           readyStatus = 'not_ready';
-        } else {
-          // 檢查隊長隊伍和對手隊伍的安排狀態
-          const captainTeamHasLineup = teamType === 'team1' ? team1HasLineup : team2HasLineup;
-          const opponentTeamHasLineup = teamType === 'team1' ? team2HasLineup : team1HasLineup;
-          
-          if (captainTeamHasLineup && opponentTeamHasLineup) {
-            // 雙方都已安排
-            readyStatus = 'both_ready';
-          } else if (captainTeamHasLineup) {
-            // 只有隊長隊伍已安排
-            readyStatus = 'ready';
-          } else {
-            // 隊長隊伍未安排（應該不會發生，因為在待處理列表中應該已被捕獲）
-            readyStatus = 'not_ready';
-          }
+          isPending = true;
+        } else if (captainTeamHasLineup && !opponentTeamHasLineup) {
+          // 隊長隊伍已安排，對手未安排
+          readyStatus = 'ready';
+          isPending = false;
+        } else if (captainTeamHasLineup && opponentTeamHasLineup) {
+          // 雙方都已安排
+          readyStatus = 'both_ready';
+          isPending = false;
         }
+        
+        console.log(`比賽 ${match.match_id} 狀態判斷: 隊長=${captainTeamHasLineup}, 對手=${opponentTeamHasLineup}, 狀態=${readyStatus}`);
         
         // 添加到要顯示的名單
         displayLineups.push({
@@ -474,6 +562,16 @@ const NewTodoBlock: React.FC = () => {
     }
 
     try {
+      // 🔒 獲取登入團隊標識和名稱
+      const loginTeamId = getLoginTeamId(user.member_id);
+      const loginTeamName = await getTeamNameByTeamId(loginTeamId);
+      
+      if (!loginTeamName) {
+        console.error('無法獲取登入團隊名稱');
+        setPendingLineups({ count: 0, matches: [] });
+        return;
+      }
+      
       // 查詢當前用戶是隊長的隊伍
       const { data: captainTeams, error: captainError } = await supabase
         .from('contest_team_member')
@@ -482,7 +580,10 @@ const NewTodoBlock: React.FC = () => {
           contest_team:contest_team_id (
             contest_team_id,
             team_name,
-            contest_id
+            contest_id,
+            contest:contest_id (
+              team_name
+            )
           )
         `)
         .eq('member_id', user.member_id)
@@ -493,8 +594,19 @@ const NewTodoBlock: React.FC = () => {
         return;
       }
 
-      // 獲取隊長所在隊伍的ID列表
-      const teamIds = captainTeams.map(team => team.contest_team.contest_team_id);
+      // 🔒 過濾出同登入團隊主辦的比賽中的隊伍
+      const filteredCaptainTeams = captainTeams.filter((team: any) => {
+        const contestTeamName = team.contest_team?.contest?.team_name;
+        return contestTeamName === loginTeamName;
+      });
+
+      if (filteredCaptainTeams.length === 0) {
+        setPendingLineups({ count: 0, matches: [] });
+        return;
+      }
+
+      // 獲取隊長所在隊伍的ID列表（僅限同登入團隊的比賽）
+      const teamIds = filteredCaptainTeams.map((team: any) => team.contest_team.contest_team_id);
 
       // 查詢作為 team1 且未設置陣容的比賽
       const { data: team1Matches, error: team1Error } = await supabase
