@@ -890,6 +890,7 @@ function App() {
             
             {/* contestId 相關的具體路由 - 必須在 /contest/:contestId 之前 */}
             <Route path="/contest/:contestId/score-edit" element={<ScoreEditPage />} />
+            <Route path="/contest/:contestId/score-edit/:matchId" element={<ScoreEditPage />} />
             <Route path="/contest/:contestId/battleroom" element={<BattleRoomPage />} />
             <Route path="/contest/:contestId/results" element={<ContestResultsPage />} />
             <Route path="/contest/:contestId/lineup-status" element={<LineupStatusPage />} />
